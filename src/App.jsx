@@ -3,11 +3,15 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Login from './pages/Login'
 import AuthCallback from './pages/AuthCallback'
 import Dashboard from './pages/Dashboard'
+import Students from './pages/admin/Students'
+import Classes from './pages/admin/Classes'
 
-const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth()
+const ProtectedRoute = ({ children, adminOnly = false }) => {
+  const { user, profile, loading } = useAuth()
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading...</div>
-  return user ? children : <Navigate to="/login" />
+  if (!user) return <Navigate to="/login" />
+  if (adminOnly && profile?.role !== 'admin') return <Navigate to="/dashboard" />
+  return children
 }
 
 function AppRoutes() {
@@ -15,9 +19,9 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
-      <Route path="/dashboard" element={
-        <ProtectedRoute><Dashboard /></ProtectedRoute>
-      } />
+      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/admin/students" element={<ProtectedRoute adminOnly><Students /></ProtectedRoute>} />
+      <Route path="/admin/classes" element={<ProtectedRoute adminOnly><Classes /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/login" />} />
     </Routes>
   )

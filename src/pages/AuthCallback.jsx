@@ -16,11 +16,17 @@ export default function AuthCallback() {
   }, [])
 
   const upsertUser = async (user) => {
+    const { data: existing } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
     await supabase.from('users').upsert({
       id: user.id,
       email: user.email,
       full_name: user.user_metadata?.full_name,
-      role: 'teacher'
+      role: existing?.role || 'teacher'
     }, { onConflict: 'id' })
   }
 
