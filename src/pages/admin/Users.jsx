@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import Layout from '../../components/Layout'
 import { useAuth } from '../../contexts/AuthContext'
+import Papa from 'papaparse'
 
 export default function Users() {
   const { user: currentUser } = useAuth()
@@ -11,6 +12,7 @@ export default function Users() {
   const [editForm, setEditForm] = useState({})
   const [message, setMessage] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [importing, setImporting] = useState(false)
 
   useEffect(() => { fetchUsers() }, [])
 
@@ -51,11 +53,57 @@ export default function Users() {
     }
   }
 
+  const handleCSV = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setImporting(true)
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        const teachers = results.data.map(row => ({
+          full_name: row['Full Name'] || row['full_name'],
+          email: row['Email'] || row['email'],
+        }))
+
+        const { data, error } = await supabase.functions.invoke('create-teachers', {
+          body: { teachers }
+        })
+
+        if (error) {
+          setMessage({ type: 'error', text: 'Import failed: ' + error.message })
+        } else {
+          const successCount = data.results?.length || 0
+          const errorCount = data.errors?.length || 0
+          if (errorCount > 0) {
+            const errorList = data.errors.map(e => e.email + ': ' + e.error).join(', ')
+            setMessage({ type: 'error', text: `${successCount} imported, ${errorCount} failed: ${errorList}` })
+          } else {
+            setMessage({ type: 'success', text: `${successCount} teachers imported successfully with default password royal@123` })
+          }
+          fetchUsers()
+        }
+
+        setImporting(false)
+        e.target.value = ''
+      }
+    })
+  }
+
   return (
     <Layout>
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900">Users</h2>
-        <p className="text-gray-500 text-sm mt-1">{users.length} users in the system</p>
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Users</h2>
+          <p className="text-gray-500 text-sm mt-1">{users.length} users in the system</p>
+        </div>
+        <label className={`cursor-pointer px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors ${
+          importing ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'
+        }`}>
+          {importing ? 'Importing...' : '+ Import Teachers CSV'}
+          <input type="file" accept=".csv" className="hidden" onChange={handleCSV} disabled={importing} />
+        </label>
       </div>
 
       {message && (
@@ -91,7 +139,7 @@ export default function Users() {
         {loading ? (
           <div className="p-8 text-center text-gray-400">Loading...</div>
         ) : users.length === 0 ? (
-          <div className="p-8 text-center text-gray-400">No users yet.</div>
+          <div className="p-8 text-center text.gray-400">No users yet.</div>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
@@ -175,6 +223,12 @@ export default function Users() {
             </tbody>
           </table>
         )}
+      </div>
+
+      <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <p className="text-xs text-gray-500 font-medium mb-2">CSV Format — your file should have these column headers:</p>
+        <code className="text-xs text-gray-600">Full Name, Email</code>
+        <p className="text-xs text-gray-400 mt-2">All teachers will be created with the default password: royal@123</p>
       </div>
     </Layout>
   )
