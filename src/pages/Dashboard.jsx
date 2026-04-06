@@ -30,6 +30,8 @@ export default function Dashboard() {
     high_school: 'High School',
   }[l] || l)
 
+  const programmeLabel = (p) => p === 'bilingual' ? 'Bilingual' : 'Integrated'
+
   const programmeBadgeStyle = (p) => p === 'bilingual'
     ? 'bg-purple-100 text-purple-700'
     : 'bg-teal-100 text-teal-700'
@@ -90,7 +92,7 @@ export default function Dashboard() {
                   {levelLabel(cls.level)}
                 </span>
                 <span className={`text-xs px-2 py-1 rounded-full ${programmeBadgeStyle(cls.programme)}`}>
-                  {cls.programme}
+                  {programmeLabel(cls.programme)}
                 </span>
               </div>
             </Link>
