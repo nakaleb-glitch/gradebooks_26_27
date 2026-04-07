@@ -81,29 +81,66 @@ export default function ClassDetail() {
       )}
     </Layout>
   )
+}
 
-      {!selectedTerm ? (
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Select a Term</h3>
-          <div className="grid grid-cols-2 gap-4 max-w-lg">
-            {TERMS.map(term => (
-              <button key={term.key} onClick={() => setSelectedTerm(term.key)}
-                className="bg-white rounded-xl border border-gray-200 p-6 text-left hover:border-blue-300 hover:shadow-sm transition-all">
-                <div className="text-lg font-semibold text-gray-900">{term.label}</div>
-                <div className="text-sm text-gray-400 mt-1">{term.weeks} weeks · 2026–27</div>
-              </button>
-            ))}
+// ── Resource Cards ────────────────────────────────────────────────────────────
+function ResourceCards({ level, programme, subject }) {
+  const [resources, setResources] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => { fetchResources() }, [level, programme, subject])
+
+  const fetchResources = async () => {
+    const { data } = await supabase
+      .from('resource_links')
+      .select('*')
+      .eq('level', level)
+      .eq('programme', programme)
+      .eq('subject', subject)
+      .order('sort_order')
+    setResources(data || [])
+    setLoading(false)
+  }
+
+  const TYPE_ICON = { portal: '🌐', drive: '📁', pdf: '📄', other: '🔗' }
+  const TYPE_LABEL = { portal: 'Online Portal', drive: 'Google Drive', pdf: 'PDF', other: 'Link' }
+
+  if (loading) return <div className="text-sm text-gray-400">Loading resources...</div>
+  if (resources.length === 0) return (
+    <div className="text-sm text-gray-400 italic">No resources added yet for this class type.</div>
+  )
+
+  return (
+    <div className="grid grid-cols-2 gap-4 max-w-2xl sm:grid-cols-3">
+      {resources.map(r => {
+        const isComingSoon = !r.url
+        return isComingSoon ? (
+          <div key={r.id}
+            className="rounded-xl border border-gray-200 p-5 bg-gray-50 opacity-60 cursor-not-allowed">
+            <div className="text-2xl mb-2">{TYPE_ICON[r.resource_type]}</div>
+            <div className="font-semibold text-gray-400 text-sm">{r.title}</div>
+            {r.description && <div className="text-xs text-gray-400 mt-1">{r.description}</div>}
+            <div className="mt-3">
+              <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-400 rounded-full">Coming Soon</span>
+            </div>
           </div>
-        </div>
-      ) : (
-        <Gradebook
-          cls={cls}
-          term={selectedTerm}
-          termLabel={TERMS.find(t => t.key === selectedTerm)?.label}
-          onBack={() => setSelectedTerm(null)}
-        />
-      )}
-    </Layout>
+        ) : (
+          <a key={r.id} href={r.url} target="_blank" rel="noopener noreferrer"
+            className="rounded-xl border p-5 bg-white hover:shadow-md transition-all block"
+            style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}>
+            <div className="text-2xl mb-2">{TYPE_ICON[r.resource_type]}</div>
+            <div className="font-semibold text-gray-900 text-sm">{r.title}</div>
+            {r.description && <div className="text-xs text-gray-500 mt-1">{r.description}</div>}
+            <div className="mt-3">
+              <span className="text-xs px-2 py-0.5 rounded-full font-medium text-white"
+                style={{ backgroundColor: '#1f86c7' }}>
+                {TYPE_LABEL[r.resource_type]}
+              </span>
+            </div>
+          </a>
+        )
+      })}
+    </div>
   )
 }
 
@@ -237,7 +274,6 @@ function ParticipationTab({ classId, term, students }) {
           {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save'}
         </button>
       </div>
-
       <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
@@ -533,7 +569,6 @@ function ProgressTestTab({ classId, term, students, isESL }) {
         </button>
       </div>
 
-      {/* Totals row */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 flex gap-6 items-end">
         {isESL ? (
           <>
@@ -646,7 +681,6 @@ function SummaryTab({ classId, term, students, isESL }) {
 
   const fetchAll = async () => {
     setLoading(true)
-
     const [{ data: partData }, { data: assignData }, { data: assignGrades }, { data: ptData }] = await Promise.all([
       supabase.from('participation_grades').select('*').eq('class_id', classId).eq('term', term),
       supabase.from('assignments').select('*').eq('class_id', classId).eq('term', term),
@@ -655,14 +689,11 @@ function SummaryTab({ classId, term, students, isESL }) {
     ])
 
     const summary = {}
-
     students.forEach(student => {
-      // Participation avg (out of 10 → convert to %)
       const partScores = partData?.filter(g => g.student_id === student.id && g.score != null).map(g => g.score) || []
       const partAvg = avg(partScores)
       const partPct = partAvg != null ? (partAvg / 10) * 100 : null
 
-      // Assignment avg %
       const assignPcts = assignData?.map(a => {
         const g = assignGrades?.find(g => g.assignment_id === a.id && g.student_id === student.id)
         if (!g || g.is_absent || g.score == null) return null
@@ -670,18 +701,15 @@ function SummaryTab({ classId, term, students, isESL }) {
       }).filter(p => p !== null) || []
       const assignAvg = avg(assignPcts)
 
-      // Attainment = participation 20% + assignments 80%
       const attainment = partPct != null && assignAvg != null
         ? (partPct * 0.20) + (assignAvg * 0.80)
         : partPct != null ? partPct * 0.20
         : assignAvg != null ? assignAvg * 0.80
         : null
 
-      // Progress test overall %
       const pt = ptData?.find(g => g.student_id === student.id)
       const ptOverall = pt?.overall_percentage ?? null
 
-      // Total = attainment 75% + progress test 25%
       const total = attainment != null && ptOverall != null
         ? (attainment * 0.75) + (ptOverall * 0.25)
         : null
@@ -711,7 +739,6 @@ function SummaryTab({ classId, term, students, isESL }) {
           ↻ Refresh
         </button>
       </div>
-
       {loading ? (
         <div className="text-center text-gray-400 py-10">Calculating...</div>
       ) : (
@@ -802,65 +829,4 @@ function CommentsTab({ classId, term, students }) {
       </div>
     </div>
   )
-
-  // ── Resource Cards ─────────────────────────────────────────────────────────
-function ResourceCards({ level, programme, subject }) {
-  const [resources, setResources] = useState([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => { fetchResources() }, [level, programme, subject])
-
-  const fetchResources = async () => {
-    const { data } = await supabase
-      .from('resource_links')
-      .select('*')
-      .eq('level', level)
-      .eq('programme', programme)
-      .eq('subject', subject)
-      .order('sort_order')
-    setResources(data || [])
-    setLoading(false)
-  }
-
-  const TYPE_ICON = { portal: '🌐', drive: '📁', pdf: '📄', other: '🔗' }
-  const TYPE_LABEL = { portal: 'Online Portal', drive: 'Google Drive', pdf: 'PDF', other: 'Link' }
-
-  if (loading) return <div className="text-sm text-gray-400">Loading resources...</div>
-  if (resources.length === 0) return (
-    <div className="text-sm text-gray-400 italic">No resources added yet for this class type.</div>
-  )
-
-  return (
-    <div className="grid grid-cols-2 gap-4 max-w-2xl sm:grid-cols-3">
-      {resources.map(r => {
-        const isComingSoon = !r.url
-        return isComingSoon ? (
-          <div key={r.id}
-            className="rounded-xl border border-gray-200 p-5 bg-gray-50 opacity-60 cursor-not-allowed">
-            <div className="text-2xl mb-2">{TYPE_ICON[r.resource_type]}</div>
-            <div className="font-semibold text-gray-400 text-sm">{r.title}</div>
-            {r.description && <div className="text-xs text-gray-400 mt-1">{r.description}</div>}
-            <div className="mt-3">
-              <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-400 rounded-full">Coming Soon</span>
-            </div>
-          </div>
-        ) : (
-          <a key={r.id} href={r.url} target="_blank" rel="noopener noreferrer"
-            className="rounded-xl border p-5 bg-white hover:shadow-md transition-all block"
-            style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}>
-            <div className="text-2xl mb-2">{TYPE_ICON[r.resource_type]}</div>
-            <div className="font-semibold text-gray-900 text-sm">{r.title}</div>
-            {r.description && <div className="text-xs text-gray-500 mt-1">{r.description}</div>}
-            <div className="mt-3">
-              <span className="text-xs px-2 py-0.5 rounded-full font-medium text-white"
-                style={{ backgroundColor: '#1f86c7' }}>
-                {TYPE_LABEL[r.resource_type]}
-              </span>
-            </div>
-          </a>
-        )
-      })}
-    </div>
-  )
-}
 }
