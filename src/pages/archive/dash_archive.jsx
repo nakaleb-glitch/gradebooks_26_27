@@ -62,11 +62,6 @@ export default function Dashboard() {
             <div className="font-semibold text-gray-900">Users</div>
             <div className="text-sm text-gray-500 mt-1">Manage teacher accounts</div>
           </Link>
-          <Link to="/admin/resources" className="bg-white rounded-xl border border-gray-200 p-6 hover:border-blue-300 transition-colors">
-            <div className="text-2xl mb-2">📚</div>
-            <div className="font-semibold text-gray-900">Resource Management</div>
-            <div className="text-sm text-gray-500 mt-1">Add and manage teaching resources</div>
-          </Link>
         </div>
       )}
 
