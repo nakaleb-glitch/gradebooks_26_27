@@ -93,7 +93,7 @@ export default function Layout({ children }) {
     <div className="min-h-screen" style={{ background: '#f4f6f9' }}>
       {/* Navbar */}
       <nav style={{ background: '#1a1a1a', borderBottom: '3px solid #d1232a' }}>
-        <div className="w-full px-6 py-3 flex justify-between items-center">
+        <div className="w-full px-3 sm:px-6 py-3 flex justify-between items-center">
           {/* Left — Royal School Logo */}
           <div className="flex items-center gap-8">
             <img
@@ -209,7 +209,7 @@ export default function Layout({ children }) {
         </div>
       </nav>
 
-      <main className="w-full px-6 py-10">
+      <main className="w-full px-3 sm:px-6 py-6 sm:py-10">
         {children}
       </main>
 

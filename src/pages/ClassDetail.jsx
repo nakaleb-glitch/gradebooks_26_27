@@ -67,7 +67,12 @@ export default function ClassDetail() {
           {/* Teacher Resources Section */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Teacher Resources</h3>
-            <ResourceCards level={cls.level} programme={cls.programme} subject={cls.subject} />
+            <ResourceCards
+              level={cls.level}
+              grade={String(cls.name || '').trim().match(/^(\d+)/)?.[1] || null}
+              programme={cls.programme}
+              subject={cls.subject}
+            />
           </div>
 
         </div>
@@ -84,20 +89,26 @@ export default function ClassDetail() {
 }
 
 // ── Resource Cards ────────────────────────────────────────────────────────────
-function ResourceCards({ level, programme, subject }) {
+function ResourceCards({ level, grade, programme, subject }) {
   const [resources, setResources] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { fetchResources() }, [level, programme, subject])
+  useEffect(() => { fetchResources() }, [level, grade, programme, subject])
 
   const fetchResources = async () => {
-    const { data } = await supabase
+    let query = supabase
       .from('resource_links')
       .select('*')
       .eq('level', level)
       .eq('programme', programme)
       .eq('subject', subject)
       .order('sort_order')
+
+    if (grade) {
+      query = query.eq('grade', grade)
+    }
+
+    const { data } = await query
     setResources(data || [])
     setLoading(false)
   }
