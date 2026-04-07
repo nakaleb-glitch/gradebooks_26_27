@@ -8,6 +8,7 @@ export default function Dashboard() {
   const { profile, user } = useAuth()
   const [classes, setClasses] = useState([])
   const [students, setStudents] = useState([])
+  const [newBehaviorReportsCount, setNewBehaviorReportsCount] = useState(0)
   const [teacherEvents, setTeacherEvents] = useState([])
   const [teacherDeadlines, setTeacherDeadlines] = useState([])
   const [selectedDashboardItem, setSelectedDashboardItem] = useState(null)
@@ -23,16 +24,22 @@ export default function Dashboard() {
     setLoading(true)
 
     if (profile.role === 'admin') {
-      const [{ data: classData }, { data: studentData }] = await Promise.all([
+      const [{ data: classData }, { data: studentData }, { count: newReportsCount }] = await Promise.all([
         supabase.from('classes').select('*').order('name'),
         supabase.from('students').select('*'),
+        supabase
+          .from('behavior_reports')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'new'),
       ])
       setClasses(classData || [])
       setStudents(studentData || [])
+      setNewBehaviorReportsCount(newReportsCount || 0)
       setLoading(false)
       return
     }
 
+    setNewBehaviorReportsCount(0)
     const today = new Date().toISOString().slice(0, 10)
     const [{ data: classData }, { data: dashboardItems }] = await Promise.all([
       supabase.from('classes').select('*').eq('teacher_id', profile.id).order('name'),
@@ -293,9 +300,14 @@ export default function Dashboard() {
               </Link>
               <Link
                 to="/admin/behavior-management"
-                className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block"
+                className="relative bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block"
                 style={{ borderTopColor: CARD_ACCENT.behavior, borderTopWidth: 3 }}
               >
+                {newBehaviorReportsCount > 0 && (
+                  <span className="absolute top-3 right-3 min-w-[1.5rem] h-6 px-2 rounded-full bg-red-600 text-white text-xs font-semibold flex items-center justify-center">
+                    {newBehaviorReportsCount}
+                  </span>
+                )}
                 <div className="font-semibold text-gray-900">Behavior Management</div>
                 <div className="text-sm text-gray-500 mt-1">Review teacher behavior reports and follow-up actions.</div>
               </Link>
