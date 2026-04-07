@@ -15,6 +15,36 @@ const levelLabel = (l) => ({
 const programmeLabel = (p) => p === 'bilingual' ? 'Bilingual' : 'Integrated'
 const programmeBadgeStyle = (p) => p === 'bilingual' ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700'
 
+const capitalizeFirstAlpha = (value) => {
+  const v = String(value || '').trim()
+  const idx = v.search(/[A-Za-z]/)
+  if (idx === -1) return v
+  return v.slice(0, idx) + v.charAt(idx).toUpperCase() + v.slice(idx + 1)
+}
+
+const normalizeLevel = (value) => {
+  const v = String(value || '').trim().toLowerCase().replace(/\s+/g, '_')
+  if (v === 'primary') return 'primary'
+  if (v === 'secondary') return 'secondary'
+  return ''
+}
+
+const normalizeProgramme = (value) => {
+  const v = String(value || '').trim().toLowerCase()
+  if (v === 'bilingual') return 'bilingual'
+  if (v === 'integrated') return 'integrated'
+  return ''
+}
+
+const normalizeSubject = (value) => {
+  const v = String(value || '').trim().toLowerCase()
+  if (v === 'esl') return 'ESL'
+  if (v === 'mathematics') return 'Mathematics'
+  if (v === 'science') return 'Science'
+  if (v === 'global perspectives') return 'Global Perspectives'
+  return capitalizeFirstAlpha(value)
+}
+
 export default function Classes() {
   const [classes, setClasses] = useState([])
   const [teachers, setTeachers] = useState([])
@@ -197,10 +227,10 @@ export default function Classes() {
 
           const rows = rawRows
             .map((row) => ({
-              name: (row['Class Name'] || row['name'] || '').trim(),
-              level: (row['Level'] || row['level'] || '').trim().toLowerCase(),
-              programme: (row['Programme'] || row['programme'] || '').trim().toLowerCase(),
-              subject: (row['Subject'] || row['subject'] || '').trim(),
+              name: capitalizeFirstAlpha(row['Class Name'] || row['name']),
+              level: normalizeLevel(row['Level'] || row['level']),
+              programme: normalizeProgramme(row['Programme'] || row['programme']),
+              subject: normalizeSubject(row['Subject'] || row['subject']),
               teacher_email: (row['Teacher Email'] || row['teacher_email'] || '').trim().toLowerCase(),
             }))
             .filter((r) => r.name && r.level && r.programme && r.subject)
@@ -311,7 +341,7 @@ export default function Classes() {
     return match ? match[1] : null
   }
 
-  const normalizeProgramme = (value) => {
+  const normalizeProgrammeForSnapshot = (value) => {
     if (!value) return 'unknown'
     const v = String(value).trim().toLowerCase()
     if (v === 'bilingual') return 'bilingual'
@@ -369,7 +399,7 @@ export default function Classes() {
       const homeroom = getHomeroom(cls.name)
       if (!homeroom) return
       const grade = getGrade(homeroom) || 'Unknown'
-      const programme = normalizeProgramme(cls.programme)
+      const programme = normalizeProgrammeForSnapshot(cls.programme)
       const existing = byHomeroom.get(homeroom)
       if (!existing) {
         byHomeroom.set(homeroom, { grade, programme })

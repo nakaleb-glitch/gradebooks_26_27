@@ -51,10 +51,11 @@ export default function Users() {
     return refreshedData?.session?.access_token || null
   }
 
-  const capitalizeFirst = (value) => {
+  const capitalizeFirstAlpha = (value) => {
     const v = String(value || '').trim()
-    if (!v) return ''
-    return v.charAt(0).toUpperCase() + v.slice(1)
+    const idx = v.search(/[A-Za-z]/)
+    if (idx === -1) return v
+    return v.slice(0, idx) + v.charAt(idx).toUpperCase() + v.slice(idx + 1)
   }
 
   const normalizeLevel = (value) => {
@@ -70,7 +71,7 @@ export default function Users() {
     if (v === 'mathematics') return 'Mathematics'
     if (v === 'science') return 'Science'
     if (v === 'vn esl') return 'VN ESL'
-    return capitalizeFirst(value)
+    return capitalizeFirstAlpha(value)
   }
 
   useEffect(() => { fetchUsers() }, [])
@@ -86,7 +87,7 @@ export default function Users() {
     ;(classesData || []).forEach((cls) => {
       if (!cls.teacher_id) return
       if (!classMap[cls.teacher_id]) classMap[cls.teacher_id] = []
-      classMap[cls.teacher_id].push(`${cls.name} · ${cls.subject}`)
+      classMap[cls.teacher_id].push(cls.name)
     })
 
     Object.keys(classMap).forEach((teacherId) => {
@@ -263,8 +264,8 @@ export default function Users() {
         const localErrors = []
 
         rows.forEach((row, index) => {
-          const full_name = (row['Full Name'] || row['full_name'] || '').trim()
-          const staff_id = capitalizeFirst(row['Staff ID'] || row['staff_id'] || '')
+          const full_name = capitalizeFirstAlpha(row['Full Name'] || row['full_name'] || '')
+          const staff_id = capitalizeFirstAlpha(row['Staff ID'] || row['staff_id'] || '')
           const email = (row['Email'] || row['email'] || '').trim().toLowerCase()
           const roleRaw = (row['Role'] || row['role'] || '').trim().toLowerCase()
           const role = roleRaw === 'admin' ? 'admin' : 'teacher'

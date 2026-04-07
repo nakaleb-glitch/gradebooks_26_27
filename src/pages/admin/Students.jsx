@@ -26,6 +26,37 @@ export default function Students() {
   ].join('\n')
   const studentsCsvTemplateHref = `data:text/csv;charset=utf-8,${encodeURIComponent(studentsCsvTemplate)}`
 
+  const capitalizeFirstAlpha = (value) => {
+    const v = String(value || '').trim()
+    const idx = v.search(/[A-Za-z]/)
+    if (idx === -1) return v
+    return v.slice(0, idx) + v.charAt(idx).toUpperCase() + v.slice(idx + 1)
+  }
+
+  const normalizeLevelValue = (value) => {
+    const raw = String(value || '').trim().toLowerCase().replace(/\s+/g, '_')
+    if (!raw) return ''
+    if (raw === 'secondary') return 'lower_secondary'
+    if (raw === 'lowersecondary') return 'lower_secondary'
+    if (raw === 'uppersecondary') return 'upper_secondary'
+    if (raw === 'highschool') return 'high_school'
+    return raw
+  }
+
+  const normalizeProgrammeValue = (value) => {
+    const raw = String(value || '').trim().toLowerCase()
+    if (raw === 'bilingual' || raw === 'integrated') return raw
+    return raw
+  }
+
+  const titleCaseWords = (value) =>
+    String(value || '')
+      .replace(/_/g, ' ')
+      .split(' ')
+      .filter(Boolean)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ')
+
   useEffect(() => {
     fetchStudents()
   }, [])
@@ -49,12 +80,12 @@ export default function Students() {
       skipEmptyLines: true,
       complete: async (results) => {
         const rows = results.data.map(row => ({
-          student_id: row['Student ID'] || row['student_id'],
-          name_vn: row['Name (VN)'] || row['name_vn'],
-          name_eng: row['Name (ENG)'] || row['name_eng'],
-          class: row['Class'] || row['class'],
-          level: row['Level'] || row['level'],
-          programme: row['Programme'] || row['programme'],
+          student_id: capitalizeFirstAlpha(row['Student ID'] || row['student_id']),
+          name_vn: capitalizeFirstAlpha(row['Name (VN)'] || row['name_vn']),
+          name_eng: capitalizeFirstAlpha(row['Name (ENG)'] || row['name_eng']),
+          class: capitalizeFirstAlpha(row['Class'] || row['class']),
+          level: normalizeLevelValue(row['Level'] || row['level']),
+          programme: normalizeProgrammeValue(row['Programme'] || row['programme']),
         }))
 
         const { error } = await supabase
@@ -119,7 +150,7 @@ export default function Students() {
     lower_secondary: 'Lower Secondary',
     upper_secondary: 'Upper Secondary',
     high_school: 'High School',
-  }[l] || l)
+  }[l] || titleCaseWords(l))
 
   const programmeBadgeStyle = (p) => p === 'bilingual'
     ? 'bg-purple-100 text-purple-700'
@@ -293,7 +324,7 @@ export default function Students() {
             <tbody className="divide-y divide-gray-100">
               {filtered.map(student => (
                 <tr key={student.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-3 font-mono text-gray-600">{student.student_id}</td>
+                  <td className="px-6 py-3 text-gray-600">{student.student_id}</td>
                   <td className="px-6 py-3 font-medium text-gray-900">{student.name_eng}</td>
                   <td className="px-6 py-3 text-gray-600">{student.name_vn}</td>
                   <td className="px-6 py-3 text-gray-600">{student.class}</td>
@@ -304,7 +335,7 @@ export default function Students() {
                   </td>
                   <td className="px-6 py-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${programmeBadgeStyle(student.programme)}`}>
-                      {student.programme}
+                      {titleCaseWords(student.programme)}
                     </span>
                   </td>
                 </tr>

@@ -41,11 +41,9 @@ export default function Login() {
           <div style={{ background: '#d1232a', height: '6px' }} />
 
           <div className="p-10 text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-1">Gradebook Portal</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">Cambridge Programme Portal</h1>
             <p className="text-gray-400 text-sm mb-8">
-              {mode === 'teacher'
-                ? 'Teachers: sign in with Staff ID and password.'
-                : 'Admins: sign in with your Google account.'}
+              Sign in using your Royal Staff ID. You will be prompted to change your password after first logging in.
             </p>
 
             {mode === 'teacher' ? (

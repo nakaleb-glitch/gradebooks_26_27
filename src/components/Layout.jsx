@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
@@ -11,15 +11,36 @@ export default function Layout({ children }) {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [updatingPassword, setUpdatingPassword] = useState(false)
   const [passwordError, setPasswordError] = useState('')
+  const [showAdminMenu, setShowAdminMenu] = useState(false)
 
   const handleSignOut = async () => {
     await signOut()
     navigate('/login')
   }
 
-  const navItems = [
+  const menuItems = [
     { label: 'Dashboard', path: '/dashboard' },
+    { label: 'Student Management', path: '/admin/students' },
+    { label: 'Class Management', path: '/admin/classes' },
+    { label: 'Teacher Management', path: '/admin/users' },
+    { label: 'Resource Management', path: '/admin/resources' },
   ]
+  const navLabelClass = 'text-sm font-medium inline-flex items-center h-6 leading-6 transition-colors'
+  const navLabelBaseStyle = {
+    fontFamily: 'inherit',
+    fontSize: '14px',
+    fontWeight: 500,
+    lineHeight: '24px',
+    letterSpacing: '0',
+    borderBottom: '2px solid transparent',
+    margin: 0,
+    padding: 0,
+    verticalAlign: 'middle',
+  }
+
+  useEffect(() => {
+    setShowAdminMenu(false)
+  }, [location.pathname])
 
   const requiresPasswordChange = !!profile?.must_change_password
 
@@ -69,7 +90,7 @@ export default function Layout({ children }) {
     <div className="min-h-screen" style={{ background: '#f4f6f9' }}>
       {/* Navbar */}
       <nav style={{ background: '#1a1a1a', borderBottom: '3px solid #d1232a' }}>
-        <div className="max-w-7xl mx-auto px-6 py-3 flex justify-between items-center">
+        <div className="w-full px-6 py-3 flex justify-between items-center">
           {/* Left — Royal School Logo */}
           <div className="flex items-center gap-8">
             <img
@@ -77,22 +98,69 @@ export default function Layout({ children }) {
               alt="Royal School International"
               className="h-12 w-auto"
             />
-            {/* Nav links */}
-            <div className="flex gap-6">
-              {navItems.map(item => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className="text-sm font-medium transition-colors"
-                  style={{
-                    color: location.pathname === item.path ? '#ffc612' : '#ccc',
-                    borderBottom: location.pathname === item.path ? '2px solid #ffc612' : '2px solid transparent',
-                    paddingBottom: '2px'
-                  }}
-                >
-                  {item.label}
-                </Link>
-              ))}
+            {/* Nav menu */}
+            <div className="flex gap-6 items-center">
+              {profile?.role === 'admin' && location.pathname !== '/dashboard' && (
+                <div className="relative">
+                  <button
+                    type="button"
+                    className={navLabelClass}
+                    style={{
+                      ...navLabelBaseStyle,
+                      color: '#e5e7eb',
+                      background: 'transparent',
+                      borderLeft: 'none',
+                      borderRight: 'none',
+                      borderTop: 'none',
+                      appearance: 'none',
+                    }}
+                    onClick={() => setShowAdminMenu(prev => !prev)}
+                    aria-haspopup="menu"
+                    aria-expanded={showAdminMenu}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <span aria-hidden="true" className="inline-flex flex-col justify-center gap-1">
+                        <span className="block w-3.5 h-0.5 rounded-full" style={{ backgroundColor: '#e5e7eb' }} />
+                        <span className="block w-3.5 h-0.5 rounded-full" style={{ backgroundColor: '#e5e7eb' }} />
+                        <span className="block w-3.5 h-0.5 rounded-full" style={{ backgroundColor: '#e5e7eb' }} />
+                      </span>
+                      <span>Menu</span>
+                    </span>
+                  </button>
+                  <div
+                    className={`absolute left-0 top-full pt-2 z-40 ${showAdminMenu ? 'block' : 'hidden'}`}
+                    onMouseLeave={() => setShowAdminMenu(false)}
+                  >
+                    <div className="w-60 rounded-lg border shadow-lg overflow-hidden" style={{ backgroundColor: '#1a1a1a', borderColor: '#333' }}>
+                      {menuItems.map((tool) => (
+                        <Link
+                          key={tool.path}
+                          to={tool.path}
+                          className="block px-3 py-2 text-sm transition-colors"
+                          style={{
+                            color: location.pathname === tool.path ? '#1a1a1a' : '#e5e7eb',
+                            backgroundColor: location.pathname === tool.path ? '#ffc612' : 'transparent',
+                          }}
+                          onMouseOver={e => {
+                            if (location.pathname !== tool.path) {
+                              e.currentTarget.style.backgroundColor = '#1f86c7'
+                              e.currentTarget.style.color = '#ffffff'
+                            }
+                          }}
+                          onMouseOut={e => {
+                            if (location.pathname !== tool.path) {
+                              e.currentTarget.style.backgroundColor = 'transparent'
+                              e.currentTarget.style.color = '#e5e7eb'
+                            }
+                          }}
+                        >
+                          {tool.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -126,7 +194,7 @@ export default function Layout({ children }) {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-6 py-10">
+      <main className="w-full px-6 py-10">
         {children}
       </main>
 
