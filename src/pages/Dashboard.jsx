@@ -11,11 +11,17 @@ export default function Dashboard() {
   const [newBehaviorReportsCount, setNewBehaviorReportsCount] = useState(0)
   const [newTeacherPasswordResetCount, setNewTeacherPasswordResetCount] = useState(0)
   const [newStudentPasswordResetCount, setNewStudentPasswordResetCount] = useState(0)
-  const [studentAssignmentDeadlines, setStudentAssignmentDeadlines] = useState([])
-  const [studentAssessments, setStudentAssessments] = useState([])
+  const [studentAnnouncements, setStudentAnnouncements] = useState([])
+  const [studentGradedAssignments, setStudentGradedAssignments] = useState([])
+  const [teacherAnnouncements, setTeacherAnnouncements] = useState([])
   const [teacherEvents, setTeacherEvents] = useState([])
   const [teacherDeadlines, setTeacherDeadlines] = useState([])
   const [selectedDashboardItem, setSelectedDashboardItem] = useState(null)
+  const [announcementScope, setAnnouncementScope] = useState('all_my_classes')
+  const [announcementClassIds, setAnnouncementClassIds] = useState([])
+  const [announcementTitle, setAnnouncementTitle] = useState('')
+  const [announcementMessage, setAnnouncementMessage] = useState('')
+  const [postingAnnouncement, setPostingAnnouncement] = useState(false)
   const [loading, setLoading] = useState(true)
   const [levelFilter, setLevelFilter] = useState('')
   const [gradeFilter, setGradeFilter] = useState('all')
@@ -98,41 +104,129 @@ export default function Dashboard() {
       setClasses(studentClasses)
       const classIds = studentClasses.map((c) => c.id)
       if (classIds.length > 0) {
-        const { data: assignmentRows } = await supabase
-          .from('assignments')
-          .select('id, class_id, name, term, created_at')
-          .in('class_id', classIds)
-          .order('created_at', { ascending: false })
+        const [{ data: assignmentRows }, { data: assignmentGradeRows }, { data: participationRows }, { data: teacherTargetRows }] = await Promise.all([
+          supabase
+            .from('assignments')
+            .select('*')
+            .in('class_id', classIds)
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('assignment_grades')
+            .select('assignment_id, score, comment, is_absent, created_at')
+            .eq('student_id', profile.student_id_ref)
+            .not('score', 'is', null),
+          supabase
+            .from('participation_grades')
+            .select('class_id, term, week, score')
+            .eq('student_id', profile.student_id_ref)
+            .in('class_id', classIds)
+            .not('score', 'is', null),
+          supabase
+            .from('teacher_announcement_targets')
+            .select('class_id, teacher_announcements(id, title, message, created_at)')
+            .in('class_id', classIds),
+        ])
 
         const classNameById = Object.fromEntries(studentClasses.map((c) => [c.id, c.name]))
-        const rows = (assignmentRows || []).map((row) => ({
-          ...row,
-          class_name: classNameById[row.class_id] || 'Class',
-        }))
+        const assignmentById = Object.fromEntries((assignmentRows || []).map((a) => [a.id, a]))
+        const getAssignmentTitle = (assignment) => {
+          const candidates = [
+            assignment?.name,
+            assignment?.title,
+            assignment?.assignment_name,
+            assignment?.assignment_title,
+          ]
+          const valid = candidates.find((value) => typeof value === 'string' && value.trim().length > 0)
+          return valid ? valid.trim() : 'Assignment'
+        }
+        const assignmentItems = (assignmentGradeRows || [])
+          .map((g) => {
+            const assignment = assignmentById[g.assignment_id]
+            if (!assignment) return null
+            return {
+              id: `assignment_${assignment.id}_${assignment.class_id}`,
+              class_id: assignment.class_id,
+              class_name: classNameById[assignment.class_id] || 'Class',
+              term: assignment.term,
+              item_name: getAssignmentTitle(assignment),
+              item_type: 'assignment',
+              score: g.score,
+              max_points: assignment.max_points,
+              sort_time: g.created_at || assignment.created_at || null,
+            }
+          })
+          .filter(Boolean)
 
-        const isAssessment = (name) => /(test|exam|quiz|assessment|unit)/i.test(String(name || ''))
-        const assessmentRows = rows.filter((row) => isAssessment(row.name)).slice(0, 8)
-        const deadlineRows = rows.filter((row) => !isAssessment(row.name)).slice(0, 8)
+        const participationItems = (participationRows || [])
+          .map((p) => ({
+            id: `participation_${p.class_id}_${p.term}_${p.week}`,
+            class_id: p.class_id,
+            class_name: classNameById[p.class_id] || 'Class',
+            term: p.term,
+            item_name: `Participation - Week ${p.week}`,
+            item_type: 'participation',
+            score: p.score,
+            max_points: 10,
+            sort_time: null,
+          }))
+          .filter(Boolean)
 
-        setStudentAssessments(assessmentRows)
-        setStudentAssignmentDeadlines(deadlineRows)
+        const gradedRows = [...assignmentItems, ...participationItems]
+          .sort((a, b) => {
+            if (a.sort_time && b.sort_time) {
+              return new Date(b.sort_time).getTime() - new Date(a.sort_time).getTime()
+            }
+            if (a.sort_time) return -1
+            if (b.sort_time) return 1
+            return String(a.class_name).localeCompare(String(b.class_name), undefined, { numeric: true })
+          })
+          .slice(0, 12)
+
+        const teacherAnnouncementsMerged = (teacherTargetRows || [])
+          .map((row) => {
+            const announcement = row.teacher_announcements
+            if (!announcement) return null
+            return {
+              id: `teacher_${announcement.id}_${row.class_id}`,
+              title: announcement.title,
+              event_date: announcement.created_at,
+              venue: classNameById[row.class_id] || 'Class',
+              description: announcement.message,
+              plan_url: null,
+              label: 'Teacher Announcement',
+            }
+          })
+          .filter(Boolean)
+
+        const mergedAnnouncements = [...teacherAnnouncementsMerged]
+          .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())
+          .slice(0, 8)
+
+        setStudentAnnouncements(mergedAnnouncements)
+        setStudentGradedAssignments(gradedRows)
       } else {
-        setStudentAssessments([])
-        setStudentAssignmentDeadlines([])
+        setStudentAnnouncements([])
+        setStudentGradedAssignments([])
       }
+      setTeacherAnnouncements([])
       setTeacherEvents([])
       setTeacherDeadlines([])
       setLoading(false)
       return
     }
 
-    const [{ data: classData }, { data: dashboardItems }] = await Promise.all([
+    const [{ data: classData }, { data: dashboardItems }, { data: teacherAnnouncementRows }] = await Promise.all([
       supabase.from('classes').select('*').eq('teacher_id', profile.id).order('name'),
       supabase
         .from('events_deadlines')
         .select('id, item_type, event_date, title, venue, description, plan_url')
         .gte('event_date', today)
         .order('event_date', { ascending: true })
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('teacher_announcements')
+        .select('id, title, message, created_at, scope, teacher_announcement_targets(class_id, classes(name))')
+        .eq('teacher_id', profile.id)
         .order('created_at', { ascending: false }),
     ])
 
@@ -157,6 +251,18 @@ export default function Dashboard() {
       ...cls,
       student_count: classCounts[cls.id] || 0,
     })))
+    const ownAnnouncements = (teacherAnnouncementRows || []).map((row) => ({
+      id: row.id,
+      title: row.title,
+      description: row.message,
+      created_at: row.created_at,
+      scope: row.scope,
+      targets: (row.teacher_announcement_targets || []).map((target) => ({
+        class_id: target.class_id,
+        class_name: target.classes?.name || 'Class',
+      })),
+    }))
+    setTeacherAnnouncements(ownAnnouncements)
     setTeacherEvents(rows.filter(item => item.item_type === 'event'))
     setTeacherDeadlines(rows.filter(item => item.item_type === 'deadline'))
     setLoading(false)
@@ -333,6 +439,78 @@ export default function Dashboard() {
     })
   }
 
+  const formatTermLabel = (value) => {
+    const termText = String(value || '')
+      .replaceAll('_', ' ')
+      .trim()
+      .toLowerCase()
+    if (!termText) return ''
+    return termText
+      .split(' ')
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+  }
+
+  const postTeacherAnnouncement = async (forcedClassIds = null, forcedScope = null, silent = false) => {
+    const targetScope = forcedScope || announcementScope
+    const targetClassIds = forcedClassIds || (
+      targetScope === 'all_my_classes'
+        ? classes.map((c) => c.id)
+        : announcementClassIds
+    )
+
+    if (!announcementTitle.trim() || !announcementMessage.trim()) {
+      if (!silent) window.alert('Please enter both title and message.')
+      return
+    }
+
+    if (!targetClassIds || targetClassIds.length === 0) {
+      if (!silent) window.alert('Please select at least one class target.')
+      return
+    }
+
+    setPostingAnnouncement(true)
+    const { data: announcement, error: announcementError } = await supabase
+      .from('teacher_announcements')
+      .insert({
+        teacher_id: profile.id,
+        title: announcementTitle.trim(),
+        message: announcementMessage.trim(),
+        scope: targetScope,
+      })
+      .select('id')
+      .single()
+
+    if (announcementError || !announcement?.id) {
+      setPostingAnnouncement(false)
+      if (!silent) window.alert(`Unable to post announcement: ${announcementError?.message || 'Unknown error'}`)
+      return
+    }
+
+    const targetRows = Array.from(new Set(targetClassIds)).map((classId) => ({
+      announcement_id: announcement.id,
+      class_id: classId,
+    }))
+
+    const { error: targetError } = await supabase
+      .from('teacher_announcement_targets')
+      .insert(targetRows)
+
+    setPostingAnnouncement(false)
+
+    if (targetError) {
+      if (!silent) window.alert(`Announcement posted, but targets failed: ${targetError.message}`)
+      return
+    }
+
+    setAnnouncementTitle('')
+    setAnnouncementMessage('')
+    setAnnouncementScope('all_my_classes')
+    setAnnouncementClassIds([])
+    await fetchDashboardData()
+  }
+
   return (
     <Layout>
       {loading ? (
@@ -473,80 +651,84 @@ export default function Dashboard() {
           </div>
         </div>
       ) : profile?.role === 'student' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-7">
-            <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: CARD_ACCENT.class, borderTopWidth: 3 }}>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">My Classes</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-4">
-                {classes.length === 0 ? (
-                  <div className="col-span-full rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-400">
-                    No classes assigned yet. Please contact your administrator.
-                  </div>
-                ) : (
-                  classes.map(cls => (
-                    <Link
-                      key={cls.id}
-                      to={`/student/class/${cls.id}`}
-                      className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all"
-                      style={{ borderTopColor: '#9ca3af', borderTopWidth: 3 }}
-                    >
-                      <div className="font-semibold text-gray-900">{cls.name}</div>
-                      <div className="text-sm text-gray-500 mt-1">
-                        {levelLabel(cls.level)} - {programmeLabel(cls.programme)}
-                      </div>
-                      <div className="text-xs text-gray-400 mt-2">
-                        Teacher: {cls.teacher_name || 'TBA'}
-                      </div>
-                    </Link>
-                  ))
-                )}
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+          <div className="bg-white rounded-xl border border-gray-200 p-5 h-full" style={{ borderTopColor: CARD_ACCENT.class, borderTopWidth: 3 }}>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">My Classes</h3>
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+              {classes.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-400">
+                  No classes assigned yet. Please contact your administrator.
+                </div>
+              ) : (
+                classes.map(cls => (
+                  <Link
+                    key={cls.id}
+                    to={`/student/class/${cls.id}`}
+                    className="block bg-white rounded-xl border border-gray-200 p-4 hover:shadow-sm transition-all"
+                    style={{ borderTopColor: '#9ca3af', borderTopWidth: 3 }}
+                  >
+                    <div className="font-semibold text-gray-900">{cls.name}</div>
+                    <div className="text-sm text-gray-500 mt-1">
+                      {levelLabel(cls.level)} - {programmeLabel(cls.programme)}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-2">
+                      Teacher: {cls.teacher_name || 'TBA'}
+                    </div>
+                  </Link>
+                ))
+              )}
             </div>
           </div>
 
-          <div className="lg:col-span-5 space-y-4">
-            <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: CARD_ACCENT.events, borderTopWidth: 3 }}>
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">Assignment Deadlines</h3>
-              <p className="text-xs text-gray-500 mb-3">Homework and project tasks from your classes.</p>
-              <div className="space-y-2">
-                {studentAssignmentDeadlines.length === 0 ? (
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
-                    No assignment deadlines posted yet.
-                  </div>
-                ) : studentAssignmentDeadlines.map(item => (
-                  <div
-                    key={item.id}
-                    className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-2"
-                  >
-                    <div className="text-sm font-medium text-gray-800">{item.name}</div>
-                    <div className="text-xs text-gray-500 mt-0.5">
-                      {item.class_name} • {String(item.term || '').replace('_', ' ')}
-                    </div>
-                  </div>
-                ))}
-              </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-5 h-full" style={{ borderTopColor: CARD_ACCENT.events, borderTopWidth: 3 }}>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Announcements</h3>
+            <p className="text-xs text-gray-500 mb-3">Class updates from your teachers.</p>
+            <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+              {studentAnnouncements.length === 0 ? (
+                <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                  No announcements posted yet.
+                </div>
+              ) : studentAnnouncements.map(item => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setSelectedDashboardItem({ ...item, label: item.label || 'Announcement' })}
+                  className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-blue-50 transition-colors"
+                >
+                  <div className="text-sm font-medium text-gray-800">{item.title}</div>
+                  <div className="text-xs text-gray-500 mt-0.5">{formatDateWithDay(item.event_date)}</div>
+                </button>
+              ))}
             </div>
+          </div>
 
-            <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: CARD_ACCENT.deadlines, borderTopWidth: 3 }}>
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">Upcoming Assessments</h3>
-              <p className="text-xs text-gray-500 mb-3">Unit tests and exams from your classes.</p>
-              <div className="space-y-2">
-                {studentAssessments.length === 0 ? (
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
-                    No upcoming assessments posted yet.
-                  </div>
-                ) : studentAssessments.map(item => (
-                  <div
-                    key={item.id}
-                    className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-2"
-                  >
-                    <div className="text-sm font-medium text-gray-800">{item.name}</div>
-                    <div className="text-xs text-gray-500 mt-0.5">
-                      {item.class_name} • {String(item.term || '').replace('_', ' ')}
+          <div className="bg-white rounded-xl border border-gray-200 p-5 h-full" style={{ borderTopColor: CARD_ACCENT.deadlines, borderTopWidth: 3 }}>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Graded Assignments</h3>
+            <p className="text-xs text-gray-500 mb-3">Newly marked assignments. Click to open your class gradebook term.</p>
+            <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+              {studentGradedAssignments.length === 0 ? (
+                <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                  No graded assignments posted yet.
+                </div>
+              ) : studentGradedAssignments.map(item => (
+                <Link
+                  key={item.id}
+                  to={`/student/class/${item.class_id}?term=${encodeURIComponent(item.term || 'midterm_1')}`}
+                  className="block w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-amber-50 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 text-left">
+                      <div className="text-sm font-medium text-gray-800 truncate">{item.item_name || 'Assignment'}</div>
+                      <div className="text-xs text-gray-500 mt-0.5 truncate">
+                        {item.class_name} - {formatTermLabel(item.term)}
+                      </div>
+                    </div>
+                    <div className="shrink-0 w-14 h-14 rounded-md border border-gray-300 bg-white text-[11px] leading-tight font-semibold text-gray-700 flex items-center justify-center text-center px-1">
+                      {item.max_points ? `${item.score}/${item.max_points}` : item.score}
                     </div>
                   </div>
-                ))}
-              </div>
+                </Link>
+              ))}
             </div>
           </div>
         </div>
@@ -584,6 +766,100 @@ export default function Dashboard() {
             </div>
 
             <div className="lg:col-span-5 space-y-4">
+              <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: '#22c55e', borderTopWidth: 3 }}>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold text-gray-900">Class Announcements</h3>
+                  <span className="text-xs text-gray-500">Post to students</span>
+                </div>
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={announcementTitle}
+                    onChange={(e) => setAnnouncementTitle(e.target.value)}
+                    placeholder="Announcement title"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  />
+                  <textarea
+                    value={announcementMessage}
+                    onChange={(e) => setAnnouncementMessage(e.target.value)}
+                    placeholder="Write your announcement..."
+                    rows={3}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <select
+                      value={announcementScope}
+                      onChange={(e) => {
+                        setAnnouncementScope(e.target.value)
+                        if (e.target.value === 'all_my_classes') {
+                          setAnnouncementClassIds([])
+                        }
+                      }}
+                      className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
+                    >
+                      <option value="all_my_classes">All my classes</option>
+                      <option value="selected_classes">Selected classes</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => postTeacherAnnouncement()}
+                      disabled={postingAnnouncement}
+                      className="rounded-lg bg-green-600 text-white px-3 py-2 text-sm font-medium hover:bg-green-700 disabled:opacity-60"
+                    >
+                      {postingAnnouncement ? 'Posting...' : 'Post Announcement'}
+                    </button>
+                  </div>
+                  {announcementScope === 'selected_classes' && (
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-2 max-h-28 overflow-y-auto">
+                      {classes.length === 0 ? (
+                        <div className="text-xs text-gray-500">No classes available.</div>
+                      ) : (
+                        classes.map((cls) => (
+                          <label key={cls.id} className="flex items-center gap-2 py-1 text-xs text-gray-700">
+                            <input
+                              type="checkbox"
+                              checked={announcementClassIds.includes(cls.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setAnnouncementClassIds((prev) => [...prev, cls.id])
+                                } else {
+                                  setAnnouncementClassIds((prev) => prev.filter((id) => id !== cls.id))
+                                }
+                              }}
+                            />
+                            <span>{cls.name}</span>
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="mt-3 space-y-2">
+                  {teacherAnnouncements.length === 0 ? (
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                      No announcements posted yet.
+                    </div>
+                  ) : teacherAnnouncements.slice(0, 4).map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setSelectedDashboardItem({
+                        title: item.title,
+                        event_date: item.created_at,
+                        label: 'Teacher Announcement',
+                        venue: item.targets.map((t) => t.class_name).join(', ') || '—',
+                        description: item.description,
+                        plan_url: null,
+                      })}
+                      className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-green-50 transition-colors"
+                    >
+                      <div className="text-sm font-medium text-gray-800">{item.title}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">{formatDateWithDay(item.created_at)}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <Link
                 to="/teacher/behavior-report"
                 className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-sm transition-all block"

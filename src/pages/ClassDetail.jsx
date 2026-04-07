@@ -85,9 +85,14 @@ export default function ClassDetail() {
   const [loading, setLoading] = useState(true)
   const [hasUnsavedGradebook, setHasUnsavedGradebook] = useState(false)
   const [studentRoster, setStudentRoster] = useState([])
+  const [classAnnouncements, setClassAnnouncements] = useState([])
+  const [announcementTitle, setAnnouncementTitle] = useState('')
+  const [announcementMessage, setAnnouncementMessage] = useState('')
+  const [postingAnnouncement, setPostingAnnouncement] = useState(false)
 
   useEffect(() => { fetchClass() }, [classId])
   useEffect(() => { fetchStudentRoster() }, [classId])
+  useEffect(() => { fetchClassAnnouncements() }, [classId])
   useEffect(() => {
     if (!selectedTerm) setHasUnsavedGradebook(false)
   }, [selectedTerm])
@@ -114,6 +119,62 @@ export default function ClassDetail() {
       .sort((a, b) => (a.name_eng || '').localeCompare(b.name_eng || '', undefined, { numeric: true }))
 
     setStudentRoster(list)
+  }
+
+  const fetchClassAnnouncements = async () => {
+    const { data } = await supabase
+      .from('teacher_announcement_targets')
+      .select('announcement_id, teacher_announcements(id, title, message, created_at)')
+      .eq('class_id', classId)
+
+    const rows = (data || [])
+      .map((row) => row.teacher_announcements)
+      .filter(Boolean)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+    setClassAnnouncements(rows)
+  }
+
+  const handlePostClassAnnouncement = async () => {
+    if (!announcementTitle.trim() || !announcementMessage.trim()) {
+      window.alert('Please enter both title and message.')
+      return
+    }
+
+    setPostingAnnouncement(true)
+    const { data: announcement, error: announcementError } = await supabase
+      .from('teacher_announcements')
+      .insert({
+        teacher_id: profile.id,
+        title: announcementTitle.trim(),
+        message: announcementMessage.trim(),
+        scope: 'single_class',
+      })
+      .select('id')
+      .single()
+
+    if (announcementError || !announcement?.id) {
+      setPostingAnnouncement(false)
+      window.alert(`Unable to post announcement: ${announcementError?.message || 'Unknown error'}`)
+      return
+    }
+
+    const { error: targetError } = await supabase
+      .from('teacher_announcement_targets')
+      .insert({
+        announcement_id: announcement.id,
+        class_id: classId,
+      })
+
+    setPostingAnnouncement(false)
+    if (targetError) {
+      window.alert(`Announcement posted, but class targeting failed: ${targetError.message}`)
+      return
+    }
+
+    setAnnouncementTitle('')
+    setAnnouncementMessage('')
+    await fetchClassAnnouncements()
   }
 
   if (loading) return <Layout><div className="text-center text-gray-400 py-20">Loading...</div></Layout>
@@ -164,16 +225,18 @@ export default function ClassDetail() {
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
                         <th className="text-left px-4 py-3 text-gray-500 font-medium">Student ID</th>
-                        <th className="text-left px-4 py-3 text-gray-500 font-medium">Student Name (ENG)</th>
-                        <th className="text-left px-4 py-3 text-gray-500 font-medium">Student Name (VN)</th>
+                        <th className="text-left px-4 py-3 text-gray-500 font-medium">Student Name (ENG - VN)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {studentRoster.map(student => (
                         <tr key={student.id} className="hover:bg-gray-50">
                           <td className="px-4 py-3 text-gray-600">{student.student_id || '—'}</td>
-                          <td className="px-4 py-3 font-medium text-gray-900">{student.name_eng || '—'}</td>
-                          <td className="px-4 py-3 text-gray-600">{student.name_vn || '—'}</td>
+                          <td className="px-4 py-3 font-medium">
+                            <span className="text-gray-900">{student.name_eng || '—'}</span>
+                            <span className="text-gray-400 px-1">-</span>
+                            <span className="text-blue-700">{student.name_vn || '—'}</span>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -210,6 +273,51 @@ export default function ClassDetail() {
                   programme={cls.programme}
                   subject={cls.subject}
                 />
+              </div>
+
+              <div className="bg-white rounded-xl border border-gray-200 p-4" style={{ borderTopColor: '#22c55e', borderTopWidth: 3 }}>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Class Announcements</h3>
+                {profile?.role === 'teacher' && profile?.id === cls.teacher_id && (
+                  <div className="space-y-2 mb-4">
+                    <input
+                      type="text"
+                      value={announcementTitle}
+                      onChange={(e) => setAnnouncementTitle(e.target.value)}
+                      placeholder="Announcement title"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <textarea
+                      value={announcementMessage}
+                      onChange={(e) => setAnnouncementMessage(e.target.value)}
+                      rows={3}
+                      placeholder="Write your class announcement..."
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={handlePostClassAnnouncement}
+                        disabled={postingAnnouncement}
+                        className="rounded-lg bg-green-600 text-white px-4 py-2 text-sm font-medium hover:bg-green-700 disabled:opacity-60"
+                      >
+                        {postingAnnouncement ? 'Posting...' : 'Post Announcement'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  {classAnnouncements.length === 0 ? (
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                      No announcements posted for this class yet.
+                    </div>
+                  ) : classAnnouncements.slice(0, 6).map((item) => (
+                    <div key={item.id} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                      <div className="text-sm font-medium text-gray-800">{item.title}</div>
+                      <div className="text-xs text-gray-500 mt-1">{new Date(item.created_at).toLocaleDateString('en-GB')}</div>
+                      <div className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">{item.message}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -542,8 +650,11 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
             {students.map(student => (
               <tr key={student.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 sticky left-0 bg-white">
-                  <div className="font-medium text-gray-900">{student.name_eng || '—'}</div>
-                  <div className="text-sm text-gray-500">{student.name_vn || '—'}</div>
+                  <div className="font-medium">
+                    <span className="text-gray-900">{student.name_eng || '—'}</span>
+                    <span className="text-gray-400 px-1">-</span>
+                    <span className="text-blue-700">{student.name_vn || '—'}</span>
+                  </div>
                   <div className="text-xs text-gray-400">{student.student_id || '—'}</div>
                 </td>
                 {weekSchedule.map((weekItem) => {
@@ -819,8 +930,11 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
               {students.map(student => (
                 <tr key={student.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 sticky left-0 bg-white">
-                    <div className="font-medium text-gray-900">{student.name_eng || '—'}</div>
-                    <div className="text-sm text-gray-500">{student.name_vn || '—'}</div>
+                    <div className="font-medium">
+                      <span className="text-gray-900">{student.name_eng || '—'}</span>
+                      <span className="text-gray-400 px-1">-</span>
+                      <span className="text-blue-700">{student.name_vn || '—'}</span>
+                    </div>
                     <div className="text-xs text-gray-400">{student.student_id || '—'}</div>
                   </td>
                   {assignments.map(assignment => {
@@ -1119,8 +1233,11 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
               return (
                 <tr key={student.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 sticky left-0 bg-white">
-                    <div className="font-medium text-gray-900">{student.name_eng || '—'}</div>
-                    <div className="text-sm text-gray-500">{student.name_vn || '—'}</div>
+                    <div className="font-medium">
+                      <span className="text-gray-900">{student.name_eng || '—'}</span>
+                      <span className="text-gray-400 px-1">-</span>
+                      <span className="text-blue-700">{student.name_vn || '—'}</span>
+                    </div>
                     <div className="text-xs text-gray-400">{student.student_id || '—'}</div>
                   </td>
                   {isESL ? (
@@ -1364,8 +1481,11 @@ function StudentAttributesTab({ classId, term, students, onDirtyChange }) {
               return (
                 <tr key={student.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 sticky left-0 bg-white">
-                    <div className="font-medium text-gray-900">{student.name_eng || '—'}</div>
-                    <div className="text-sm text-gray-500">{student.name_vn || '—'}</div>
+                    <div className="font-medium">
+                      <span className="text-gray-900">{student.name_eng || '—'}</span>
+                      <span className="text-gray-400 px-1">-</span>
+                      <span className="text-blue-700">{student.name_vn || '—'}</span>
+                    </div>
                     <div className="text-xs text-gray-400">{student.student_id || '—'}</div>
                   </td>
                   {ATTRIBUTE_FIELDS.map(field => (
@@ -1482,8 +1602,11 @@ function SummaryTab({ classId, term, students, isESL }) {
                 return (
                   <tr key={student.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 sticky left-0 bg-white">
-                      <div className="font-medium text-gray-900">{student.name_eng || '—'}</div>
-                      <div className="text-sm text-gray-500">{student.name_vn || '—'}</div>
+                      <div className="font-medium">
+                        <span className="text-gray-900">{student.name_eng || '—'}</span>
+                        <span className="text-gray-400 px-1">-</span>
+                        <span className="text-blue-700">{student.name_vn || '—'}</span>
+                      </div>
                       <div className="text-xs text-gray-400">{student.student_id || '—'}</div>
                     </td>
                     <td className={`px-4 py-3 text-center font-medium ${scoreColor(d.partPct)}`}>{fmt(d.partPct)}{d.partPct != null ? '%' : ''}</td>
@@ -1545,8 +1668,11 @@ function CommentsTab({ classId, term, students, onDirtyChange }) {
         {students.map(student => (
           <div key={student.id} className="bg-white rounded-xl border border-gray-200 p-4">
             <div className="mb-2">
-              <div className="font-medium text-gray-900">{student.name_eng || '—'}</div>
-              <div className="text-sm text-gray-500">{student.name_vn || '—'}</div>
+              <div className="font-medium">
+                <span className="text-gray-900">{student.name_eng || '—'}</span>
+                <span className="text-gray-400 px-1">-</span>
+                <span className="text-blue-700">{student.name_vn || '—'}</span>
+              </div>
               <div className="text-xs text-gray-400">{student.student_id || '—'}</div>
             </div>
             <textarea rows={4} placeholder="Write a comment for this student..."

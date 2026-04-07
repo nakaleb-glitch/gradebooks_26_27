@@ -12,6 +12,9 @@ export default function Layout({ children }) {
   const [updatingPassword, setUpdatingPassword] = useState(false)
   const [passwordError, setPasswordError] = useState('')
   const [showAdminMenu, setShowAdminMenu] = useState(false)
+  const [theme, setTheme] = useState('light')
+  const [navNameEng, setNavNameEng] = useState('')
+  const [navNameVn, setNavNameVn] = useState('')
 
   const confirmUnsavedGradebookNavigation = () => {
     const hasUnsaved = sessionStorage.getItem('gradebook_unsaved_changes') === '1'
@@ -50,13 +53,59 @@ export default function Layout({ children }) {
     setShowAdminMenu(false)
   }, [location.pathname])
 
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme_preference')
+    const preferredDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+    const initialTheme = savedTheme === 'light' || savedTheme === 'dark'
+      ? savedTheme
+      : (preferredDark ? 'dark' : 'light')
+    setTheme(initialTheme)
+  }, [])
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+    localStorage.setItem('theme_preference', theme)
+  }, [theme])
+
+  useEffect(() => {
+    const resolveNavbarName = async () => {
+      const fallback = String(profile?.full_name || user?.email || 'User').trim()
+      setNavNameEng(fallback)
+      setNavNameVn('')
+
+      if (profile?.role !== 'student') return
+
+      let query = null
+      if (profile?.student_id_ref) {
+        query = supabase
+          .from('students')
+          .select('name_eng, name_vn')
+          .eq('id', profile.student_id_ref)
+          .maybeSingle()
+      } else if (profile?.staff_id) {
+        query = supabase
+          .from('students')
+          .select('name_eng, name_vn')
+          .ilike('student_id', profile.staff_id)
+          .maybeSingle()
+      }
+
+      if (!query) return
+      const { data } = await query
+      if (data?.name_eng) setNavNameEng(data.name_eng)
+      if (data?.name_vn) setNavNameVn(data.name_vn)
+    }
+
+    resolveNavbarName()
+  }, [profile?.id, profile?.role, profile?.student_id_ref, profile?.staff_id, profile?.full_name, user?.email])
+
   const requiresPasswordChange = !!profile?.must_change_password
   const displayRole = String(profile?.role || '')
     .toLowerCase()
     .replace(/\b\w/g, (char) => char.toUpperCase())
   const idLabel = profile?.role === 'student' ? 'Student ID' : 'Staff ID'
   const avatarUrl = user?.user_metadata?.avatar_url || null
-  const avatarFallback = String(profile?.full_name || user?.email || 'U').trim().charAt(0).toUpperCase()
+  const avatarFallback = String(navNameEng || profile?.full_name || user?.email || 'U').trim().charAt(0).toUpperCase()
 
   const handleChangePassword = async (e) => {
     e.preventDefault()
@@ -100,10 +149,14 @@ export default function Layout({ children }) {
     await refreshProfile()
   }
 
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))
+  }
+
   return (
-    <div className="min-h-screen" style={{ background: '#f4f6f9' }}>
+    <div className="min-h-screen" style={{ background: 'var(--app-bg)', color: 'var(--text-primary)' }}>
       {/* Navbar */}
-      <nav style={{ background: '#1a1a1a', borderBottom: '3px solid #d1232a' }}>
+      <nav style={{ background: 'var(--nav-bg)', borderBottom: '3px solid #d1232a' }}>
         <div className="w-full px-3 sm:px-6 py-3 flex justify-between items-center">
           {/* Left — Royal School Logo */}
           <div className="flex items-center gap-8">
@@ -145,7 +198,7 @@ export default function Layout({ children }) {
                     className={`absolute left-0 top-full pt-2 z-40 ${showAdminMenu ? 'block' : 'hidden'}`}
                     onMouseLeave={() => setShowAdminMenu(false)}
                   >
-                    <div className="w-60 rounded-lg border shadow-lg overflow-hidden" style={{ backgroundColor: '#1a1a1a', borderColor: '#333' }}>
+                    <div className="w-60 rounded-lg border shadow-lg overflow-hidden" style={{ backgroundColor: 'var(--nav-bg)', borderColor: 'var(--menu-border)' }}>
                       {menuItems.map((tool) => (
                         <Link
                           key={tool.path}
@@ -198,7 +251,15 @@ export default function Layout({ children }) {
                 </div>
               )}
               <div className="leading-tight text-right">
-                <div className="text-xs font-medium text-gray-100">{profile?.full_name || 'User'}</div>
+                <div className="text-xs font-medium text-gray-100">
+                  <span>{navNameEng || 'User'}</span>
+                  {navNameVn ? (
+                    <>
+                      <span className="text-gray-400 px-1">-</span>
+                      <span className="text-blue-300">{navNameVn}</span>
+                    </>
+                  ) : null}
+                </div>
                 <div className="text-xs text-gray-400">{idLabel}: {profile?.staff_id || '—'}</div>
               </div>
               <span className="text-xs px-2 py-1 rounded-full font-medium"
@@ -209,12 +270,31 @@ export default function Layout({ children }) {
                 {displayRole || 'User'}
               </span>
               <div className="flex flex-col items-start gap-1">
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className="w-20 text-[10px] text-center font-semibold px-2 py-1 rounded-md transition-colors"
+                  style={{
+                    color: '#ffffff',
+                    backgroundColor: '#1f86c7',
+                  }}
+                  onMouseOver={e => { e.currentTarget.style.backgroundColor = '#166a9d' }}
+                  onMouseOut={e => { e.currentTarget.style.backgroundColor = '#1f86c7' }}
+                >
+                  {theme === 'dark' ? 'Dark Mode' : 'Light Mode'}
+                </button>
                 <Link
                   to="/settings"
-                  className="text-xs font-medium transition-colors"
-                  style={{ color: '#e5e7eb' }}
-                  onMouseOver={e => e.currentTarget.style.color = '#ffc612'}
-                  onMouseOut={e => e.currentTarget.style.color = '#e5e7eb'}
+                  className="w-20 text-[10px] text-center font-semibold px-2 py-1 rounded-md transition-colors"
+                  style={{ color: '#1a1a1a', backgroundColor: '#ffc612' }}
+                  onMouseOver={e => {
+                    e.currentTarget.style.backgroundColor = '#e0ae10'
+                    e.currentTarget.style.color = '#111827'
+                  }}
+                  onMouseOut={e => {
+                    e.currentTarget.style.backgroundColor = '#ffc612'
+                    e.currentTarget.style.color = '#1a1a1a'
+                  }}
                   onClick={e => {
                     if (!confirmUnsavedGradebookNavigation()) {
                       e.preventDefault()
@@ -228,10 +308,10 @@ export default function Layout({ children }) {
                     if (!confirmUnsavedGradebookNavigation()) return
                     handleSignOut()
                   }}
-                  className="text-xs font-medium transition-colors"
-                  style={{ color: '#e5e7eb' }}
-                  onMouseOver={e => e.currentTarget.style.color = '#d1232a'}
-                  onMouseOut={e => e.currentTarget.style.color = '#e5e7eb'}
+                  className="w-20 text-[10px] text-center font-semibold px-2 py-1 rounded-md transition-colors"
+                  style={{ color: '#ffffff', backgroundColor: '#d1232a' }}
+                  onMouseOver={e => { e.currentTarget.style.backgroundColor = '#a81b22' }}
+                  onMouseOut={e => { e.currentTarget.style.backgroundColor = '#d1232a' }}
                 >
                   Sign Out
                 </button>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Layout from '../components/Layout'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -27,20 +27,30 @@ const fmt = (n) => n != null ? n.toFixed(1) : '—'
 export default function StudentClassDetail() {
   const navigate = useNavigate()
   const { classId } = useParams()
+  const [searchParams] = useSearchParams()
   const { profile } = useAuth()
 
   const [cls, setCls] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [activeTerm, setActiveTerm] = useState('midterm_1')
+  const [activeTerm, setActiveTerm] = useState(searchParams.get('term') || 'midterm_1')
   const [showFormulaHelp, setShowFormulaHelp] = useState(false)
   const [participationRows, setParticipationRows] = useState([])
   const [assignmentRows, setAssignmentRows] = useState([])
   const [progressRows, setProgressRows] = useState([])
   const [accessDenied, setAccessDenied] = useState(false)
+  const [classAnnouncements, setClassAnnouncements] = useState([])
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState(null)
 
   useEffect(() => {
     fetchData()
   }, [classId, profile?.student_id_ref])
+
+  useEffect(() => {
+    const termFromQuery = searchParams.get('term')
+    if (termFromQuery && TERMS.some((t) => t.key === termFromQuery)) {
+      setActiveTerm(termFromQuery)
+    }
+  }, [searchParams])
 
   const fetchData = async () => {
     setLoading(true)
@@ -73,12 +83,16 @@ export default function StudentClassDetail() {
       return
     }
 
-    const [{ data: classData }, { data: partData }, { data: ptData }, { data: assignData }, { data: assignGrades }] = await Promise.all([
+    const [{ data: classData }, { data: partData }, { data: ptData }, { data: assignData }, { data: assignGrades }, { data: announcementTargetRows }] = await Promise.all([
       supabase.from('classes').select('*, users(full_name)').eq('id', classId).single(),
       supabase.from('participation_grades').select('term, week, score').eq('class_id', classId).eq('student_id', resolvedStudentId),
       supabase.from('progress_test_grades').select('*').eq('class_id', classId).eq('student_id', resolvedStudentId),
       supabase.from('assignments').select('*').eq('class_id', classId).order('created_at'),
       supabase.from('assignment_grades').select('*').eq('student_id', resolvedStudentId),
+      supabase
+        .from('teacher_announcement_targets')
+        .select('announcement_id, teacher_announcements(id, title, message, created_at)')
+        .eq('class_id', classId),
     ])
 
     const assignmentMap = Object.fromEntries((assignData || []).map((a) => [a.id, a]))
@@ -102,6 +116,12 @@ export default function StudentClassDetail() {
     setParticipationRows(partData || [])
     setProgressRows(ptData || [])
     setAssignmentRows(markedAssignments)
+    const announcementRows = (announcementTargetRows || [])
+      .map((row) => row.teacher_announcements)
+      .filter(Boolean)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 8)
+    setClassAnnouncements(announcementRows)
     setAccessDenied(false)
     setLoading(false)
   }
@@ -329,6 +349,54 @@ export default function StudentClassDetail() {
           )}
         </div>
       </div>
+
+      <div className="mt-6 bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: '#22c55e', borderTopWidth: 3 }}>
+        <h3 className="font-semibold text-gray-900 mb-3">Class Announcements</h3>
+        <div className="space-y-2">
+          {classAnnouncements.length === 0 ? (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+              No class announcements yet.
+            </div>
+          ) : classAnnouncements.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setSelectedAnnouncement(item)}
+              className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-green-50 transition-colors"
+            >
+              <div className="text-sm font-medium text-gray-800">{item.title}</div>
+              <div className="text-xs text-gray-500 mt-0.5">{new Date(item.created_at).toLocaleDateString('en-GB')}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {selectedAnnouncement && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
+          <div className="w-full max-w-md bg-white rounded-xl border border-gray-200 p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h4 className="text-base font-semibold text-gray-900">{selectedAnnouncement.title}</h4>
+                <p className="text-xs text-gray-500 mt-1">
+                  Teacher Announcement • {new Date(selectedAnnouncement.created_at).toLocaleDateString('en-GB')}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedAnnouncement(null)}
+                className="text-gray-400 hover:text-gray-600"
+                aria-label="Close announcement"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="mt-4">
+              <div className="text-xs font-medium text-gray-500">Message</div>
+              <div className="text-sm text-gray-800 whitespace-pre-wrap mt-1">{selectedAnnouncement.message}</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showFormulaHelp && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">

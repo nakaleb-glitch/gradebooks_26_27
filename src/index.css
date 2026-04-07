@@ -1,3 +1,79 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --app-bg: #f4f6f9;
+  --nav-bg: #1a1a1a;
+  --menu-border: #333333;
+  --nav-text: #e5e7eb;
+  --toggle-hover-bg: rgba(255, 255, 255, 0.08);
+  --text-primary: #111827;
+}
+
+.dark {
+  --app-bg: #0b1220;
+  --nav-bg: #090f1a;
+  --menu-border: #334155;
+  --nav-text: #e2e8f0;
+  --toggle-hover-bg: rgba(148, 163, 184, 0.18);
+  --text-primary: #e5e7eb;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  background: var(--app-bg);
+  color: var(--text-primary);
+}
+
+/* Global palette remap for dark mode so existing Tailwind classes adapt */
+.dark .bg-white {
+  background-color: #111827 !important;
+}
+
+.dark .bg-gray-50,
+.dark .bg-gray-100 {
+  background-color: #0f172a !important;
+}
+
+.dark .border-gray-100,
+.dark .border-gray-200,
+.dark .border-gray-300 {
+  border-color: #334155 !important;
+}
+
+.dark .text-gray-900 {
+  color: #f8fafc !important;
+}
+
+.dark .text-gray-800 {
+  color: #e2e8f0 !important;
+}
+
+.dark .text-gray-700,
+.dark .text-gray-600 {
+  color: #cbd5e1 !important;
+}
+
+.dark .text-gray-500,
+.dark .text-gray-400 {
+  color: #94a3b8 !important;
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #0f172a;
+  color: #e2e8f0;
+  border-color: #334155;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #94a3b8;
+}
