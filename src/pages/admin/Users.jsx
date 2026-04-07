@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import Papa from 'papaparse'
 
 const LEVELS = ['primary', 'secondary']
-const SUBJECTS = ['ESL/GP', 'Maths', 'Science', 'IELTS', 'VN ESL']
+const SUBJECTS = ['ESL/GP', 'Mathematics', 'Science', 'VN ESL']
 
 export default function Users() {
   const { user: currentUser } = useAuth()

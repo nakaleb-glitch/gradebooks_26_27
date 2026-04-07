@@ -14,8 +14,8 @@ const getEligibleTeachers = (teachers, classSubject, classLevel) => {
     const s = t.subject
     if (classSubject === 'ESL') return s === 'ESL/GP'
     if (classSubject === 'GP') return s === 'ESL/GP'
-    if (classSubject === 'Mathematics') return s === 'Maths' || s === 'Science'
-    if (classSubject === 'Science') return s === 'Science' || s === 'Maths'
+    if (classSubject === 'Mathematics') return s === 'Mathematics' || s === 'Science'
+    if (classSubject === 'Science') return s === 'Science' || s === 'Mathematics'
     return true
   })
 }
