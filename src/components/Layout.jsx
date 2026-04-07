@@ -54,6 +54,8 @@ export default function Layout({ children }) {
   const displayRole = String(profile?.role || '')
     .toLowerCase()
     .replace(/\b\w/g, (char) => char.toUpperCase())
+  const avatarUrl = user?.user_metadata?.avatar_url || null
+  const avatarFallback = String(profile?.full_name || user?.email || 'U').trim().charAt(0).toUpperCase()
 
   const handleChangePassword = async (e) => {
     e.preventDefault()
@@ -183,6 +185,17 @@ export default function Layout({ children }) {
           {/* Right — Cambridge Logo + user info */}
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-4">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Profile"
+                  className="w-8 h-8 rounded-full object-cover border border-gray-600"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold" style={{ backgroundColor: '#1f86c7' }}>
+                  {avatarFallback}
+                </div>
+              )}
               <div className="leading-tight text-right">
                 <div className="text-xs font-medium text-gray-100">{profile?.full_name || 'User'}</div>
                 <div className="text-xs text-gray-400">Staff ID: {profile?.staff_id || '—'}</div>
@@ -194,32 +207,34 @@ export default function Layout({ children }) {
                 }}>
                 {displayRole || 'User'}
               </span>
-              <Link
-                to="/settings"
-                className="text-xs font-medium transition-colors"
-                style={{ color: '#e5e7eb' }}
-                onMouseOver={e => e.currentTarget.style.color = '#ffc612'}
-                onMouseOut={e => e.currentTarget.style.color = '#e5e7eb'}
-                onClick={e => {
-                  if (!confirmUnsavedGradebookNavigation()) {
-                    e.preventDefault()
-                  }
-                }}
-              >
-                User Settings
-              </Link>
-              <button
-                onClick={() => {
-                  if (!confirmUnsavedGradebookNavigation()) return
-                  handleSignOut()
-                }}
-                className="text-xs font-medium transition-colors"
-                style={{ color: '#e5e7eb' }}
-                onMouseOver={e => e.currentTarget.style.color = '#d1232a'}
-                onMouseOut={e => e.currentTarget.style.color = '#e5e7eb'}
-              >
-                Sign out
-              </button>
+              <div className="flex flex-col items-start gap-1">
+                <Link
+                  to="/settings"
+                  className="text-xs font-medium transition-colors"
+                  style={{ color: '#e5e7eb' }}
+                  onMouseOver={e => e.currentTarget.style.color = '#ffc612'}
+                  onMouseOut={e => e.currentTarget.style.color = '#e5e7eb'}
+                  onClick={e => {
+                    if (!confirmUnsavedGradebookNavigation()) {
+                      e.preventDefault()
+                    }
+                  }}
+                >
+                  Settings
+                </Link>
+                <button
+                  onClick={() => {
+                    if (!confirmUnsavedGradebookNavigation()) return
+                    handleSignOut()
+                  }}
+                  className="text-xs font-medium transition-colors"
+                  style={{ color: '#e5e7eb' }}
+                  onMouseOver={e => e.currentTarget.style.color = '#d1232a'}
+                  onMouseOut={e => e.currentTarget.style.color = '#e5e7eb'}
+                >
+                  Sign Out
+                </button>
+              </div>
             </div>
             <img
               src="/LOGO_CAMBRIDGE_2.png"

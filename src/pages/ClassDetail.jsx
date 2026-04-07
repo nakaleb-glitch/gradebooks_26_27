@@ -136,7 +136,7 @@ export default function ClassDetail() {
         </button>
         <h2 className="text-2xl font-bold text-gray-900">{cls.name}</h2>
         <p className="text-gray-500 text-sm mt-1">
-          {cls.subject} · {cls.level === 'primary' ? 'Primary' : 'Secondary'} · {cls.programme === 'bilingual' ? 'Bilingual' : 'Integrated'} · 2026–27
+          {cls.level === 'primary' ? 'Primary' : 'Secondary'} · {cls.programme === 'bilingual' ? 'Bilingual' : 'Integrated'} · 2026-2027
         </p>
       </div>
 

@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import Papa from 'papaparse'
 
 const SUBJECTS = ['ESL', 'Mathematics', 'Science', 'Global Perspectives']
-const ACADEMIC_YEAR = '2026–27'
+const ACADEMIC_YEAR = '2026-2027'
 
 const levelLabel = (l) => ({
   primary: 'Primary',
@@ -128,7 +128,7 @@ export default function Classes() {
         level: form.level,
         programme: form.programme,
         teacher_id: form.teacher_id || null,
-        academic_year: '2026-27'
+        academic_year: '2026-2027'
       })
       .select()
       .single()
@@ -243,7 +243,7 @@ export default function Classes() {
           const [{ data: studentsData }, { data: teachersData }, { data: existingClassesData }] = await Promise.all([
             supabase.from('students').select('id, class'),
             supabase.from('users').select('id, email').eq('role', 'teacher'),
-            supabase.from('classes').select('id, name, subject, academic_year').eq('academic_year', '2026-27'),
+            supabase.from('classes').select('id, name, subject, academic_year').eq('academic_year', '2026-2027'),
           ])
 
           const studentsByHomeroom = {}
@@ -271,7 +271,7 @@ export default function Classes() {
           let failedCount = 0
 
           for (const row of rows) {
-            const classKey = `${row.name}__${row.subject}__2026-27`
+            const classKey = `${row.name}__${row.subject}__2026-2027`
             let classId = existingByKey[classKey]
 
             if (!classId) {
@@ -284,7 +284,7 @@ export default function Classes() {
                   level: row.level,
                   programme: row.programme,
                   teacher_id: teacherId,
-                  academic_year: '2026-27',
+                  academic_year: '2026-2027',
                 })
                 .select('id')
                 .single()
@@ -440,7 +440,7 @@ export default function Classes() {
       <div className="mb-8 flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Class Management</h2>
-          <p className="text-gray-500 text-sm mt-1">View, add, edit or remove classes for school year 2026–27</p>
+          <p className="text-gray-500 text-sm mt-1">View, add, edit or remove classes for school year 2026-2027</p>
         </div>
         <div className="flex items-start gap-3">
           <button

@@ -45,7 +45,26 @@ export default function Dashboard() {
     ])
 
     const rows = dashboardItems || []
-    setClasses(classData || [])
+    const classList = classData || []
+
+    let classCounts = {}
+    if (classList.length > 0) {
+      const classIds = classList.map(cls => cls.id)
+      const { data: enrollmentRows } = await supabase
+        .from('class_students')
+        .select('class_id')
+        .in('class_id', classIds)
+
+      classCounts = (enrollmentRows || []).reduce((acc, row) => {
+        acc[row.class_id] = (acc[row.class_id] || 0) + 1
+        return acc
+      }, {})
+    }
+
+    setClasses(classList.map(cls => ({
+      ...cls,
+      student_count: classCounts[cls.id] || 0,
+    })))
     setTeacherEvents(rows.filter(item => item.item_type === 'event'))
     setTeacherDeadlines(rows.filter(item => item.item_type === 'deadline'))
     setLoading(false)
@@ -222,22 +241,8 @@ export default function Dashboard() {
     })
   }
 
-  const welcomeLabel = profile?.full_name || user?.email
-  const roleLabel = profile?.role === 'admin' ? 'Administrator' : 'Teacher'
-  const yearLabel = '2026–27'
-
   return (
     <Layout>
-      <div className="mb-4">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-gray-200 text-xs text-gray-600">
-          <span className="font-medium text-gray-700">Welcome, {welcomeLabel}</span>
-          <span className="text-gray-300">•</span>
-          <span>{roleLabel}</span>
-          <span className="text-gray-300">•</span>
-          <span>{yearLabel}</span>
-        </div>
-      </div>
-
       {loading ? (
         <div className="text-center text-gray-400 py-10">Loading...</div>
       ) : profile?.role === 'admin' ? (
@@ -379,15 +384,12 @@ export default function Dashboard() {
                         className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all"
                         style={{ borderTopColor: '#9ca3af', borderTopWidth: 3 }}
                       >
-                        <div className="font-semibold text-gray-900 mb-1">{cls.name}</div>
-                        <div className="text-sm text-gray-500">{cls.subject}</div>
-                        <div className="mt-3 flex gap-2">
-                          <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
-                            {levelLabel(cls.level)}
-                          </span>
-                          <span className={`text-xs px-2 py-1 rounded-full ${programmeBadgeStyle(cls.programme)}`}>
-                            {programmeLabel(cls.programme)}
-                          </span>
+                        <div className="font-semibold text-gray-900">{cls.name}</div>
+                        <div className="text-sm text-gray-500 mt-1">
+                          {levelLabel(cls.level)} - {programmeLabel(cls.programme)}
+                        </div>
+                        <div className="text-xs text-gray-400 mt-2">
+                          {cls.student_count || 0} students
                         </div>
                       </Link>
                     ))
@@ -404,9 +406,6 @@ export default function Dashboard() {
               >
                 <h3 className="text-lg font-semibold text-gray-900 mb-1">Behavior Report Tool</h3>
                 <p className="text-sm text-gray-500">Submit a student behavior report for admin review.</p>
-                <span className="inline-block mt-3 text-xs px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-100">
-                  Create New Report
-                </span>
               </Link>
 
               <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: CARD_ACCENT.events, borderTopWidth: 3 }}>

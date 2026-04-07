@@ -102,7 +102,7 @@ export default function Login() {
         </div>
 
         <p className="text-center text-xs text-gray-600 mt-6">
-          Royal School International · Academic Year 2026–27
+          Royal School International · Academic Year 2026-2027
         </p>
       </div>
     </div>
