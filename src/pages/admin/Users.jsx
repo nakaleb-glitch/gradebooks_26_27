@@ -4,14 +4,12 @@ import Layout from '../../components/Layout'
 import { useAuth } from '../../contexts/AuthContext'
 import Papa from 'papaparse'
 
-const LEVELS = ['primary', 'lower_secondary', 'igcse', 'ielts']
-const SUBJECTS = ['ESL', 'Mathematics', 'Science', 'Global Perspectives']
+const LEVELS = ['primary', 'secondary']
+const SUBJECTS = ['ESL/GP', 'Mathematics', 'Science', 'VN ESL']
 
 const levelLabel = (l) => ({
   primary: 'Primary',
-  lower_secondary: 'Lower Sec',
-  igcse: 'IGCSE',
-  ielts: 'IELTS',
+  secondary: 'Secondary',
 }[l] || l)
 
 export default function Users() {
@@ -322,8 +320,8 @@ export default function Users() {
       <div className={`mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200 ${editing ? 'mb-24' : ''}`}>
         <p className="text-xs text-gray-500 font-medium mb-2">CSV Format — your file should have these column headers:</p>
         <code className="text-xs text-gray-600">Full Name, Email, Level, Subject</code>
-        <p className="text-xs text-gray-400 mt-2">Level: primary · lower_secondary · igcse · ielts</p>
-        <p className="text-xs text-gray-400">Subject: ESL · Mathematics · Science · Global Perspectives</p>
+        <p className="text-xs text-gray-400 mt-2">Level: primary · secondary</p>
+        <p className="text-xs text-gray-400">Subject: ESL/GP · Mathematics · Science · VN ESL</p>
         <p className="text-xs text-gray-400 mt-1">All teachers will be created with the default password: royal@123</p>
       </div>
 
