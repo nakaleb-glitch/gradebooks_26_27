@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import Students from './pages/admin/Students'
 import Classes from './pages/admin/Classes'
 import Users from './pages/admin/Users'
+import Resources from './pages/admin/Resources'
 import ClassDetail from './pages/ClassDetail'
 
 const ProtectedRoute = ({ children, adminOnly = false }) => {
@@ -26,6 +27,7 @@ function AppRoutes() {
       <Route path="/admin/students" element={<ProtectedRoute adminOnly><Students /></ProtectedRoute>} />
       <Route path="/admin/classes" element={<ProtectedRoute adminOnly><Classes /></ProtectedRoute>} />
       <Route path="/admin/users" element={<ProtectedRoute adminOnly><Users /></ProtectedRoute>} />
+      <Route path="/admin/resources" element={<ProtectedRoute adminOnly><Resources /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/login" />} />
     </Routes>
   )
