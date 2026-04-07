@@ -165,8 +165,8 @@ export default function ClassDetail() {
                     <tbody className="divide-y divide-gray-100">
                       {studentRoster.map(student => (
                         <tr key={student.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-gray-600">{student.student_id}</td>
-                          <td className="px-4 py-3 font-medium text-gray-900">{student.name_eng}</td>
+                          <td className="px-4 py-3 text-gray-600">{student.student_id || '—'}</td>
+                          <td className="px-4 py-3 font-medium text-gray-900">{student.name_eng || '—'}</td>
                           <td className="px-4 py-3 text-gray-600">{student.name_vn || '—'}</td>
                         </tr>
                       ))}
@@ -329,6 +329,7 @@ function Gradebook({ cls, term, termLabel, onBack, onUnsavedChange }) {
     { key: 'participation', label: 'Participation' },
     { key: 'assignments', label: 'Assignments' },
     { key: 'progress_test', label: 'Progress Test' },
+    { key: 'student_attributes', label: 'Student Attributes' },
     { key: 'summary', label: 'Summary' },
     ...(isFinal ? [{ key: 'comments', label: 'Comments' }] : []),
   ]
@@ -416,6 +417,7 @@ function Gradebook({ cls, term, termLabel, onBack, onUnsavedChange }) {
           {activeTab === 'participation' && <ParticipationTab classId={cls.id} term={term} students={students} onDirtyChange={(value) => setTabDirty('participation', value)} />}
           {activeTab === 'assignments' && <AssignmentsTab classId={cls.id} term={term} students={students} onDirtyChange={(value) => setTabDirty('assignments', value)} />}
           {activeTab === 'progress_test' && <ProgressTestTab classId={cls.id} term={term} students={students} isESL={isESL} onDirtyChange={(value) => setTabDirty('progress_test', value)} />}
+          {activeTab === 'student_attributes' && <StudentAttributesTab classId={cls.id} term={term} students={students} onDirtyChange={(value) => setTabDirty('student_attributes', value)} />}
           {activeTab === 'summary' && <SummaryTab classId={cls.id} term={term} students={students} isESL={isESL} />}
           {activeTab === 'comments' && isFinal && <CommentsTab classId={cls.id} term={term} students={students} onDirtyChange={(value) => setTabDirty('comments', value)} />}
         </>
@@ -429,6 +431,8 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
   const [grades, setGrades] = useState({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [openCommentKey, setOpenCommentKey] = useState(null)
+  const [draftComment, setDraftComment] = useState('')
 
   useEffect(() => { fetchGrades() }, [classId, term])
   useEffect(() => { onDirtyChange?.(false) }, [classId, term])
@@ -447,6 +451,17 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
   const setGrade = (studentId, week, field, value) => {
     onDirtyChange?.(true)
     setGrades(prev => ({ ...prev, [`${studentId}_${week}`]: { ...prev[`${studentId}_${week}`], [field]: value } }))
+  }
+
+  const openCommentEditor = (key) => {
+    setOpenCommentKey(key)
+    setDraftComment(grades[key]?.comment ?? '')
+  }
+
+  const saveComment = (studentId, week) => {
+    setGrade(studentId, week, 'comment', draftComment)
+    setOpenCommentKey(null)
+    setDraftComment('')
   }
 
   const saveAll = async () => {
@@ -499,7 +514,7 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
       <div className="flex justify-between items-center mb-4">
         <p className="text-sm text-gray-500">Weekly participation scores out of 10.</p>
         <button onClick={saveAll} disabled={saving}
-          className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300">
+          className="px-4 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300">
           {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save'}
         </button>
       </div>
@@ -524,8 +539,9 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
             {students.map(student => (
               <tr key={student.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 sticky left-0 bg-white">
-                  <div className="font-medium text-gray-900">{student.name_eng}</div>
-                  <div className="text-xs text-gray-400">{student.student_id}</div>
+                  <div className="font-medium text-gray-900">{student.name_eng || '—'}</div>
+                  <div className="text-sm text-gray-500">{student.name_vn || '—'}</div>
+                  <div className="text-xs text-gray-400">{student.student_id || '—'}</div>
                 </td>
                 {weekSchedule.map((weekItem) => {
                   const key = `${student.id}_${weekItem.week}`
@@ -539,18 +555,55 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
                           </span>
                         </div>
                       ) : (
-                        <>
+                        <div className="space-y-1">
                           <input type="number" min="0" max="10" step="0.5" placeholder="—"
                             value={grades[key]?.score ?? ''}
                             onChange={e => setGrade(student.id, weekItem.week, 'score', e.target.value)}
                             className="w-14 text-center border border-gray-200 rounded px-1 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-1 block mx-auto"
                           />
-                          <input type="text" placeholder="note"
-                            value={grades[key]?.comment ?? ''}
-                            onChange={e => setGrade(student.id, weekItem.week, 'comment', e.target.value)}
-                            className="w-full border border-gray-200 rounded px-1 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </>
+                          {openCommentKey === key ? (
+                            <div className="space-y-1">
+                              <input
+                                type="text"
+                                placeholder="Type comment"
+                                value={draftComment}
+                                onChange={e => setDraftComment(e.target.value)}
+                                className="w-full border border-gray-200 bg-gray-50 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => saveComment(student.id, weekItem.week)}
+                                  className="text-[10px] px-2 py-0.5 rounded bg-green-600 text-white hover:bg-green-700"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenCommentKey(null)
+                                    setDraftComment('')
+                                  }}
+                                  className="text-[10px] text-gray-400 hover:text-gray-600"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => openCommentEditor(key)}
+                              className={`block mx-auto text-[10px] px-1.5 py-0.5 rounded border ${
+                                grades[key]?.comment
+                                  ? 'border-blue-200 bg-blue-50 text-blue-600'
+                                  : 'border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                              }`}
+                            >
+                              {grades[key]?.comment ? 'Edit Comment' : 'Add Comment'}
+                            </button>
+                          )}
+                        </div>
                       )}
                     </td>
                   )
@@ -577,6 +630,10 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
   const [newAssignment, setNewAssignment] = useState({ name: '', max_points: '' })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [openCommentKey, setOpenCommentKey] = useState(null)
+  const [draftComment, setDraftComment] = useState('')
+  const [deletingAssignmentId, setDeletingAssignmentId] = useState(null)
+  const [confirmDeleteAssignment, setConfirmDeleteAssignment] = useState(null)
 
   useEffect(() => { fetchAssignments() }, [classId, term])
   useEffect(() => { onDirtyChange?.(false) }, [classId, term])
@@ -587,7 +644,7 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
     if (aData?.length) {
       const { data: gData } = await supabase.from('assignment_grades').select('*').in('assignment_id', aData.map(a => a.id))
       const map = {}
-      gData?.forEach(g => { map[`${g.assignment_id}_${g.student_id}`] = { score: g.score, is_absent: g.is_absent } })
+      gData?.forEach(g => { map[`${g.assignment_id}_${g.student_id}`] = { score: g.score, is_absent: g.is_absent, comment: g.comment } })
       setGrades(map)
     }
   }
@@ -600,9 +657,37 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
     setShowForm(false)
   }
 
+  const deleteAssignment = async (assignment) => {
+    setDeletingAssignmentId(assignment.id)
+    await supabase.from('assignment_grades').delete().eq('assignment_id', assignment.id)
+    await supabase.from('assignments').delete().eq('id', assignment.id)
+
+    setAssignments(prev => prev.filter(a => a.id !== assignment.id))
+    setGrades(prev => {
+      const next = { ...prev }
+      students.forEach(student => {
+        delete next[`${assignment.id}_${student.id}`]
+      })
+      return next
+    })
+    setConfirmDeleteAssignment(null)
+    setDeletingAssignmentId(null)
+  }
+
   const setGrade = (assignmentId, studentId, field, value) => {
     onDirtyChange?.(true)
     setGrades(prev => ({ ...prev, [`${assignmentId}_${studentId}`]: { ...prev[`${assignmentId}_${studentId}`], [field]: value } }))
+  }
+
+  const openCommentEditor = (key) => {
+    setOpenCommentKey(key)
+    setDraftComment(grades[key]?.comment ?? '')
+  }
+
+  const saveComment = (assignmentId, studentId) => {
+    setGrade(assignmentId, studentId, 'comment', draftComment)
+    setOpenCommentKey(null)
+    setDraftComment('')
   }
 
   const getStudentAvg = (studentId) => {
@@ -622,7 +707,13 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
         const key = `${assignment.id}_${student.id}`
         const g = grades[key]
         if (g !== undefined) {
-          rows.push({ assignment_id: assignment.id, student_id: student.id, score: g.is_absent ? null : (g.score !== '' ? parseFloat(g.score) : null), is_absent: g.is_absent || false })
+          rows.push({
+            assignment_id: assignment.id,
+            student_id: student.id,
+            score: g.is_absent ? null : (g.score !== '' ? parseFloat(g.score) : null),
+            is_absent: g.is_absent || false,
+            comment: g.comment ? g.comment.trim() : null,
+          })
         }
       })
     })
@@ -642,7 +733,7 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
             + New Assignment
           </button>
           {assignments.length > 0 && (
-            <button onClick={saveAll} disabled={saving} className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300">
+            <button onClick={saveAll} disabled={saving} className="px-4 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300">
               {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save'}
             </button>
           )}
@@ -668,6 +759,30 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
         </div>
       )}
 
+      {confirmDeleteAssignment && (
+        <div className="mb-4 px-4 py-4 rounded-lg bg-red-50 border border-red-200">
+          <p className="text-sm font-medium text-red-700 mb-3">
+            Delete <strong>{confirmDeleteAssignment.name}</strong>? This will remove all student scores for this assignment.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => deleteAssignment(confirmDeleteAssignment)}
+              disabled={deletingAssignmentId === confirmDeleteAssignment.id}
+              className="px-4 py-1.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:bg-gray-300"
+            >
+              {deletingAssignmentId === confirmDeleteAssignment.id ? 'Deleting...' : 'Yes, delete assignment'}
+            </button>
+            <button
+              onClick={() => setConfirmDeleteAssignment(null)}
+              disabled={deletingAssignmentId === confirmDeleteAssignment.id}
+              className="px-4 py-1.5 border border-gray-300 text-gray-600 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {assignments.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">No assignments yet. Create one to get started.</div>
       ) : (
@@ -678,7 +793,19 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
                 <th className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 min-w-48">Student</th>
                 {assignments.map(a => (
                   <th key={a.id} className="text-center px-3 py-3 text-gray-500 font-medium min-w-32">
-                    <div>{a.name}</div>
+                    <div className="flex items-center justify-center gap-2">
+                      <span>{a.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteAssignment(a)}
+                        disabled={deletingAssignmentId === a.id}
+                        className="inline-flex items-center justify-center w-5 h-5 rounded-full border border-red-200 text-red-500 text-xs leading-none hover:bg-red-50 disabled:opacity-50"
+                        title={`Delete ${a.name}`}
+                        aria-label={`Delete ${a.name}`}
+                      >
+                        {deletingAssignmentId === a.id ? '…' : '×'}
+                      </button>
+                    </div>
                     <div className="text-xs font-normal text-gray-400">/ {a.max_points}</div>
                   </th>
                 ))}
@@ -689,8 +816,9 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
               {students.map(student => (
                 <tr key={student.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 sticky left-0 bg-white">
-                    <div className="font-medium text-gray-900">{student.name_eng}</div>
-                    <div className="text-xs text-gray-400">{student.student_id}</div>
+                    <div className="font-medium text-gray-900">{student.name_eng || '—'}</div>
+                    <div className="text-sm text-gray-500">{student.name_vn || '—'}</div>
+                    <div className="text-xs text-gray-400">{student.student_id || '—'}</div>
                   </td>
                   {assignments.map(assignment => {
                     const key = `${assignment.id}_${student.id}`
@@ -701,6 +829,48 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
                           <div className="flex flex-col items-center gap-1">
                             <span className="px-2 py-1 bg-orange-100 text-orange-600 rounded text-xs font-medium">Absent</span>
                             <button onClick={() => setGrade(assignment.id, student.id, 'is_absent', false)} className="text-xs text-gray-400 hover:text-gray-600">undo</button>
+                            {openCommentKey === key ? (
+                              <div className="w-full space-y-1">
+                                <input
+                                  type="text"
+                                  placeholder="Type comment"
+                                  value={draftComment}
+                                  onChange={e => setDraftComment(e.target.value)}
+                                  className="w-full border border-gray-200 bg-gray-50 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => saveComment(assignment.id, student.id)}
+                                    className="text-[10px] px-2 py-0.5 rounded bg-green-600 text-white hover:bg-green-700"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenCommentKey(null)
+                                      setDraftComment('')
+                                    }}
+                                    className="text-[10px] text-gray-400 hover:text-gray-600"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => openCommentEditor(key)}
+                                className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                                  g.comment
+                                    ? 'border-blue-200 bg-blue-50 text-blue-600'
+                                    : 'border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                                }`}
+                              >
+                                {g.comment ? 'Edit Comment' : 'Add Comment'}
+                              </button>
+                            )}
                           </div>
                         ) : (
                           <div className="flex flex-col items-center gap-1">
@@ -709,6 +879,48 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
                               onChange={e => setGrade(assignment.id, student.id, 'score', e.target.value)}
                               className="w-16 text-center border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                             <button onClick={() => setGrade(assignment.id, student.id, 'is_absent', true)} className="text-xs text-gray-400 hover:text-orange-500">A (absent)</button>
+                            {openCommentKey === key ? (
+                              <div className="w-full space-y-1">
+                                <input
+                                  type="text"
+                                  placeholder="Type comment"
+                                  value={draftComment}
+                                  onChange={e => setDraftComment(e.target.value)}
+                                  className="w-full border border-gray-200 bg-gray-50 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => saveComment(assignment.id, student.id)}
+                                    className="text-[10px] px-2 py-0.5 rounded bg-green-600 text-white hover:bg-green-700"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenCommentKey(null)
+                                      setDraftComment('')
+                                    }}
+                                    className="text-[10px] text-gray-400 hover:text-gray-600"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => openCommentEditor(key)}
+                                className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                                  g.comment
+                                    ? 'border-blue-200 bg-blue-50 text-blue-600'
+                                    : 'border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                                }`}
+                              >
+                                {g.comment ? 'Edit Comment' : 'Add Comment'}
+                              </button>
+                            )}
                           </div>
                         )}
                       </td>
@@ -739,6 +951,8 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
   )
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [openCommentStudentId, setOpenCommentStudentId] = useState(null)
+  const [draftComment, setDraftComment] = useState('')
 
   useEffect(() => { fetchGrades() }, [classId, term])
   useEffect(() => { onDirtyChange?.(false) }, [classId, term, isESL])
@@ -748,8 +962,8 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
     const map = {}
     data?.forEach(g => {
       map[g.student_id] = isESL
-        ? { rw: g.reading_writing_score, l: g.listening_score, s: g.speaking_score }
-        : { score: g.score }
+        ? { rw: g.reading_writing_score, l: g.listening_score, s: g.speaking_score, comment: g.comment }
+        : { score: g.score, comment: g.comment }
       if (isESL && data[0]) {
         setTotals({ rw_total: data[0].reading_writing_total || '', l_total: data[0].listening_total || '', s_total: data[0].speaking_total || '' })
       } else if (!isESL && data[0]) {
@@ -762,6 +976,17 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
   const setGrade = (studentId, field, value) => {
     onDirtyChange?.(true)
     setGrades(prev => ({ ...prev, [studentId]: { ...prev[studentId], [field]: value } }))
+  }
+
+  const openCommentEditor = (studentId) => {
+    setOpenCommentStudentId(studentId)
+    setDraftComment(grades[studentId]?.comment ?? '')
+  }
+
+  const saveComment = (studentId) => {
+    setGrade(studentId, 'comment', draftComment)
+    setOpenCommentStudentId(null)
+    setDraftComment('')
   }
 
   const getOverall = (studentId) => {
@@ -792,14 +1017,16 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
           listening_total: totals.l_total ? parseFloat(totals.l_total) : null,
           speaking_score: g.s != null && g.s !== '' ? parseFloat(g.s) : null,
           speaking_total: totals.s_total ? parseFloat(totals.s_total) : null,
-          overall_percentage: overall
+          overall_percentage: overall,
+          comment: g.comment ? g.comment.trim() : null,
         }
       } else {
         return {
           class_id: classId, student_id: student.id, term,
           score: g.score != null && g.score !== '' ? parseFloat(g.score) : null,
           total_points: totals.total_points ? parseFloat(totals.total_points) : null,
-          overall_percentage: overall
+          overall_percentage: overall,
+          comment: g.comment ? g.comment.trim() : null,
         }
       }
     })
@@ -816,7 +1043,7 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
         <p className="text-sm text-gray-500">
           {isESL ? 'Enter total points for each component, then student scores.' : 'Enter total points for the test, then student scores.'}
         </p>
-        <button onClick={saveAll} disabled={saving} className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300">
+        <button onClick={saveAll} disabled={saving} className="px-4 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300">
           {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save'}
         </button>
       </div>
@@ -889,16 +1116,61 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
               return (
                 <tr key={student.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 sticky left-0 bg-white">
-                    <div className="font-medium text-gray-900">{student.name_eng}</div>
-                    <div className="text-xs text-gray-400">{student.student_id}</div>
+                    <div className="font-medium text-gray-900">{student.name_eng || '—'}</div>
+                    <div className="text-sm text-gray-500">{student.name_vn || '—'}</div>
+                    <div className="text-xs text-gray-400">{student.student_id || '—'}</div>
                   </td>
                   {isESL ? (
                     <>
                       <td className="px-3 py-2 text-center">
-                        <input type="number" min="0" max={totals.rw_total || undefined} placeholder="—"
-                          value={g.rw ?? ''}
-                          onChange={e => setGrade(student.id, 'rw', e.target.value)}
-                          className="w-20 text-center border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <div className="flex flex-col items-center gap-1">
+                          <input type="number" min="0" max={totals.rw_total || undefined} placeholder="—"
+                            value={g.rw ?? ''}
+                            onChange={e => setGrade(student.id, 'rw', e.target.value)}
+                            className="w-20 text-center border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                          {openCommentStudentId === student.id ? (
+                            <div className="w-full space-y-1">
+                              <input
+                                type="text"
+                                placeholder="Type comment"
+                                value={draftComment}
+                                onChange={e => setDraftComment(e.target.value)}
+                                className="w-full border border-gray-200 bg-gray-50 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => saveComment(student.id)}
+                                  className="text-[10px] px-2 py-0.5 rounded bg-green-600 text-white hover:bg-green-700"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenCommentStudentId(null)
+                                    setDraftComment('')
+                                  }}
+                                  className="text-[10px] text-gray-400 hover:text-gray-600"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => openCommentEditor(student.id)}
+                              className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                                g.comment
+                                  ? 'border-blue-200 bg-blue-50 text-blue-600'
+                                  : 'border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                              }`}
+                            >
+                              {g.comment ? 'Edit Comment' : 'Add Comment'}
+                            </button>
+                          )}
+                        </div>
                       </td>
                       <td className="px-3 py-2 text-center">
                         <input type="number" min="0" max={totals.l_total || undefined} placeholder="—"
@@ -915,10 +1187,54 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
                     </>
                   ) : (
                     <td className="px-3 py-2 text-center">
-                      <input type="number" min="0" max={totals.total_points || undefined} placeholder="—"
-                        value={g.score ?? ''}
-                        onChange={e => setGrade(student.id, 'score', e.target.value)}
-                        className="w-20 text-center border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      <div className="flex flex-col items-center gap-1">
+                        <input type="number" min="0" max={totals.total_points || undefined} placeholder="—"
+                          value={g.score ?? ''}
+                          onChange={e => setGrade(student.id, 'score', e.target.value)}
+                          className="w-20 text-center border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        {openCommentStudentId === student.id ? (
+                          <div className="w-full space-y-1">
+                            <input
+                              type="text"
+                              placeholder="Type comment"
+                              value={draftComment}
+                              onChange={e => setDraftComment(e.target.value)}
+                              className="w-full border border-gray-200 bg-gray-50 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => saveComment(student.id)}
+                                className="text-[10px] px-2 py-0.5 rounded bg-green-600 text-white hover:bg-green-700"
+                              >
+                                Save
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenCommentStudentId(null)
+                                  setDraftComment('')
+                                }}
+                                className="text-[10px] text-gray-400 hover:text-gray-600"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => openCommentEditor(student.id)}
+                            className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                              g.comment
+                                ? 'border-blue-200 bg-blue-50 text-blue-600'
+                                : 'border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            {g.comment ? 'Edit Comment' : 'Add Comment'}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   )}
                   <td className="px-4 py-3 text-center">
@@ -926,6 +1242,144 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
                       {fmt(overall)}{overall != null ? '%' : ''}
                     </span>
                   </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// ── Student Attributes Tab ────────────────────────────────────────────────────
+function StudentAttributesTab({ classId, term, students, onDirtyChange }) {
+  const [attributes, setAttributes] = useState({})
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  const ATTRIBUTE_FIELDS = [
+    { key: 'confident', label: 'Confident' },
+    { key: 'responsible', label: 'Responsible' },
+    { key: 'reflective', label: 'Reflective' },
+    { key: 'innovative', label: 'Innovative' },
+    { key: 'engaged', label: 'Engaged' },
+  ]
+
+  const OPTIONS = [
+    { value: '', label: '—' },
+    { value: 'G', label: 'G - Good' },
+    { value: 'S', label: 'S - Satisfactory' },
+    { value: 'N', label: 'N - Needs Improvement' },
+  ]
+
+  useEffect(() => { fetchAttributes() }, [classId, term])
+  useEffect(() => { onDirtyChange?.(false) }, [classId, term])
+
+  const fetchAttributes = async () => {
+    const { data } = await supabase
+      .from('student_attributes')
+      .select('*')
+      .eq('class_id', classId)
+      .eq('term', term)
+
+    const map = {}
+    data?.forEach((row) => {
+      map[row.student_id] = {
+        confident: row.confident || '',
+        responsible: row.responsible || '',
+        reflective: row.reflective || '',
+        innovative: row.innovative || '',
+        engaged: row.engaged || '',
+      }
+    })
+    setAttributes(map)
+  }
+
+  const setAttribute = (studentId, field, value) => {
+    onDirtyChange?.(true)
+    setAttributes(prev => ({
+      ...prev,
+      [studentId]: { ...prev[studentId], [field]: value },
+    }))
+  }
+
+  const saveAll = async () => {
+    setSaving(true)
+    const rows = students.map((student) => {
+      const values = attributes[student.id] || {}
+      return {
+        class_id: classId,
+        student_id: student.id,
+        term,
+        confident: values.confident || null,
+        responsible: values.responsible || null,
+        reflective: values.reflective || null,
+        innovative: values.innovative || null,
+        engaged: values.engaged || null,
+      }
+    })
+
+    await supabase
+      .from('student_attributes')
+      .upsert(rows, { onConflict: 'class_id,student_id,term' })
+
+    setSaving(false)
+    setSaved(true)
+    onDirtyChange?.(false)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <p className="text-sm text-gray-500">Set G/S/N for each student attribute criterion.</p>
+        <button
+          onClick={saveAll}
+          disabled={saving}
+          className="px-4 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300"
+        >
+          {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save'}
+        </button>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 min-w-48">Student</th>
+              {ATTRIBUTE_FIELDS.map(field => (
+                <th key={field.key} className="text-center px-3 py-3 text-gray-500 font-medium min-w-44 border-l border-gray-100">
+                  {field.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {students.map((student) => {
+              const row = attributes[student.id] || {}
+              return (
+                <tr key={student.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 sticky left-0 bg-white">
+                    <div className="font-medium text-gray-900">{student.name_eng || '—'}</div>
+                    <div className="text-sm text-gray-500">{student.name_vn || '—'}</div>
+                    <div className="text-xs text-gray-400">{student.student_id || '—'}</div>
+                  </td>
+                  {ATTRIBUTE_FIELDS.map(field => (
+                    <td key={field.key} className="px-3 py-2 text-center border-l border-gray-100">
+                      <select
+                        value={row[field.key] ?? ''}
+                        onChange={e => setAttribute(student.id, field.key, e.target.value)}
+                        className="w-40 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      >
+                        {OPTIONS.map(option => (
+                          <option key={`${field.key}_${option.value || 'empty'}`} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                  ))}
                 </tr>
               )
             })}
@@ -1025,8 +1479,9 @@ function SummaryTab({ classId, term, students, isESL }) {
                 return (
                   <tr key={student.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 sticky left-0 bg-white">
-                      <div className="font-medium text-gray-900">{student.name_eng}</div>
-                      <div className="text-xs text-gray-400">{student.student_id}</div>
+                      <div className="font-medium text-gray-900">{student.name_eng || '—'}</div>
+                      <div className="text-sm text-gray-500">{student.name_vn || '—'}</div>
+                      <div className="text-xs text-gray-400">{student.student_id || '—'}</div>
                     </td>
                     <td className={`px-4 py-3 text-center font-medium ${scoreColor(d.partPct)}`}>{fmt(d.partPct)}{d.partPct != null ? '%' : ''}</td>
                     <td className={`px-4 py-3 text-center font-medium ${scoreColor(d.assignAvg)}`}>{fmt(d.assignAvg)}{d.assignAvg != null ? '%' : ''}</td>
@@ -1079,7 +1534,7 @@ function CommentsTab({ classId, term, students, onDirtyChange }) {
     <div>
       <div className="flex justify-between items-center mb-4">
         <p className="text-sm text-gray-500">Write end of term comments for each student.</p>
-        <button onClick={saveAll} disabled={saving} className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300">
+        <button onClick={saveAll} disabled={saving} className="px-4 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300">
           {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save'}
         </button>
       </div>
@@ -1087,8 +1542,9 @@ function CommentsTab({ classId, term, students, onDirtyChange }) {
         {students.map(student => (
           <div key={student.id} className="bg-white rounded-xl border border-gray-200 p-4">
             <div className="mb-2">
-              <span className="font-medium text-gray-900">{student.name_eng}</span>
-              <span className="text-xs text-gray-400 ml-2">{student.student_id}</span>
+              <div className="font-medium text-gray-900">{student.name_eng || '—'}</div>
+              <div className="text-sm text-gray-500">{student.name_vn || '—'}</div>
+              <div className="text-xs text-gray-400">{student.student_id || '—'}</div>
             </div>
             <textarea rows={4} placeholder="Write a comment for this student..."
               value={comments[student.id] ?? ''}

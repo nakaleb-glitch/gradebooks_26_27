@@ -330,7 +330,7 @@ export default function Students() {
           <button
             onClick={createStudent}
             disabled={saving}
-            className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:bg-gray-300"
+            className="mt-4 px-6 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:bg-gray-300"
           >
             {saving ? 'Saving...' : 'Save Student'}
           </button>

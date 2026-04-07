@@ -43,7 +43,9 @@ export default function Login() {
           <div className="p-10 text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-1">Cambridge Programme Portal</h1>
             <p className="text-gray-400 text-sm mb-8">
-              Sign in using your Royal Staff ID. You will be prompted to change your password after first logging in.
+              {mode === 'teacher'
+                ? 'Sign in using your Royal Staff ID. You will be prompted to change your password after first logging in.'
+                : 'Click the button below to login using your Royal credentials.'}
             </p>
 
             {mode === 'teacher' ? (

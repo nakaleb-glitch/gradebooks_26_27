@@ -8,6 +8,9 @@ export default function Dashboard() {
   const { profile, user } = useAuth()
   const [classes, setClasses] = useState([])
   const [students, setStudents] = useState([])
+  const [teacherEvents, setTeacherEvents] = useState([])
+  const [teacherDeadlines, setTeacherDeadlines] = useState([])
+  const [selectedDashboardItem, setSelectedDashboardItem] = useState(null)
   const [loading, setLoading] = useState(true)
   const [levelFilter, setLevelFilter] = useState('')
   const [gradeFilter, setGradeFilter] = useState('all')
@@ -30,10 +33,21 @@ export default function Dashboard() {
       return
     }
 
-    let query = supabase.from('classes').select('*').order('name')
-    query = query.eq('teacher_id', profile.id)
-    const { data } = await query
-    setClasses(data || [])
+    const today = new Date().toISOString().slice(0, 10)
+    const [{ data: classData }, { data: dashboardItems }] = await Promise.all([
+      supabase.from('classes').select('*').eq('teacher_id', profile.id).order('name'),
+      supabase
+        .from('events_deadlines')
+        .select('id, item_type, event_date, title, venue, description, plan_url')
+        .gte('event_date', today)
+        .order('event_date', { ascending: true })
+        .order('created_at', { ascending: false }),
+    ])
+
+    const rows = dashboardItems || []
+    setClasses(classData || [])
+    setTeacherEvents(rows.filter(item => item.item_type === 'event'))
+    setTeacherDeadlines(rows.filter(item => item.item_type === 'deadline'))
     setLoading(false)
   }
 
@@ -188,7 +202,24 @@ export default function Dashboard() {
     classes: '#1f86c7',
     users: '#ffc612',
     resources: '#1f86c7',
+    eventsDeadlines: '#d1232a',
+    behavior: '#1f86c7',
     class: '#d1232a',
+    events: '#1f86c7',
+    deadlines: '#ffc612',
+  }
+
+  const formatDateWithDay = (value) => {
+    if (!value) return ''
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return value
+    return date.toLocaleDateString('en-GB', {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'UTC',
+    })
   }
 
   const welcomeLabel = profile?.full_name || user?.email
@@ -214,7 +245,7 @@ export default function Dashboard() {
           {/* Left column — Admin tools */}
           <div className="lg:col-span-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Admin Tools</h3>
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Link
                 to="/admin/students"
                 className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block"
@@ -246,6 +277,22 @@ export default function Dashboard() {
               >
                 <div className="font-semibold text-gray-900">Resource Management</div>
                 <div className="text-sm text-gray-500 mt-1">Add, edit or remove resources.</div>
+              </Link>
+              <Link
+                to="/admin/events-deadlines"
+                className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block"
+                style={{ borderTopColor: CARD_ACCENT.eventsDeadlines, borderTopWidth: 3 }}
+              >
+                <div className="font-semibold text-gray-900">Event &amp; Admin Deadline Management</div>
+                <div className="text-sm text-gray-500 mt-1">Add, edit or remove events and deadlines.</div>
+              </Link>
+              <Link
+                to="/admin/behavior-management"
+                className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block"
+                style={{ borderTopColor: CARD_ACCENT.behavior, borderTopWidth: 3 }}
+              >
+                <div className="font-semibold text-gray-900">Behavior Management</div>
+                <div className="text-sm text-gray-500 mt-1">Review teacher behavior reports and follow-up actions.</div>
               </Link>
             </div>
           </div>
@@ -313,37 +360,148 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-      ) : classes.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">
-          {profile?.role === 'admin'
-            ? 'No classes yet. Create one in the Classes section.'
-            : 'No classes assigned yet. Contact your administrator.'}
-        </div>
       ) : (
         <>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">My Classes</h3>
-        <div className="grid grid-cols-3 gap-4">
-          {classes.map(cls => (
-            <Link
-              key={cls.id}
-              to={`/class/${cls.id}`}
-              className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all"
-              style={{ borderTopColor: CARD_ACCENT.class, borderTopWidth: 3 }}
-            >
-              <div className="font-semibold text-gray-900 mb-1">{cls.name}</div>
-              <div className="text-sm text-gray-500">{cls.subject}</div>
-              <div className="mt-3 flex gap-2">
-                <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
-                  {levelLabel(cls.level)}
-                </span>
-                <span className={`text-xs px-2 py-1 rounded-full ${programmeBadgeStyle(cls.programme)}`}>
-                  {programmeLabel(cls.programme)}
-                </span>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <div className="lg:col-span-7">
+              <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: CARD_ACCENT.class, borderTopWidth: 3 }}>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">My Classes</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {classes.length === 0 ? (
+                    <div className="col-span-full rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-400">
+                      No classes assigned yet. Contact your administrator.
+                    </div>
+                  ) : (
+                    classes.map(cls => (
+                      <Link
+                        key={cls.id}
+                        to={`/class/${cls.id}`}
+                        className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all"
+                        style={{ borderTopColor: '#9ca3af', borderTopWidth: 3 }}
+                      >
+                        <div className="font-semibold text-gray-900 mb-1">{cls.name}</div>
+                        <div className="text-sm text-gray-500">{cls.subject}</div>
+                        <div className="mt-3 flex gap-2">
+                          <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
+                            {levelLabel(cls.level)}
+                          </span>
+                          <span className={`text-xs px-2 py-1 rounded-full ${programmeBadgeStyle(cls.programme)}`}>
+                            {programmeLabel(cls.programme)}
+                          </span>
+                        </div>
+                      </Link>
+                    ))
+                  )}
+                </div>
               </div>
-            </Link>
-          ))}
-        </div>
+            </div>
+
+            <div className="lg:col-span-5 space-y-4">
+              <Link
+                to="/teacher/behavior-report"
+                className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-sm transition-all block"
+                style={{ borderTopColor: '#d1232a', borderTopWidth: 3 }}
+              >
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">Behavior Report Tool</h3>
+                <p className="text-sm text-gray-500">Submit a student behavior report for admin review.</p>
+                <span className="inline-block mt-3 text-xs px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-100">
+                  Create New Report
+                </span>
+              </Link>
+
+              <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: CARD_ACCENT.events, borderTopWidth: 3 }}>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Events</h3>
+                <div className="space-y-2">
+                  {teacherEvents.length === 0 ? (
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                      No upcoming events yet. Admin updates will appear here.
+                    </div>
+                  ) : teacherEvents.map(eventItem => (
+                    <button
+                      key={eventItem.id}
+                      type="button"
+                      onClick={() => setSelectedDashboardItem({ ...eventItem, label: 'Event' })}
+                      className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-blue-50 transition-colors"
+                    >
+                      <div className="text-sm font-medium text-gray-800">{eventItem.title}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">{formatDateWithDay(eventItem.event_date)}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: CARD_ACCENT.deadlines, borderTopWidth: 3 }}>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Admin Deadlines</h3>
+                <div className="space-y-2">
+                  {teacherDeadlines.length === 0 ? (
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                      No upcoming deadlines yet. Admin updates will appear here.
+                    </div>
+                  ) : teacherDeadlines.map(deadlineItem => (
+                    <button
+                      key={deadlineItem.id}
+                      type="button"
+                      onClick={() => setSelectedDashboardItem({ ...deadlineItem, label: 'Admin Deadline' })}
+                      className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-amber-50 transition-colors"
+                    >
+                      <div className="text-sm font-medium text-gray-800">{deadlineItem.title}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">{formatDateWithDay(deadlineItem.event_date)}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </>
+      )}
+
+      {selectedDashboardItem && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
+          <div className="w-full max-w-md bg-white rounded-xl border border-gray-200 p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h4 className="text-base font-semibold text-gray-900">{selectedDashboardItem.title}</h4>
+                <p className="text-xs text-gray-500 mt-1">
+                  {selectedDashboardItem.label} • {formatDateWithDay(selectedDashboardItem.event_date)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedDashboardItem(null)}
+                className="text-gray-400 hover:text-gray-600"
+                aria-label="Close details"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3 text-sm">
+              <div>
+                <div className="text-xs font-medium text-gray-500">Location / Venue</div>
+                <div className="text-gray-800">{selectedDashboardItem.venue || '—'}</div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-500">Description</div>
+                <div className="text-gray-800 whitespace-pre-wrap">{selectedDashboardItem.description || '—'}</div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-500">Planning Link</div>
+                {selectedDashboardItem.plan_url ? (
+                  <a
+                    href={selectedDashboardItem.plan_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline break-all"
+                  >
+                    {selectedDashboardItem.plan_url}
+                  </a>
+                ) : (
+                  <div className="text-gray-400">—</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </Layout>
   )

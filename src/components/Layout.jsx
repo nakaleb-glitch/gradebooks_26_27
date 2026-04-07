@@ -30,6 +30,8 @@ export default function Layout({ children }) {
     { label: 'Class Management', path: '/admin/classes' },
     { label: 'Teacher Management', path: '/admin/users' },
     { label: 'Resource Management', path: '/admin/resources' },
+    { label: 'Event & Admin Deadline Management', path: '/admin/events-deadlines' },
+    { label: 'Behavior Management', path: '/admin/behavior-management' },
   ]
   const navLabelClass = 'text-sm font-medium inline-flex items-center h-6 leading-6 transition-colors'
   const navLabelBaseStyle = {

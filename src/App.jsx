@@ -7,8 +7,11 @@ import Students from './pages/admin/Students'
 import Classes from './pages/admin/Classes'
 import Users from './pages/admin/Users'
 import Resources from './pages/admin/Resources'
+import EventsDeadlines from './pages/admin/EventsDeadlines'
+import BehaviorManagement from './pages/admin/BehaviorManagement'
 import ClassDetail from './pages/ClassDetail'
 import UserSettings from './pages/UserSettings'
+import BehaviorReport from './pages/BehaviorReport'
 
 const ProtectedRoute = ({ children, adminOnly = false }) => {
   const { user, profile, loading } = useAuth()
@@ -26,10 +29,13 @@ function AppRoutes() {
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><UserSettings /></ProtectedRoute>} />
       <Route path="/class/:classId" element={<ProtectedRoute><ClassDetail /></ProtectedRoute>} />
+      <Route path="/teacher/behavior-report" element={<ProtectedRoute><BehaviorReport /></ProtectedRoute>} />
       <Route path="/admin/students" element={<ProtectedRoute adminOnly><Students /></ProtectedRoute>} />
       <Route path="/admin/classes" element={<ProtectedRoute adminOnly><Classes /></ProtectedRoute>} />
       <Route path="/admin/users" element={<ProtectedRoute adminOnly><Users /></ProtectedRoute>} />
       <Route path="/admin/resources" element={<ProtectedRoute adminOnly><Resources /></ProtectedRoute>} />
+      <Route path="/admin/events-deadlines" element={<ProtectedRoute adminOnly><EventsDeadlines /></ProtectedRoute>} />
+      <Route path="/admin/behavior-management" element={<ProtectedRoute adminOnly><BehaviorManagement /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/login" />} />
     </Routes>
   )

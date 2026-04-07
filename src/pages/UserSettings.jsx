@@ -2,8 +2,10 @@ import { useMemo, useState } from 'react'
 import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import { useNavigate } from 'react-router-dom'
 
 export default function UserSettings() {
+  const navigate = useNavigate()
   const { user, profile, refreshProfile } = useAuth()
   const [uploading, setUploading] = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
@@ -121,6 +123,12 @@ export default function UserSettings() {
   return (
     <Layout>
       <div className="mb-8">
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="text-sm text-gray-400 hover:text-gray-600 mb-4 flex items-center gap-1"
+        >
+          ← Go Back
+        </button>
         <h2 className="text-2xl font-bold text-gray-900">User Settings</h2>
         <p className="text-gray-500 text-sm mt-1">Review your user profile information, upload a profil picture and reset your password.</p>
       </div>
