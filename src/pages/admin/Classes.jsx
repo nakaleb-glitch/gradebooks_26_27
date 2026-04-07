@@ -7,11 +7,12 @@ const SUBJECTS = {
   secondary: ['ESL', 'GP', 'Mathematics', 'Science', 'Global Perspectives'],
 }
 
-const getEligibleTeachers = (teachers, classSubject, classLevel) => {
+const getEligibleTeachers = (teachers, classSubject, classLevel, classProgramme) => {
   if (!classSubject || !classLevel) return teachers
   return teachers.filter(t => {
     if (t.level !== classLevel) return false
     const s = t.subject
+    if (classSubject === 'ESL' && classProgramme === 'integrated') return s === 'ESL/GP' || s === 'VN ESL'
     if (classSubject === 'ESL') return s === 'ESL/GP'
     if (classSubject === 'GP') return s === 'ESL/GP'
     if (classSubject === 'Mathematics') return s === 'Mathematics' || s === 'Science'
@@ -144,8 +145,8 @@ export default function Classes() {
   const programmeLabel = (p) => p === 'bilingual' ? 'Bilingual' : 'Integrated'
   const programmeBadgeStyle = (p) => p === 'bilingual' ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700'
 
-  const filteredTeachers = getEligibleTeachers(teachers, form.subject, form.level)
-  const editFilteredTeachers = getEligibleTeachers(teachers, editForm.subject, editForm.level)
+  const filteredTeachers = getEligibleTeachers(teachers, form.subject, form.level, form.programme)
+  const editFilteredTeachers = getEligibleTeachers(teachers, editForm.subject, editForm.level, editForm.programme)
 
   return (
     <Layout>
@@ -197,7 +198,7 @@ export default function Classes() {
             </div>
             <div>
               <label className="text-xs font-medium text-gray-500 block mb-1">Programme</label>
-              <select value={form.programme} onChange={e => setForm({ ...form, programme: e.target.value })}
+              <select value={form.programme} onChange={e => setForm({ ...form, programme: e.target.value, teacher_id: '' })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="bilingual">Bilingual</option>
                 <option value="integrated">Integrated</option>
@@ -268,7 +269,7 @@ export default function Classes() {
                   </td>
                   <td className="px-4 py-3">
                     {editingId === cls.id ? (
-                      <select value={editForm.programme} onChange={e => setEditForm({ ...editForm, programme: e.target.value })}
+                      <select value={editForm.programme} onChange={e => setEditForm({ ...editForm, programme: e.target.value, teacher_id: '' })}
                         className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="bilingual">Bilingual</option>
                         <option value="integrated">Integrated</option>
