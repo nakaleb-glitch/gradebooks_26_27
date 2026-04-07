@@ -18,8 +18,12 @@ export default function ClassDetail() {
   const [cls, setCls] = useState(null)
   const [selectedTerm, setSelectedTerm] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [hasUnsavedGradebook, setHasUnsavedGradebook] = useState(false)
 
   useEffect(() => { fetchClass() }, [classId])
+  useEffect(() => {
+    if (!selectedTerm) setHasUnsavedGradebook(false)
+  }, [selectedTerm])
 
   const fetchClass = async () => {
     const { data } = await supabase
@@ -37,7 +41,18 @@ export default function ClassDetail() {
   return (
     <Layout>
       <div className="mb-8">
-        <button onClick={() => navigate('/dashboard')} className="text-sm text-gray-400 hover:text-gray-600 mb-4 flex items-center gap-1">
+        <button
+          onClick={() => {
+            const hasUnsaved = hasUnsavedGradebook || sessionStorage.getItem('gradebook_unsaved_changes') === '1'
+            if (hasUnsaved) {
+              const leave = window.confirm('You have unsaved gradebook changes. Please click Save before leaving this page. Continue anyway?')
+              if (!leave) return
+            }
+            sessionStorage.setItem('gradebook_unsaved_changes', '0')
+            navigate('/dashboard')
+          }}
+          className="text-sm text-gray-400 hover:text-gray-600 mb-4 flex items-center gap-1"
+        >
           ← Back to Dashboard
         </button>
         <h2 className="text-2xl font-bold text-gray-900">{cls.name}</h2>
@@ -82,6 +97,7 @@ export default function ClassDetail() {
           term={selectedTerm}
           termLabel={TERMS.find(t => t.key === selectedTerm)?.label}
           onBack={() => setSelectedTerm(null)}
+          onUnsavedChange={setHasUnsavedGradebook}
         />
       )}
     </Layout>
@@ -159,12 +175,22 @@ function ResourceCards({ level, grade, programme, subject }) {
 const pct = (score, total) => (total > 0 ? (score / total) * 100 : null)
 const avg = (arr) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null
 const fmt = (n) => n != null ? n.toFixed(1) : '—'
+const letterGradeFromPercentage = (score) => {
+  if (score == null) return '—'
+  if (score >= 90.5) return 'A*'
+  if (score >= 79.5) return 'A'
+  if (score >= 64.5) return 'B'
+  if (score >= 49.5) return 'C'
+  if (score >= 34.5) return 'D'
+  return 'E'
+}
 
 // ── Gradebook Shell ───────────────────────────────────────────────────────────
-function Gradebook({ cls, term, termLabel, onBack }) {
+function Gradebook({ cls, term, termLabel, onBack, onUnsavedChange }) {
   const [activeTab, setActiveTab] = useState('participation')
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
+  const [dirtyTabs, setDirtyTabs] = useState({})
   const isESL = cls.subject === 'ESL'
   const isFinal = term === 'final_1' || term === 'final_2'
 
@@ -189,15 +215,69 @@ function Gradebook({ cls, term, termLabel, onBack }) {
     ...(isFinal ? [{ key: 'comments', label: 'Comments' }] : []),
   ]
 
+  const setTabDirty = (tabKey, isDirty) => {
+    setDirtyTabs(prev => ({ ...prev, [tabKey]: isDirty }))
+  }
+
+  const hasAnyUnsaved = Object.values(dirtyTabs).some(Boolean)
+
+  useEffect(() => {
+    onUnsavedChange?.(hasAnyUnsaved)
+  }, [hasAnyUnsaved, onUnsavedChange])
+
+  useEffect(() => {
+    sessionStorage.setItem('gradebook_unsaved_changes', hasAnyUnsaved ? '1' : '0')
+  }, [hasAnyUnsaved])
+
+  useEffect(() => {
+    return () => {
+      sessionStorage.setItem('gradebook_unsaved_changes', '0')
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      if (!hasAnyUnsaved) return
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasAnyUnsaved])
+
+  const handleBackToTerms = () => {
+    if (hasAnyUnsaved) {
+      const leave = window.confirm('You have unsaved changes. Please click Save before leaving this gradebook. Continue anyway?')
+      if (!leave) return
+    }
+    onBack()
+  }
+
+  const handleTabChange = (nextTab) => {
+    if (nextTab === activeTab) return
+    if (dirtyTabs[activeTab]) {
+      const leave = window.confirm('You have unsaved changes in this tab. Please click Save before switching tabs. Continue anyway?')
+      if (!leave) return
+    }
+    setActiveTab(nextTab)
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="text-sm text-gray-400 hover:text-gray-600">← Terms</button>
+          <button onClick={handleBackToTerms} className="text-sm text-gray-400 hover:text-gray-600">← Terms</button>
           <span className="text-gray-300">|</span>
           <h3 className="text-lg font-semibold text-gray-900">{termLabel}</h3>
         </div>
-        <span className="text-sm text-gray-500">{students.length} students</span>
+        <div className="flex items-center gap-3">
+          {hasAnyUnsaved && (
+            <span className="text-xs px-2 py-1 rounded-full font-medium bg-amber-100 text-amber-700 border border-amber-200">
+              Unsaved Changes
+            </span>
+          )}
+          <span className="text-sm text-gray-500">{students.length} students</span>
+        </div>
       </div>
 
       {loading ? (
@@ -210,7 +290,7 @@ function Gradebook({ cls, term, termLabel, onBack }) {
         <>
           <div className="flex gap-1 border-b border-gray-200 mb-6">
             {TABS.map(tab => (
-              <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+              <button key={tab.key} onClick={() => handleTabChange(tab.key)}
                 className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
                   activeTab === tab.key ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}>
@@ -219,11 +299,11 @@ function Gradebook({ cls, term, termLabel, onBack }) {
             ))}
           </div>
 
-          {activeTab === 'participation' && <ParticipationTab classId={cls.id} term={term} students={students} />}
-          {activeTab === 'assignments' && <AssignmentsTab classId={cls.id} term={term} students={students} />}
-          {activeTab === 'progress_test' && <ProgressTestTab classId={cls.id} term={term} students={students} isESL={isESL} />}
+          {activeTab === 'participation' && <ParticipationTab classId={cls.id} term={term} students={students} onDirtyChange={(value) => setTabDirty('participation', value)} />}
+          {activeTab === 'assignments' && <AssignmentsTab classId={cls.id} term={term} students={students} onDirtyChange={(value) => setTabDirty('assignments', value)} />}
+          {activeTab === 'progress_test' && <ProgressTestTab classId={cls.id} term={term} students={students} isESL={isESL} onDirtyChange={(value) => setTabDirty('progress_test', value)} />}
           {activeTab === 'summary' && <SummaryTab classId={cls.id} term={term} students={students} isESL={isESL} />}
-          {activeTab === 'comments' && isFinal && <CommentsTab classId={cls.id} term={term} students={students} />}
+          {activeTab === 'comments' && isFinal && <CommentsTab classId={cls.id} term={term} students={students} onDirtyChange={(value) => setTabDirty('comments', value)} />}
         </>
       )}
     </div>
@@ -231,12 +311,13 @@ function Gradebook({ cls, term, termLabel, onBack }) {
 }
 
 // ── Participation Tab ─────────────────────────────────────────────────────────
-function ParticipationTab({ classId, term, students }) {
+function ParticipationTab({ classId, term, students, onDirtyChange }) {
   const [grades, setGrades] = useState({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
   useEffect(() => { fetchGrades() }, [classId, term])
+  useEffect(() => { onDirtyChange?.(false) }, [classId, term])
 
   const fetchGrades = async () => {
     const { data } = await supabase
@@ -250,6 +331,7 @@ function ParticipationTab({ classId, term, students }) {
   }
 
   const setGrade = (studentId, week, field, value) => {
+    onDirtyChange?.(true)
     setGrades(prev => ({ ...prev, [`${studentId}_${week}`]: { ...prev[`${studentId}_${week}`], [field]: value } }))
   }
 
@@ -268,6 +350,7 @@ function ParticipationTab({ classId, term, students }) {
     await supabase.from('participation_grades').upsert(rows, { onConflict: 'class_id,student_id,term,week' })
     setSaving(false)
     setSaved(true)
+    onDirtyChange?.(false)
     setTimeout(() => setSaved(false), 2000)
   }
 
@@ -335,7 +418,7 @@ function ParticipationTab({ classId, term, students }) {
 }
 
 // ── Assignments Tab ───────────────────────────────────────────────────────────
-function AssignmentsTab({ classId, term, students }) {
+function AssignmentsTab({ classId, term, students, onDirtyChange }) {
   const [assignments, setAssignments] = useState([])
   const [grades, setGrades] = useState({})
   const [showForm, setShowForm] = useState(false)
@@ -344,6 +427,7 @@ function AssignmentsTab({ classId, term, students }) {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => { fetchAssignments() }, [classId, term])
+  useEffect(() => { onDirtyChange?.(false) }, [classId, term])
 
   const fetchAssignments = async () => {
     const { data: aData } = await supabase.from('assignments').select('*').eq('class_id', classId).eq('term', term).order('created_at')
@@ -365,6 +449,7 @@ function AssignmentsTab({ classId, term, students }) {
   }
 
   const setGrade = (assignmentId, studentId, field, value) => {
+    onDirtyChange?.(true)
     setGrades(prev => ({ ...prev, [`${assignmentId}_${studentId}`]: { ...prev[`${assignmentId}_${studentId}`], [field]: value } }))
   }
 
@@ -392,6 +477,7 @@ function AssignmentsTab({ classId, term, students }) {
     await supabase.from('assignment_grades').upsert(rows, { onConflict: 'assignment_id,student_id' })
     setSaving(false)
     setSaved(true)
+    onDirtyChange?.(false)
     setTimeout(() => setSaved(false), 2000)
   }
 
@@ -492,7 +578,7 @@ function AssignmentsTab({ classId, term, students }) {
 }
 
 // ── Progress Test Tab ─────────────────────────────────────────────────────────
-function ProgressTestTab({ classId, term, students, isESL }) {
+function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
   const [grades, setGrades] = useState({})
   const [totals, setTotals] = useState(
     isESL
@@ -503,6 +589,7 @@ function ProgressTestTab({ classId, term, students, isESL }) {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => { fetchGrades() }, [classId, term])
+  useEffect(() => { onDirtyChange?.(false) }, [classId, term, isESL])
 
   const fetchGrades = async () => {
     const { data } = await supabase.from('progress_test_grades').select('*').eq('class_id', classId).eq('term', term)
@@ -521,6 +608,7 @@ function ProgressTestTab({ classId, term, students, isESL }) {
   }
 
   const setGrade = (studentId, field, value) => {
+    onDirtyChange?.(true)
     setGrades(prev => ({ ...prev, [studentId]: { ...prev[studentId], [field]: value } }))
   }
 
@@ -566,6 +654,7 @@ function ProgressTestTab({ classId, term, students, isESL }) {
     await supabase.from('progress_test_grades').upsert(rows, { onConflict: 'class_id,student_id,term' })
     setSaving(false)
     setSaved(true)
+    onDirtyChange?.(false)
     setTimeout(() => setSaved(false), 2000)
   }
 
@@ -586,19 +675,28 @@ function ProgressTestTab({ classId, term, students, isESL }) {
             <div>
               <label className="text-xs font-medium text-gray-500 block mb-1">Reading & Writing — Total Points</label>
               <input type="number" placeholder="e.g. 50" value={totals.rw_total}
-                onChange={e => setTotals(prev => ({ ...prev, rw_total: e.target.value }))}
+                onChange={e => {
+                  onDirtyChange?.(true)
+                  setTotals(prev => ({ ...prev, rw_total: e.target.value }))
+                }}
                 className="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label className="text-xs font-medium text-gray-500 block mb-1">Listening — Total Points</label>
               <input type="number" placeholder="e.g. 40" value={totals.l_total}
-                onChange={e => setTotals(prev => ({ ...prev, l_total: e.target.value }))}
+                onChange={e => {
+                  onDirtyChange?.(true)
+                  setTotals(prev => ({ ...prev, l_total: e.target.value }))
+                }}
                 className="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label className="text-xs font-medium text-gray-500 block mb-1">Speaking — Total Points</label>
               <input type="number" placeholder="e.g. 10" value={totals.s_total}
-                onChange={e => setTotals(prev => ({ ...prev, s_total: e.target.value }))}
+                onChange={e => {
+                  onDirtyChange?.(true)
+                  setTotals(prev => ({ ...prev, s_total: e.target.value }))
+                }}
                 className="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </>
@@ -606,7 +704,10 @@ function ProgressTestTab({ classId, term, students, isESL }) {
           <div>
             <label className="text-xs font-medium text-gray-500 block mb-1">Total Points</label>
             <input type="number" placeholder="e.g. 100" value={totals.total_points}
-              onChange={e => setTotals(prev => ({ ...prev, total_points: e.target.value }))}
+              onChange={e => {
+                onDirtyChange?.(true)
+                setTotals(prev => ({ ...prev, total_points: e.target.value }))
+              }}
               className="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
         )}
@@ -763,6 +864,7 @@ function SummaryTab({ classId, term, students, isESL }) {
                 <th className="text-center px-4 py-3 text-gray-500 font-medium bg-blue-50">Attainment %</th>
                 <th className="text-center px-4 py-3 text-gray-500 font-medium">Progress Test %</th>
                 <th className="text-center px-4 py-3 text-gray-500 font-medium bg-green-50">Total %</th>
+                <th className="text-center px-4 py-3 text-gray-500 font-medium">Letter Grade</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -779,6 +881,9 @@ function SummaryTab({ classId, term, students, isESL }) {
                     <td className={`px-4 py-3 text-center font-semibold bg-blue-50 ${scoreColor(d.attainment)}`}>{fmt(d.attainment)}{d.attainment != null ? '%' : ''}</td>
                     <td className={`px-4 py-3 text-center font-medium ${scoreColor(d.ptOverall)}`}>{fmt(d.ptOverall)}{d.ptOverall != null ? '%' : ''}</td>
                     <td className={`px-4 py-3 text-center font-bold bg-green-50 ${scoreColor(d.total)}`}>{fmt(d.total)}{d.total != null ? '%' : ''}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="font-semibold text-gray-800">{letterGradeFromPercentage(d.total)}</span>
+                    </td>
                   </tr>
                 )
               })}
@@ -791,12 +896,13 @@ function SummaryTab({ classId, term, students, isESL }) {
 }
 
 // ── Comments Tab ──────────────────────────────────────────────────────────────
-function CommentsTab({ classId, term, students }) {
+function CommentsTab({ classId, term, students, onDirtyChange }) {
   const [comments, setComments] = useState({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
   useEffect(() => { fetchComments() }, [classId, term])
+  useEffect(() => { onDirtyChange?.(false) }, [classId, term])
 
   const fetchComments = async () => {
     const { data } = await supabase.from('term_comments').select('*').eq('class_id', classId).eq('term', term)
@@ -813,6 +919,7 @@ function CommentsTab({ classId, term, students }) {
     await supabase.from('term_comments').upsert(rows, { onConflict: 'class_id,student_id,term' })
     setSaving(false)
     setSaved(true)
+    onDirtyChange?.(false)
     setTimeout(() => setSaved(false), 2000)
   }
 
@@ -833,7 +940,10 @@ function CommentsTab({ classId, term, students }) {
             </div>
             <textarea rows={4} placeholder="Write a comment for this student..."
               value={comments[student.id] ?? ''}
-              onChange={e => setComments(prev => ({ ...prev, [student.id]: e.target.value }))}
+              onChange={e => {
+                onDirtyChange?.(true)
+                setComments(prev => ({ ...prev, [student.id]: e.target.value }))
+              }}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
           </div>
         ))}

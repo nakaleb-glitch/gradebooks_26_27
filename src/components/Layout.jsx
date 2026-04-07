@@ -13,6 +13,12 @@ export default function Layout({ children }) {
   const [passwordError, setPasswordError] = useState('')
   const [showAdminMenu, setShowAdminMenu] = useState(false)
 
+  const confirmUnsavedGradebookNavigation = () => {
+    const hasUnsaved = sessionStorage.getItem('gradebook_unsaved_changes') === '1'
+    if (!hasUnsaved) return true
+    return window.confirm('You have unsaved gradebook changes. Please click Save before leaving this page. Continue anyway?')
+  }
+
   const handleSignOut = async () => {
     await signOut()
     navigate('/login')
@@ -156,6 +162,11 @@ export default function Layout({ children }) {
                               e.currentTarget.style.color = '#e5e7eb'
                             }
                           }}
+                          onClick={e => {
+                            if (!confirmUnsavedGradebookNavigation()) {
+                              e.preventDefault()
+                            }
+                          }}
                         >
                           {tool.label}
                         </Link>
@@ -187,11 +198,19 @@ export default function Layout({ children }) {
                 style={{ color: '#e5e7eb' }}
                 onMouseOver={e => e.currentTarget.style.color = '#ffc612'}
                 onMouseOut={e => e.currentTarget.style.color = '#e5e7eb'}
+                onClick={e => {
+                  if (!confirmUnsavedGradebookNavigation()) {
+                    e.preventDefault()
+                  }
+                }}
               >
                 User Settings
               </Link>
               <button
-                onClick={handleSignOut}
+                onClick={() => {
+                  if (!confirmUnsavedGradebookNavigation()) return
+                  handleSignOut()
+                }}
                 className="text-xs font-medium transition-colors"
                 style={{ color: '#e5e7eb' }}
                 onMouseOver={e => e.currentTarget.style.color = '#d1232a'}
