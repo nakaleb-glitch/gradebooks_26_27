@@ -12,7 +12,6 @@ const TERMS = [
 
 const fmt = (n) => n != null ? n.toFixed(1) : '—'
 const avg = (arr) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null
-const pct = (score, total) => (total > 0 ? (score / total) * 100 : null)
 
 const letterGradeFromPercentage = (score) => {
   if (score == null) return '—'
@@ -24,6 +23,8 @@ const letterGradeFromPercentage = (score) => {
   return 'E'
 }
 
+const ATTRIBUTE_NAMES = ['Communication', 'Collaboration', 'Organisation', 'Critical Thinking', 'Creative']
+
 export default function GradebookViewer() {
   const navigate = useNavigate()
   const [homerooms, setHomerooms] = useState([])
@@ -31,8 +32,9 @@ export default function GradebookViewer() {
   const [selectedTerm, setSelectedTerm] = useState('')
   const [classes, setClasses] = useState([])
   const [loading, setLoading] = useState(true)
-  const [gradeData, setGradeData] = useState({})
-  const [students, setStudents] = useState([])
+  const [selectedSubject, setSelectedSubject] = useState('')
+  const [studentData, setStudentData] = useState([])
+  const [programme, setProgramme] = useState('')
 
   // Fetch unique homerooms
   useEffect(() => {
@@ -62,8 +64,9 @@ export default function GradebookViewer() {
       fetchClasses()
     } else {
       setClasses([])
-      setStudents([])
-      setGradeData({})
+      setStudentData([])
+      setProgramme('')
+      setSelectedSubject('')
     }
   }, [selectedHomeroom])
 
@@ -75,139 +78,167 @@ export default function GradebookViewer() {
       .order('name')
     
     setClasses(data || [])
+    
+    // Determine programme and set subjects
+    if (data?.length > 0) {
+      const firstProgramme = data[0].programme
+      setProgramme(firstProgramme)
+      
+      // Auto-select first subject
+      if (data.length > 0 && !selectedSubject) {
+        setSelectedSubject(data[0].id)
+      }
+    }
   }
 
-  // Fetch grade data when homeroom and term are selected
+  // Fetch student data when homeroom, term, and subject are selected
   useEffect(() => {
-    if (selectedHomeroom && selectedTerm && classes.length > 0) {
-      fetchGradeData()
+    if (selectedHomeroom && selectedTerm && selectedSubject && classes.length > 0) {
+      fetchStudentData()
     }
-  }, [selectedHomeroom, selectedTerm, classes])
+  }, [selectedHomeroom, selectedTerm, selectedSubject, classes])
 
-  const fetchGradeData = async () => {
-    const classIds = classes.map(c => c.id)
-    
-    // Fetch students enrolled in any of these classes
+  const fetchStudentData = async () => {
+    const selectedClass = classes.find(c => c.id === selectedSubject)
+    if (!selectedClass) return
+
+    // Fetch students enrolled in this class
     const { data: enrollmentData } = await supabase
       .from('class_students')
-      .select('student_id, class_id')
-      .in('class_id', classIds)
+      .select('student_id')
+      .eq('class_id', selectedSubject)
     
-    // Get unique students
-    const studentIds = [...new Set(enrollmentData?.map(e => e.student_id) || [])]
+    const studentIds = enrollmentData?.map(e => e.student_id) || []
     
     if (studentIds.length === 0) {
-      setStudents([])
-      setGradeData({})
+      setStudentData([])
       return
     }
-    
+
     // Fetch student details
     const { data: studentData } = await supabase
       .from('students')
       .select('*')
       .in('id', studentIds)
       .order('name_eng')
-    
-    setStudents(studentData || [])
-    
+
     // Fetch participation grades
     const { data: participationData } = await supabase
       .from('participation_grades')
-      .select('*')
-      .in('class_id', classIds)
+      .select('student_id, score')
+      .eq('class_id', selectedSubject)
       .eq('term', selectedTerm)
       .in('student_id', studentIds)
-    
+
     // Fetch assignments and grades
     const { data: assignmentData } = await supabase
       .from('assignments')
-      .select('*')
-      .in('class_id', classIds)
+      .select('id, max_points')
+      .eq('class_id', selectedSubject)
       .eq('term', selectedTerm)
-    
+
     const assignmentIds = assignmentData?.map(a => a.id) || []
     let assignmentGradesData = []
     if (assignmentIds.length > 0) {
       const { data: agData } = await supabase
         .from('assignment_grades')
-        .select('*')
+        .select('student_id, score')
         .in('assignment_id', assignmentIds)
         .in('student_id', studentIds)
       assignmentGradesData = agData || []
     }
-    
+
     // Fetch progress test grades
     const { data: progressTestData } = await supabase
       .from('progress_test_grades')
-      .select('*')
-      .in('class_id', classIds)
+      .select('student_id, score')
+      .eq('class_id', selectedSubject)
       .eq('term', selectedTerm)
       .in('student_id', studentIds)
-    
-    // Organize data by student and class
-    const dataByStudent = {}
-    students.forEach(student => {
-      dataByStudent[student.id] = {}
-      classes.forEach(cls => {
-        dataByStudent[student.id][cls.id] = {
-          class: cls,
-          participation: [],
-          assignments: [],
-          progressTest: [],
-        }
+
+    // Fetch student attributes
+    const { data: attributesData } = await supabase
+      .from('student_attributes')
+      .select('student_id, attribute, score')
+      .eq('class_id', selectedSubject)
+      .eq('term', selectedTerm)
+      .in('student_id', studentIds)
+
+    // Organize data by student
+    const studentMap = {}
+    studentData?.forEach(student => {
+      studentMap[student.id] = {
+        student,
+        participation: [],
+        assignments: { total: 0, max: 0 },
+        progressTest: [],
+        attributes: {},
+      }
+    })
+
+    // Populate participation
+    participationData?.forEach(grade => {
+      if (studentMap[grade.student_id]) {
+        studentMap[grade.student_id].participation.push(grade.score)
+      }
+    })
+
+    // Populate assignments
+    assignmentGradesData?.forEach(grade => {
+      if (studentMap[grade.student_id]) {
+        studentMap[grade.student_id].assignments.total += grade.score || 0
+      }
+    })
+    assignmentData?.forEach(a => {
+      Object.values(studentMap).forEach(s => {
+        s.assignments.max += a.max_points || 0
       })
     })
-    
-    // Populate participation grades
-    participationData?.forEach(grade => {
-      if (dataByStudent[grade.student_id]?.[grade.class_id]) {
-        dataByStudent[grade.student_id][grade.class_id].participation.push(grade.score)
-      }
-    })
-    
-    // Populate assignment grades
-    assignmentGradesData?.forEach(grade => {
-      const assignment = assignmentData?.find(a => a.id === grade.assignment_id)
-      if (assignment && dataByStudent[grade.student_id]?.[assignment.class_id]) {
-        dataByStudent[grade.student_id][assignment.class_id].assignments.push({
-          score: grade.score,
-          max_points: assignment.max_points,
-        })
-      }
-    })
-    
-    // Populate progress test grades
+
+    // Populate progress test
     progressTestData?.forEach(grade => {
-      if (dataByStudent[grade.student_id]?.[grade.class_id]) {
-        dataByStudent[grade.student_id][grade.class_id].progressTest.push(grade.score)
+      if (studentMap[grade.student_id]) {
+        studentMap[grade.student_id].progressTest.push(grade.score)
       }
     })
-    
-    setGradeData(dataByStudent)
+
+    // Populate attributes
+    attributesData?.forEach(attr => {
+      if (studentMap[attr.student_id]) {
+        studentMap[attr.student_id].attributes[attr.attribute] = attr.score
+      }
+    })
+
+    // Calculate totals and format data
+    const formattedData = Object.values(studentMap).map(({ student, participation, assignments, progressTest, attributes }) => {
+      const participationAvg = avg(participation)
+      const assignmentAvg = assignments.max > 0 ? (assignments.total / assignments.max) * 100 : null
+      const progressTestAvg = avg(progressTest)
+
+      // Calculate overall (Participation 20%, Assignments 50%, Progress Test 30%)
+      const overallParts = []
+      if (participationAvg != null) overallParts.push(participationAvg * 0.2)
+      if (assignmentAvg != null) overallParts.push(assignmentAvg * 0.5)
+      if (progressTestAvg != null) overallParts.push(progressTestAvg * 0.3)
+      const overall = overallParts.length > 0 ? (overallParts.reduce((a, b) => a + b, 0) / overallParts.length) : null
+
+      return {
+        student,
+        participation: participationAvg,
+        attainment: assignmentAvg,
+        progressTest: progressTestAvg,
+        overall,
+        letterGrade: letterGradeFromPercentage(overall),
+        attributes,
+      }
+    })
+
+    setStudentData(formattedData)
   }
 
-  const calculateTotals = (classData) => {
-    const participationAvg = avg(classData.participation)
-    const assignmentTotal = classData.assignments.reduce((sum, a) => sum + (a.score || 0), 0)
-    const assignmentMax = classData.assignments.reduce((sum, a) => sum + (a.max_points || 0), 0)
-    const assignmentAvg = assignmentMax > 0 ? (assignmentTotal / assignmentMax) * 100 : null
-    const progressTestAvg = avg(classData.progressTest)
-    
-    // Calculate overall total (weighted: Participation 20%, Assignments 50%, Progress Test 30%)
-    const overallParts = []
-    if (participationAvg != null) overallParts.push(participationAvg * 0.2)
-    if (assignmentAvg != null) overallParts.push(assignmentAvg * 0.5)
-    if (progressTestAvg != null) overallParts.push(progressTestAvg * 0.3)
-    
-    const overallTotal = overallParts.length > 0 ? avg(overallParts) * (overallParts.length > 1 ? 1 : 1) : null
-    
-    return {
-      participation: participationAvg,
-      assignment: assignmentAvg,
-      progressTest: progressTestAvg,
-      overall: overallTotal,
-    }
+  const getSubjectClasses = () => {
+    if (!programme) return []
+    return classes.filter(c => c.programme === programme)
   }
 
   if (loading) {
@@ -235,7 +266,7 @@ export default function GradebookViewer() {
 
       {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Homeroom Class</label>
             <select
@@ -243,6 +274,7 @@ export default function GradebookViewer() {
               onChange={(e) => {
                 setSelectedHomeroom(e.target.value)
                 setSelectedTerm('')
+                setSelectedSubject('')
               }}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
@@ -256,7 +288,10 @@ export default function GradebookViewer() {
             <label className="block text-xs font-medium text-gray-500 mb-1">Term</label>
             <select
               value={selectedTerm}
-              onChange={(e) => setSelectedTerm(e.target.value)}
+              onChange={(e) => {
+                setSelectedTerm(e.target.value)
+                setSelectedSubject('')
+              }}
               disabled={!selectedHomeroom}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-400"
             >
@@ -269,76 +304,52 @@ export default function GradebookViewer() {
         </div>
       </div>
 
-      {/* Results */}
+      {/* Subject Tabs */}
       {selectedHomeroom && selectedTerm && classes.length > 0 && (
         <>
-          {/* Class Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            {classes.map(cls => {
-              const classStudents = students.filter(s => 
-                gradeData[s.id]?.[cls.id]
-              )
-              const totals = classStudents.map(s => calculateTotals(gradeData[s.id][cls.id]))
-              const avgOverall = avg(totals.map(t => t.overall).filter(o => o != null))
-              
-              return (
-                <div
-                  key={cls.id}
-                  className="bg-white rounded-xl border border-gray-200 p-4"
-                  style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}
-                >
-                  <div className="font-semibold text-gray-900">{cls.name}</div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {cls.users?.full_name || 'No teacher assigned'}
-                  </div>
-                  <div className="text-sm text-gray-600 mt-2">
-                    {classStudents.length} students
-                  </div>
-                  <div className="text-lg font-bold text-blue-600 mt-2">
-                    {fmt(avgOverall)}%
-                  </div>
-                  <button
-                    onClick={() => navigate(`/class/${cls.id}?term=${selectedTerm}`)}
-                    className="mt-3 text-xs text-blue-600 hover:underline"
-                  >
-                    View Full Gradebook →
-                  </button>
-                </div>
-              )
-            })}
+          <div className="flex gap-1 border-b border-gray-200 mb-6">
+            {getSubjectClasses().map(cls => (
+              <button
+                key={cls.id}
+                onClick={() => setSelectedSubject(cls.id)}
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                  selectedSubject === cls.id
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {cls.name}
+              </button>
+            ))}
           </div>
 
           {/* Student Grade Table */}
-          {students.length > 0 && (
+          {studentData.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100">
-                <h3 className="text-lg font-semibold text-gray-900">Student Grades Overview</h3>
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Student Grades - {classes.find(c => c.id === selectedSubject)?.name}
+                </h3>
+                <span className="text-sm text-gray-500">{studentData.length} students</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
                       <th className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50">Student</th>
-                      {classes.map(cls => (
-                        <th key={cls.id} className="text-center px-4 py-3 text-gray-500 font-medium" colSpan="4">
-                          {cls.name}
+                      <th className="text-center px-4 py-3 text-gray-500 font-medium">Attainment</th>
+                      <th className="text-center px-4 py-3 text-gray-500 font-medium">Progress Test</th>
+                      <th className="text-center px-4 py-3 text-gray-500 font-medium">Overall</th>
+                      <th className="text-center px-4 py-3 text-gray-500 font-medium">Grade</th>
+                      {ATTRIBUTE_NAMES.map(attr => (
+                        <th key={attr} className="text-center px-3 py-3 text-gray-500 font-medium text-xs">
+                          {attr}
                         </th>
-                      ))}
-                    </tr>
-                    <tr className="bg-gray-100 border-b border-gray-200">
-                      <th className="sticky left-0 bg-gray-100"></th>
-                      {classes.map(() => (
-                        <>
-                          <th className="text-center px-2 py-2 text-xs text-gray-500 font-medium">Part.</th>
-                          <th className="text-center px-2 py-2 text-xs text-gray-500 font-medium">Assign.</th>
-                          <th className="text-center px-2 py-2 text-xs text-gray-500 font-medium">Prog.</th>
-                          <th className="text-center px-2 py-2 text-xs text-gray-500 font-medium">Overall</th>
-                        </>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {students.map(student => (
+                    {studentData.map(({ student, attainment, progressTest, overall, letterGrade, attributes }) => (
                       <tr key={student.id} className="hover:bg-gray-50">
                         <td className="px-4 py-3 sticky left-0 bg-white">
                           <div className="font-medium">
@@ -348,27 +359,39 @@ export default function GradebookViewer() {
                           </div>
                           <div className="text-xs text-gray-400">{student.student_id || '—'}</div>
                         </td>
-                        {classes.map(cls => {
-                          const classData = gradeData[student.id]?.[cls.id]
-                          const totals = classData ? calculateTotals(classData) : null
-                          return (
-                            <td key={cls.id} className="px-2 py-3 text-center">
-                              <div className="text-xs text-gray-600">{fmt(totals?.participation)}</div>
-                              <div className="text-xs text-gray-600">{fmt(totals?.assignment)}%</div>
-                              <div className="text-xs text-gray-600">{fmt(totals?.progressTest)}</div>
-                              <div className={`text-xs font-semibold ${
-                                totals?.overall != null 
-                                  ? totals.overall >= 80 ? 'text-green-600' 
-                                  : totals.overall >= 65 ? 'text-blue-600'
-                                  : totals.overall >= 50 ? 'text-amber-600'
-                                  : 'text-red-600'
-                                  : 'text-gray-300'
-                              }`}>
-                                {fmt(totals?.overall)}%
-                              </div>
-                            </td>
-                          )
-                        })}
+                        <td className="px-4 py-3 text-center">
+                          <span className="text-gray-600">{fmt(attainment)}%</span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="text-gray-600">{fmt(progressTest)}</span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`font-semibold ${
+                            overall != null 
+                              ? overall >= 80 ? 'text-green-600' 
+                              : overall >= 65 ? 'text-blue-600'
+                              : overall >= 50 ? 'text-amber-600'
+                              : 'text-red-600'
+                              : 'text-gray-300'
+                          }`}>
+                            {fmt(overall)}%
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`inline-block w-8 h-8 leading-8 rounded font-bold text-sm ${
+                            letterGrade === 'A*' || letterGrade === 'A' ? 'bg-green-100 text-green-700'
+                            : letterGrade === 'B' ? 'bg-blue-100 text-blue-700'
+                            : letterGrade === 'C' ? 'bg-amber-100 text-amber-700'
+                            : 'bg-red-100 text-red-700'
+                          }`}>
+                            {letterGrade}
+                          </span>
+                        </td>
+                        {ATTRIBUTE_NAMES.map(attr => (
+                          <td key={attr} className="px-3 py-3 text-center">
+                            <span className="text-gray-600">{attributes[attr] != null ? fmt(attributes[attr]) : '—'}</span>
+                          </td>
+                        ))}
                       </tr>
                     ))}
                   </tbody>
@@ -377,9 +400,9 @@ export default function GradebookViewer() {
             </div>
           )}
 
-          {students.length === 0 && (
+          {studentData.length === 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">
-              No students enrolled in any of these classes yet.
+              No students or grade data available for this class.
             </div>
           )}
         </>
