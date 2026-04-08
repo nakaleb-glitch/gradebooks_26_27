@@ -1,8 +1,13 @@
 import { useAuth } from '../contexts/AuthContext'
 import { Link } from 'react-router-dom'
 import Layout from '../components/Layout'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { normalizeLinkUrl, uploadTeacherAnnouncementPdf } from '../lib/announcementAttachments'
+import AnnouncementPdfButton from '../components/AnnouncementPdfButton'
+
+const INCIDENT_TYPES = ['Disruption', 'Respect', 'Bullying', 'Academic Dishonesty', 'Attendance', 'Other']
+const SEVERITY_LEVELS = ['Low', 'Medium', 'High']
 
 export default function Dashboard() {
   const { profile, user } = useAuth()
@@ -17,11 +22,31 @@ export default function Dashboard() {
   const [teacherEvents, setTeacherEvents] = useState([])
   const [teacherDeadlines, setTeacherDeadlines] = useState([])
   const [selectedDashboardItem, setSelectedDashboardItem] = useState(null)
+  const [showTeacherAnnouncements, setShowTeacherAnnouncements] = useState(false)
   const [announcementScope, setAnnouncementScope] = useState('all_my_classes')
   const [announcementClassIds, setAnnouncementClassIds] = useState([])
   const [announcementTitle, setAnnouncementTitle] = useState('')
   const [announcementMessage, setAnnouncementMessage] = useState('')
+  const [announcementLinkUrl, setAnnouncementLinkUrl] = useState('')
+  const [announcementPdfFile, setAnnouncementPdfFile] = useState(null)
+  const announcementPdfInputRef = useRef(null)
   const [postingAnnouncement, setPostingAnnouncement] = useState(false)
+  const [announcementFeedback, setAnnouncementFeedback] = useState(null)
+  const [behaviorStudents, setBehaviorStudents] = useState([])
+  const [teacherSubmittedReports, setTeacherSubmittedReports] = useState([])
+  const [selectedBehaviorSubmission, setSelectedBehaviorSubmission] = useState(null)
+  const [showTeacherSubmissions, setShowTeacherSubmissions] = useState(false)
+  const [savingBehaviorReport, setSavingBehaviorReport] = useState(false)
+  const [behaviorMessage, setBehaviorMessage] = useState(null)
+  const [behaviorForm, setBehaviorForm] = useState({
+    class_id: '',
+    student_id: '',
+    incident_date: new Date().toISOString().slice(0, 10),
+    incident_type: 'Disruption',
+    severity: 'Medium',
+    description: '',
+    action_taken: '',
+  })
   const [loading, setLoading] = useState(true)
   const [levelFilter, setLevelFilter] = useState('')
   const [gradeFilter, setGradeFilter] = useState('all')
@@ -123,7 +148,7 @@ export default function Dashboard() {
             .not('score', 'is', null),
           supabase
             .from('teacher_announcement_targets')
-            .select('class_id, teacher_announcements(id, title, message, created_at)')
+            .select('class_id, teacher_announcements(id, title, message, created_at, link_url, attachment_url, attachment_name)')
             .in('class_id', classIds),
         ])
 
@@ -193,6 +218,9 @@ export default function Dashboard() {
               venue: classNameById[row.class_id] || 'Class',
               description: announcement.message,
               plan_url: null,
+              link_url: announcement.link_url || null,
+              attachment_url: announcement.attachment_url || null,
+              attachment_name: announcement.attachment_name || null,
               label: 'Teacher Announcement',
             }
           })
@@ -215,7 +243,7 @@ export default function Dashboard() {
       return
     }
 
-    const [{ data: classData }, { data: dashboardItems }, { data: teacherAnnouncementRows }] = await Promise.all([
+    const [{ data: classData }, { data: dashboardItems }, { data: teacherAnnouncementRows }, { data: submittedReports }] = await Promise.all([
       supabase.from('classes').select('*').eq('teacher_id', profile.id).order('name'),
       supabase
         .from('events_deadlines')
@@ -225,8 +253,26 @@ export default function Dashboard() {
         .order('created_at', { ascending: false }),
       supabase
         .from('teacher_announcements')
-        .select('id, title, message, created_at, scope, teacher_announcement_targets(class_id, classes(name))')
+        .select('id, title, message, created_at, scope, link_url, attachment_url, attachment_name, teacher_announcement_targets(class_id, classes(name))')
         .eq('teacher_id', profile.id)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('behavior_reports')
+        .select(`
+          id,
+          incident_date,
+          incident_type,
+          severity,
+          description,
+          action_taken,
+          status,
+          admin_notes,
+          created_at,
+          classes(name),
+          students(student_id, name_eng, name_vn)
+        `)
+        .eq('reporter_id', profile.id)
+        .order('incident_date', { ascending: false })
         .order('created_at', { ascending: false }),
     ])
 
@@ -257,12 +303,16 @@ export default function Dashboard() {
       description: row.message,
       created_at: row.created_at,
       scope: row.scope,
+      link_url: row.link_url || null,
+      attachment_url: row.attachment_url || null,
+      attachment_name: row.attachment_name || null,
       targets: (row.teacher_announcement_targets || []).map((target) => ({
         class_id: target.class_id,
         class_name: target.classes?.name || 'Class',
       })),
     }))
     setTeacherAnnouncements(ownAnnouncements)
+    setTeacherSubmittedReports(submittedReports || [])
     setTeacherEvents(rows.filter(item => item.item_type === 'event'))
     setTeacherDeadlines(rows.filter(item => item.item_type === 'deadline'))
     setLoading(false)
@@ -453,6 +503,8 @@ export default function Dashboard() {
   }
 
   const postTeacherAnnouncement = async (forcedClassIds = null, forcedScope = null, silent = false) => {
+    if (!silent) setAnnouncementFeedback(null)
+
     const targetScope = forcedScope || announcementScope
     const targetClassIds = forcedClassIds || (
       targetScope === 'all_my_classes'
@@ -461,16 +513,18 @@ export default function Dashboard() {
     )
 
     if (!announcementTitle.trim() || !announcementMessage.trim()) {
-      if (!silent) window.alert('Please enter both title and message.')
+      if (!silent) setAnnouncementFeedback({ type: 'error', text: 'Please enter both title and message.' })
       return
     }
 
     if (!targetClassIds || targetClassIds.length === 0) {
-      if (!silent) window.alert('Please select at least one class target.')
+      if (!silent) setAnnouncementFeedback({ type: 'error', text: 'Please select at least one class target.' })
       return
     }
 
     setPostingAnnouncement(true)
+    const linkUrl = normalizeLinkUrl(announcementLinkUrl)
+
     const { data: announcement, error: announcementError } = await supabase
       .from('teacher_announcements')
       .insert({
@@ -478,13 +532,19 @@ export default function Dashboard() {
         title: announcementTitle.trim(),
         message: announcementMessage.trim(),
         scope: targetScope,
+        link_url: linkUrl,
       })
       .select('id')
       .single()
 
     if (announcementError || !announcement?.id) {
       setPostingAnnouncement(false)
-      if (!silent) window.alert(`Unable to post announcement: ${announcementError?.message || 'Unknown error'}`)
+      if (!silent) {
+        setAnnouncementFeedback({
+          type: 'error',
+          text: `Unable to post announcement: ${announcementError?.message || 'Unknown error'}`,
+        })
+      }
       return
     }
 
@@ -497,17 +557,129 @@ export default function Dashboard() {
       .from('teacher_announcement_targets')
       .insert(targetRows)
 
-    setPostingAnnouncement(false)
-
     if (targetError) {
-      if (!silent) window.alert(`Announcement posted, but targets failed: ${targetError.message}`)
+      setPostingAnnouncement(false)
+      if (!silent) {
+        setAnnouncementFeedback({
+          type: 'error',
+          text: `Announcement saved, but class targets failed: ${targetError.message}`,
+        })
+      }
       return
     }
 
+    let showAnnouncementSuccess = true
+
+    if (announcementPdfFile) {
+      const { path, displayName, error: uploadError } = await uploadTeacherAnnouncementPdf(
+        announcement.id,
+        announcementPdfFile
+      )
+      if (uploadError || !path) {
+        setPostingAnnouncement(false)
+        if (!silent) {
+          setAnnouncementFeedback({
+            type: 'error',
+            text: `Announcement posted, but the PDF could not be uploaded: ${uploadError?.message || 'Unknown error'}`,
+          })
+        }
+        setAnnouncementTitle('')
+        setAnnouncementMessage('')
+        setAnnouncementLinkUrl('')
+        setAnnouncementPdfFile(null)
+        if (announcementPdfInputRef.current) announcementPdfInputRef.current.value = ''
+        setAnnouncementScope('all_my_classes')
+        setAnnouncementClassIds([])
+        await fetchDashboardData()
+        return
+      }
+      const { error: attachError } = await supabase
+        .from('teacher_announcements')
+        .update({ attachment_url: path, attachment_name: displayName })
+        .eq('id', announcement.id)
+        .eq('teacher_id', profile.id)
+
+      if (attachError && !silent) {
+        setAnnouncementFeedback({
+          type: 'error',
+          text: `Announcement posted, but saving the attachment failed: ${attachError.message}`,
+        })
+        showAnnouncementSuccess = false
+      }
+    }
+
+    setPostingAnnouncement(false)
+
     setAnnouncementTitle('')
     setAnnouncementMessage('')
+    setAnnouncementLinkUrl('')
+    setAnnouncementPdfFile(null)
+    if (announcementPdfInputRef.current) announcementPdfInputRef.current.value = ''
     setAnnouncementScope('all_my_classes')
     setAnnouncementClassIds([])
+    await fetchDashboardData()
+
+    if (!silent && showAnnouncementSuccess) {
+      setAnnouncementFeedback({ type: 'success', text: 'Announcement posted successfully.' })
+    }
+  }
+
+  const fetchBehaviorStudents = async (classId) => {
+    if (!classId) {
+      setBehaviorStudents([])
+      return
+    }
+    const { data } = await supabase
+      .from('class_students')
+      .select('student_id, students(id, name_eng, name_vn, student_id)')
+      .eq('class_id', classId)
+
+    const list = (data || [])
+      .map((row) => row.students)
+      .filter(Boolean)
+      .sort((a, b) => (a.name_eng || '').localeCompare(b.name_eng || ''))
+    setBehaviorStudents(list)
+  }
+
+  const submitBehaviorReportInline = async (e) => {
+    e.preventDefault()
+    if (!behaviorForm.class_id || !behaviorForm.student_id || !behaviorForm.incident_date || !behaviorForm.description.trim()) {
+      setBehaviorMessage({ type: 'error', text: 'Please complete class, student, date, and description.' })
+      return
+    }
+
+    setSavingBehaviorReport(true)
+    const payload = {
+      reporter_id: profile.id,
+      class_id: behaviorForm.class_id,
+      student_id: behaviorForm.student_id,
+      incident_date: behaviorForm.incident_date,
+      incident_type: behaviorForm.incident_type,
+      severity: behaviorForm.severity,
+      description: behaviorForm.description.trim(),
+      action_taken: behaviorForm.action_taken.trim() || null,
+      status: 'new',
+    }
+
+    const { error } = await supabase.from('behavior_reports').insert(payload)
+    if (error) {
+      setBehaviorMessage({ type: 'error', text: error.message })
+      setSavingBehaviorReport(false)
+      return
+    }
+
+    setBehaviorMessage({ type: 'success', text: 'Behavior report submitted for admin review.' })
+    setBehaviorForm({
+      class_id: '',
+      student_id: '',
+      incident_date: new Date().toISOString().slice(0, 10),
+      incident_type: 'Disruption',
+      severity: 'Medium',
+      description: '',
+      action_taken: '',
+    })
+    setBehaviorStudents([])
+    setSavingBehaviorReport(false)
     await fetchDashboardData()
   }
 
@@ -734,77 +906,145 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <div className="lg:col-span-7">
-              <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: CARD_ACCENT.class, borderTopWidth: 3 }}>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">My Classes</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {classes.length === 0 ? (
-                    <div className="col-span-full rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-400">
-                      No classes assigned yet. Contact your administrator.
-                    </div>
-                  ) : (
-                    classes.map(cls => (
-                      <Link
-                        key={cls.id}
-                        to={`/class/${cls.id}`}
-                        className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all"
-                        style={{ borderTopColor: '#9ca3af', borderTopWidth: 3 }}
-                      >
-                        <div className="font-semibold text-gray-900">{cls.name}</div>
-                        <div className="text-sm text-gray-500 mt-1">
-                          {levelLabel(cls.level)} - {programmeLabel(cls.programme)}
-                        </div>
-                        <div className="text-xs text-gray-400 mt-2">
-                          {cls.student_count || 0} students
-                        </div>
-                      </Link>
-                    ))
-                  )}
-                </div>
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: CARD_ACCENT.class, borderTopWidth: 3 }}>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">My Classes</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {classes.length === 0 ? (
+                  <div className="col-span-full rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-400">
+                    No classes assigned yet. Contact your administrator.
+                  </div>
+                ) : (
+                  classes.map(cls => (
+                    <Link
+                      key={cls.id}
+                      to={`/class/${cls.id}`}
+                      className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all"
+                      style={{ borderTopColor: '#9ca3af', borderTopWidth: 3 }}
+                    >
+                      <div className="font-semibold text-gray-900">{cls.name}</div>
+                      <div className="text-sm text-gray-500 mt-1">
+                        {levelLabel(cls.level)} - {programmeLabel(cls.programme)}
+                      </div>
+                      <div className="text-xs text-gray-400 mt-2">
+                        {cls.student_count || 0} students
+                      </div>
+                    </Link>
+                  ))
+                )}
               </div>
             </div>
 
-            <div className="lg:col-span-5 space-y-4">
-              <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: '#22c55e', borderTopWidth: 3 }}>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+              <div className="bg-white rounded-xl border border-gray-200 p-5 h-full flex flex-col" style={{ borderTopColor: '#22c55e', borderTopWidth: 3 }}>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-lg font-semibold text-gray-900">Class Announcements</h3>
-                  <span className="text-xs text-gray-500">Post to students</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowTeacherAnnouncements((prev) => !prev)}
+                    className="text-[11px] px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
+                  >
+                    {showTeacherAnnouncements ? 'Hide Announcements' : 'View Announcements'}
+                  </button>
                 </div>
-                <div className="space-y-2">
-                  <input
-                    type="text"
-                    value={announcementTitle}
-                    onChange={(e) => setAnnouncementTitle(e.target.value)}
-                    placeholder="Announcement title"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                  />
-                  <textarea
-                    value={announcementMessage}
-                    onChange={(e) => setAnnouncementMessage(e.target.value)}
-                    placeholder="Write your announcement..."
-                    rows={3}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                  />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <select
-                      value={announcementScope}
+                <div className="flex flex-col gap-3 flex-1 min-h-[16rem]">
+                  <div>
+                    <label htmlFor="dashboard-announcement-title" className="block text-xs font-medium text-gray-500 mb-1">
+                      Title
+                    </label>
+                    <input
+                      id="dashboard-announcement-title"
+                      type="text"
+                      value={announcementTitle}
+                      onChange={(e) => setAnnouncementTitle(e.target.value)}
+                      placeholder="Short headline"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="dashboard-announcement-message" className="block text-xs font-medium text-gray-500 mb-1">
+                      Message
+                    </label>
+                    <textarea
+                      id="dashboard-announcement-message"
+                      value={announcementMessage}
+                      onChange={(e) => setAnnouncementMessage(e.target.value)}
+                      placeholder="Write your announcement..."
+                      className="w-full min-h-[8rem] max-h-[min(24rem,50vh)] rounded-lg border border-gray-300 px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="dashboard-announcement-link" className="block text-xs font-medium text-gray-500 mb-1">
+                      Link (optional)
+                    </label>
+                    <input
+                      id="dashboard-announcement-link"
+                      type="text"
+                      inputMode="url"
+                      autoComplete="url"
+                      value={announcementLinkUrl}
+                      onChange={(e) => setAnnouncementLinkUrl(e.target.value)}
+                      placeholder="e.g. Google Drive or class resource"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="dashboard-announcement-pdf" className="block text-xs font-medium text-gray-500 mb-1">
+                      PDF attachment (optional)
+                    </label>
+                    <input
+                      id="dashboard-announcement-pdf"
+                      ref={announcementPdfInputRef}
+                      type="file"
+                      accept="application/pdf"
+                      className="block w-full text-xs text-gray-600 file:mr-2 file:rounded file:border-0 file:bg-gray-100 file:px-2 file:py-1 file:text-sm"
                       onChange={(e) => {
-                        setAnnouncementScope(e.target.value)
-                        if (e.target.value === 'all_my_classes') {
-                          setAnnouncementClassIds([])
-                        }
+                        const f = e.target.files?.[0] || null
+                        setAnnouncementPdfFile(f)
                       }}
-                      className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
+                    />
+                    {announcementPdfFile && (
+                      <div className="text-xs text-gray-500 mt-1 truncate" title={announcementPdfFile.name}>
+                        {announcementPdfFile.name}
+                      </div>
+                    )}
+                  </div>
+                  {announcementFeedback && (
+                    <div
+                      className={`text-xs px-2 py-1 rounded border ${
+                        announcementFeedback.type === 'success'
+                          ? 'bg-green-50 text-green-700 border-green-200'
+                          : 'bg-red-50 text-red-700 border-red-200'
+                      }`}
                     >
-                      <option value="all_my_classes">All my classes</option>
-                      <option value="selected_classes">Selected classes</option>
-                    </select>
+                      {announcementFeedback.text}
+                    </div>
+                  )}
+                  <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+                    <div className="flex-1 min-w-0">
+                      <label htmlFor="dashboard-announcement-scope" className="block text-xs font-medium text-gray-500 mb-1">
+                        Audience
+                      </label>
+                      <select
+                        id="dashboard-announcement-scope"
+                        value={announcementScope}
+                        onChange={(e) => {
+                          setAnnouncementScope(e.target.value)
+                          if (e.target.value === 'all_my_classes') {
+                            setAnnouncementClassIds([])
+                          }
+                        }}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
+                      >
+                        <option value="all_my_classes">All my classes</option>
+                        <option value="selected_classes">Selected classes</option>
+                      </select>
+                    </div>
                     <button
                       type="button"
                       onClick={() => postTeacherAnnouncement()}
                       disabled={postingAnnouncement}
-                      className="rounded-lg bg-green-600 text-white px-3 py-2 text-sm font-medium hover:bg-green-700 disabled:opacity-60"
+                      className="w-full sm:w-auto shrink-0 rounded-lg bg-green-600 text-white px-4 py-2 text-sm font-medium hover:bg-green-700 disabled:opacity-60"
                     >
                       {postingAnnouncement ? 'Posting...' : 'Post Announcement'}
                     </button>
@@ -834,60 +1074,165 @@ export default function Dashboard() {
                     </div>
                   )}
                 </div>
-                <div className="mt-3 space-y-2">
-                  {teacherAnnouncements.length === 0 ? (
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
-                      No announcements posted yet.
-                    </div>
-                  ) : teacherAnnouncements.slice(0, 4).map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setSelectedDashboardItem({
-                        title: item.title,
-                        event_date: item.created_at,
-                        label: 'Teacher Announcement',
-                        venue: item.targets.map((t) => t.class_name).join(', ') || '—',
-                        description: item.description,
-                        plan_url: null,
-                      })}
-                      className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-green-50 transition-colors"
-                    >
-                      <div className="text-sm font-medium text-gray-800">{item.title}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">{formatDateWithDay(item.created_at)}</div>
-                    </button>
-                  ))}
-                </div>
+                {showTeacherAnnouncements && (
+                  <div className="mt-3 border-t border-gray-200 pt-3 space-y-2 max-h-48 overflow-y-auto">
+                    {teacherAnnouncements.length === 0 ? (
+                      <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                        No announcements posted yet.
+                      </div>
+                    ) : teacherAnnouncements.slice(0, 8).map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setSelectedDashboardItem({
+                          title: item.title,
+                          event_date: item.created_at,
+                          label: 'Teacher Announcement',
+                          venue: item.targets.map((t) => t.class_name).join(', ') || '—',
+                          description: item.description,
+                          plan_url: null,
+                          link_url: item.link_url,
+                          attachment_url: item.attachment_url,
+                          attachment_name: item.attachment_name,
+                        })}
+                        className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-green-50 transition-colors"
+                      >
+                        <div className="text-sm font-medium text-gray-800">{item.title}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">{formatDateWithDay(item.created_at)}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              <Link
-                to="/teacher/behavior-report"
-                className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-sm transition-all block"
-                style={{ borderTopColor: '#d1232a', borderTopWidth: 3 }}
-              >
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">Behavior Report Tool</h3>
-                <p className="text-sm text-gray-500">Submit a student behavior report for admin review.</p>
-              </Link>
-
-              <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: CARD_ACCENT.events, borderTopWidth: 3 }}>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Events</h3>
-                <div className="space-y-2">
-                  {teacherEvents.length === 0 ? (
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
-                      No upcoming events yet. Admin updates will appear here.
-                    </div>
-                  ) : teacherEvents.map(eventItem => (
-                    <button
-                      key={eventItem.id}
-                      type="button"
-                      onClick={() => setSelectedDashboardItem({ ...eventItem, label: 'Event' })}
-                      className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-blue-50 transition-colors"
-                    >
-                      <div className="text-sm font-medium text-gray-800">{eventItem.title}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">{formatDateWithDay(eventItem.event_date)}</div>
-                    </button>
-                  ))}
+              <div className="bg-white rounded-xl border border-gray-200 p-5 h-full flex flex-col" style={{ borderTopColor: '#d1232a', borderTopWidth: 3 }}>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold text-gray-900">Behavior Report Tool</h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowTeacherSubmissions((prev) => !prev)}
+                    className="text-[11px] px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
+                  >
+                    {showTeacherSubmissions ? 'Hide Submissions' : 'View Submissions'}
+                  </button>
                 </div>
+                <form onSubmit={submitBehaviorReportInline} className="space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <select
+                      value={behaviorForm.class_id}
+                      onChange={async (e) => {
+                        const classId = e.target.value
+                        setBehaviorForm((prev) => ({ ...prev, class_id: classId, student_id: '' }))
+                        await fetchBehaviorStudents(classId)
+                      }}
+                      className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
+                    >
+                      <option value="">Select class</option>
+                      {classes.map((cls) => (
+                        <option key={cls.id} value={cls.id}>{cls.name}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={behaviorForm.student_id}
+                      onChange={(e) => setBehaviorForm((prev) => ({ ...prev, student_id: e.target.value }))}
+                      disabled={!behaviorForm.class_id}
+                      className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                    >
+                      <option value="">{behaviorForm.class_id ? 'Select student' : 'Select class first'}</option>
+                      {behaviorStudents.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name_eng}{s.name_vn ? ` - ${s.name_vn}` : ''} ({s.student_id})
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="date"
+                      value={behaviorForm.incident_date}
+                      onChange={(e) => setBehaviorForm((prev) => ({ ...prev, incident_date: e.target.value }))}
+                      className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <select
+                      value={behaviorForm.severity}
+                      onChange={(e) => setBehaviorForm((prev) => ({ ...prev, severity: e.target.value }))}
+                      className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
+                    >
+                      {SEVERITY_LEVELS.map((level) => (
+                        <option key={level} value={level}>{level}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <select
+                    value={behaviorForm.incident_type}
+                    onChange={(e) => setBehaviorForm((prev) => ({ ...prev, incident_type: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
+                  >
+                    {INCIDENT_TYPES.map((type) => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                  <textarea
+                    rows={3}
+                    value={behaviorForm.description}
+                    onChange={(e) => setBehaviorForm((prev) => ({ ...prev, description: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    placeholder="Describe what happened..."
+                  />
+                  <textarea
+                    rows={2}
+                    value={behaviorForm.action_taken}
+                    onChange={(e) => setBehaviorForm((prev) => ({ ...prev, action_taken: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    placeholder="Action taken (optional)"
+                  />
+                  {behaviorMessage && (
+                    <div className={`text-xs px-2 py-1 rounded border ${
+                      behaviorMessage.type === 'success'
+                        ? 'bg-green-50 text-green-700 border-green-200'
+                        : 'bg-red-50 text-red-700 border-red-200'
+                    }`}>
+                      {behaviorMessage.text}
+                    </div>
+                  )}
+                  <div className="flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={savingBehaviorReport}
+                      className="px-3 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-60"
+                    >
+                      {savingBehaviorReport ? 'Submitting...' : 'Submit Report'}
+                    </button>
+                  </div>
+                </form>
+                {showTeacherSubmissions && (
+                  <div className="mt-3 border-t border-gray-200 pt-3 space-y-2 max-h-48 overflow-y-auto">
+                    {teacherSubmittedReports.length === 0 ? (
+                      <div className="text-xs text-gray-500">No submissions yet.</div>
+                    ) : teacherSubmittedReports.slice(0, 8).map((report) => (
+                      <div key={report.id} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="text-xs text-gray-700">
+                              {report.incident_date} • {report.students?.name_eng || 'Student'} • {report.classes?.name || 'Class'}
+                            </div>
+                            <div className="text-[11px] text-gray-500 mt-1">
+                              {report.incident_type} / {report.severity} • Status: {report.status}
+                            </div>
+                            {report.admin_notes ? (
+                              <div className="text-[11px] text-gray-600 mt-1 line-clamp-2">Admin: {report.admin_notes}</div>
+                            ) : null}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedBehaviorSubmission(report)}
+                            className="shrink-0 text-[11px] px-2 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-100"
+                          >
+                            View Full Report
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: CARD_ACCENT.deadlines, borderTopWidth: 3 }}>
@@ -910,9 +1255,84 @@ export default function Dashboard() {
                   ))}
                 </div>
               </div>
+
+              <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: CARD_ACCENT.events, borderTopWidth: 3 }}>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Events</h3>
+                <div className="space-y-2">
+                  {teacherEvents.length === 0 ? (
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                      No upcoming events yet. Admin updates will appear here.
+                    </div>
+                  ) : teacherEvents.map(eventItem => (
+                    <button
+                      key={eventItem.id}
+                      type="button"
+                      onClick={() => setSelectedDashboardItem({ ...eventItem, label: 'Event' })}
+                      className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-blue-50 transition-colors"
+                    >
+                      <div className="text-sm font-medium text-gray-800">{eventItem.title}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">{formatDateWithDay(eventItem.event_date)}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </>
+      )}
+
+      {selectedBehaviorSubmission && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
+          <div className="w-full max-w-lg bg-white rounded-xl border border-gray-200 p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h4 className="text-base font-semibold text-gray-900">Behavior Report Details</h4>
+                <p className="text-xs text-gray-500 mt-1">
+                  Submitted {selectedBehaviorSubmission.incident_date} • Status: {selectedBehaviorSubmission.status}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedBehaviorSubmission(null)}
+                className="text-gray-400 hover:text-gray-600"
+                aria-label="Close behavior report details"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3 text-sm">
+              <div>
+                <div className="text-xs font-medium text-gray-500">Student</div>
+                <div className="text-gray-800">
+                  {selectedBehaviorSubmission.students?.name_eng || 'Student'}
+                  {selectedBehaviorSubmission.students?.name_vn ? ` - ${selectedBehaviorSubmission.students.name_vn}` : ''}
+                  {selectedBehaviorSubmission.students?.student_id ? ` (${selectedBehaviorSubmission.students.student_id})` : ''}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-500">Class</div>
+                <div className="text-gray-800">{selectedBehaviorSubmission.classes?.name || 'Class'}</div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-500">Incident Type / Severity</div>
+                <div className="text-gray-800">{selectedBehaviorSubmission.incident_type} / {selectedBehaviorSubmission.severity}</div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-500">Description</div>
+                <div className="text-gray-800 whitespace-pre-wrap">{selectedBehaviorSubmission.description || '—'}</div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-500">Action Taken</div>
+                <div className="text-gray-800 whitespace-pre-wrap">{selectedBehaviorSubmission.action_taken || '—'}</div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-500">Admin Reply</div>
+                <div className="text-gray-800 whitespace-pre-wrap">{selectedBehaviorSubmission.admin_notes || 'No admin reply yet'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {selectedDashboardItem && (
@@ -944,21 +1364,52 @@ export default function Dashboard() {
                 <div className="text-xs font-medium text-gray-500">Description</div>
                 <div className="text-gray-800 whitespace-pre-wrap">{selectedDashboardItem.description || '—'}</div>
               </div>
-              <div>
-                <div className="text-xs font-medium text-gray-500">Planning Link</div>
-                {selectedDashboardItem.plan_url ? (
-                  <a
-                    href={selectedDashboardItem.plan_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline break-all"
-                  >
-                    {selectedDashboardItem.plan_url}
-                  </a>
-                ) : (
-                  <div className="text-gray-400">—</div>
-                )}
-              </div>
+              {selectedDashboardItem.label === 'Teacher Announcement' ? (
+                <>
+                  <div>
+                    <div className="text-xs font-medium text-gray-500">Link</div>
+                    {selectedDashboardItem.link_url ? (
+                      <a
+                        href={selectedDashboardItem.link_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline break-all"
+                      >
+                        {selectedDashboardItem.link_url}
+                      </a>
+                    ) : (
+                      <div className="text-gray-400">—</div>
+                    )}
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium text-gray-500">PDF attachment</div>
+                    {selectedDashboardItem.attachment_url ? (
+                      <AnnouncementPdfButton
+                        storagePath={selectedDashboardItem.attachment_url}
+                        fileName={selectedDashboardItem.attachment_name}
+                      />
+                    ) : (
+                      <div className="text-gray-400">—</div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <div className="text-xs font-medium text-gray-500">Planning Link</div>
+                  {selectedDashboardItem.plan_url ? (
+                    <a
+                      href={selectedDashboardItem.plan_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline break-all"
+                    >
+                      {selectedDashboardItem.plan_url}
+                    </a>
+                  ) : (
+                    <div className="text-gray-400">—</div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

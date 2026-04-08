@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { normalizeLinkUrl, uploadTeacherAnnouncementPdf } from '../lib/announcementAttachments'
+import AnnouncementPdfButton from '../components/AnnouncementPdfButton'
 import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -88,13 +90,21 @@ export default function ClassDetail() {
   const [classAnnouncements, setClassAnnouncements] = useState([])
   const [announcementTitle, setAnnouncementTitle] = useState('')
   const [announcementMessage, setAnnouncementMessage] = useState('')
+  const [announcementLinkUrl, setAnnouncementLinkUrl] = useState('')
+  const [announcementPdfFile, setAnnouncementPdfFile] = useState(null)
+  const announcementPdfInputRef = useRef(null)
   const [postingAnnouncement, setPostingAnnouncement] = useState(false)
+  const [announcementFeedback, setAnnouncementFeedback] = useState(null)
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState(null)
 
   useEffect(() => { fetchClass() }, [classId])
   useEffect(() => { fetchStudentRoster() }, [classId])
   useEffect(() => { fetchClassAnnouncements() }, [classId])
   useEffect(() => {
     if (!selectedTerm) setHasUnsavedGradebook(false)
+  }, [selectedTerm])
+  useEffect(() => {
+    if (selectedTerm) setSelectedAnnouncement(null)
   }, [selectedTerm])
 
   const fetchClass = async () => {
@@ -124,7 +134,7 @@ export default function ClassDetail() {
   const fetchClassAnnouncements = async () => {
     const { data } = await supabase
       .from('teacher_announcement_targets')
-      .select('announcement_id, teacher_announcements(id, title, message, created_at)')
+      .select('announcement_id, teacher_announcements(id, title, message, created_at, link_url, attachment_url, attachment_name)')
       .eq('class_id', classId)
 
     const rows = (data || [])
@@ -136,12 +146,16 @@ export default function ClassDetail() {
   }
 
   const handlePostClassAnnouncement = async () => {
+    setAnnouncementFeedback(null)
+
     if (!announcementTitle.trim() || !announcementMessage.trim()) {
-      window.alert('Please enter both title and message.')
+      setAnnouncementFeedback({ type: 'error', text: 'Please enter both title and message.' })
       return
     }
 
     setPostingAnnouncement(true)
+    const linkUrl = normalizeLinkUrl(announcementLinkUrl)
+
     const { data: announcement, error: announcementError } = await supabase
       .from('teacher_announcements')
       .insert({
@@ -149,13 +163,17 @@ export default function ClassDetail() {
         title: announcementTitle.trim(),
         message: announcementMessage.trim(),
         scope: 'single_class',
+        link_url: linkUrl,
       })
       .select('id')
       .single()
 
     if (announcementError || !announcement?.id) {
       setPostingAnnouncement(false)
-      window.alert(`Unable to post announcement: ${announcementError?.message || 'Unknown error'}`)
+      setAnnouncementFeedback({
+        type: 'error',
+        text: `Unable to post announcement: ${announcementError?.message || 'Unknown error'}`,
+      })
       return
     }
 
@@ -166,15 +184,62 @@ export default function ClassDetail() {
         class_id: classId,
       })
 
-    setPostingAnnouncement(false)
     if (targetError) {
-      window.alert(`Announcement posted, but class targeting failed: ${targetError.message}`)
+      setPostingAnnouncement(false)
+      setAnnouncementFeedback({
+        type: 'error',
+        text: `Announcement saved, but class targeting failed: ${targetError.message}`,
+      })
       return
     }
 
+    let showAnnouncementSuccess = true
+
+    if (announcementPdfFile) {
+      const { path, displayName, error: uploadError } = await uploadTeacherAnnouncementPdf(
+        announcement.id,
+        announcementPdfFile
+      )
+      if (uploadError || !path) {
+        setPostingAnnouncement(false)
+        setAnnouncementFeedback({
+          type: 'error',
+          text: `Announcement posted, but the PDF could not be uploaded: ${uploadError?.message || 'Unknown error'}`,
+        })
+        setAnnouncementTitle('')
+        setAnnouncementMessage('')
+        setAnnouncementLinkUrl('')
+        setAnnouncementPdfFile(null)
+        if (announcementPdfInputRef.current) announcementPdfInputRef.current.value = ''
+        await fetchClassAnnouncements()
+        return
+      }
+      const { error: attachError } = await supabase
+        .from('teacher_announcements')
+        .update({ attachment_url: path, attachment_name: displayName })
+        .eq('id', announcement.id)
+        .eq('teacher_id', profile.id)
+      if (attachError) {
+        setAnnouncementFeedback({
+          type: 'error',
+          text: `Announcement posted, but saving the attachment failed: ${attachError.message}`,
+        })
+        showAnnouncementSuccess = false
+      }
+    }
+
+    setPostingAnnouncement(false)
+
     setAnnouncementTitle('')
     setAnnouncementMessage('')
+    setAnnouncementLinkUrl('')
+    setAnnouncementPdfFile(null)
+    if (announcementPdfInputRef.current) announcementPdfInputRef.current.value = ''
     await fetchClassAnnouncements()
+
+    if (showAnnouncementSuccess) {
+      setAnnouncementFeedback({ type: 'success', text: 'Announcement posted to this class.' })
+    }
   }
 
   if (loading) return <Layout><div className="text-center text-gray-400 py-20">Loading...</div></Layout>
@@ -278,21 +343,76 @@ export default function ClassDetail() {
               <div className="bg-white rounded-xl border border-gray-200 p-4" style={{ borderTopColor: '#22c55e', borderTopWidth: 3 }}>
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Class Announcements</h3>
                 {profile?.role === 'teacher' && profile?.id === cls.teacher_id && (
-                  <div className="space-y-2 mb-4">
-                    <input
-                      type="text"
-                      value={announcementTitle}
-                      onChange={(e) => setAnnouncementTitle(e.target.value)}
-                      placeholder="Announcement title"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    />
-                    <textarea
-                      value={announcementMessage}
-                      onChange={(e) => setAnnouncementMessage(e.target.value)}
-                      rows={3}
-                      placeholder="Write your class announcement..."
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    />
+                  <div className="space-y-3 mb-4">
+                    <div>
+                      <label htmlFor="class-announcement-title" className="block text-xs font-medium text-gray-500 mb-1">
+                        Title
+                      </label>
+                      <input
+                        id="class-announcement-title"
+                        type="text"
+                        value={announcementTitle}
+                        onChange={(e) => setAnnouncementTitle(e.target.value)}
+                        placeholder="Short headline"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="class-announcement-message" className="block text-xs font-medium text-gray-500 mb-1">
+                        Message
+                      </label>
+                      <textarea
+                        id="class-announcement-message"
+                        value={announcementMessage}
+                        onChange={(e) => setAnnouncementMessage(e.target.value)}
+                        placeholder="Write your class announcement..."
+                        className="w-full min-h-[8rem] max-h-[min(24rem,50vh)] rounded-lg border border-gray-300 px-3 py-2 text-sm resize-y"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="class-announcement-link" className="block text-xs font-medium text-gray-500 mb-1">
+                        Link (optional)
+                      </label>
+                      <input
+                        id="class-announcement-link"
+                        type="text"
+                        inputMode="url"
+                        autoComplete="url"
+                        value={announcementLinkUrl}
+                        onChange={(e) => setAnnouncementLinkUrl(e.target.value)}
+                        placeholder="e.g. Google Drive or class resource"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="class-announcement-pdf" className="block text-xs font-medium text-gray-500 mb-1">
+                        PDF attachment (optional)
+                      </label>
+                      <input
+                        id="class-announcement-pdf"
+                        ref={announcementPdfInputRef}
+                        type="file"
+                        accept="application/pdf"
+                        className="block w-full text-xs text-gray-600 file:mr-2 file:rounded file:border-0 file:bg-gray-100 file:px-2 file:py-1 file:text-sm"
+                        onChange={(e) => setAnnouncementPdfFile(e.target.files?.[0] || null)}
+                      />
+                      {announcementPdfFile && (
+                        <div className="text-xs text-gray-500 mt-1 truncate max-w-full" title={announcementPdfFile.name}>
+                          {announcementPdfFile.name}
+                        </div>
+                      )}
+                    </div>
+                    {announcementFeedback && (
+                      <div
+                        className={`text-xs px-2 py-1 rounded border ${
+                          announcementFeedback.type === 'success'
+                            ? 'bg-green-50 text-green-700 border-green-200'
+                            : 'bg-red-50 text-red-700 border-red-200'
+                        }`}
+                      >
+                        {announcementFeedback.text}
+                      </div>
+                    )}
                     <div className="flex justify-end">
                       <button
                         type="button"
@@ -305,20 +425,124 @@ export default function ClassDetail() {
                     </div>
                   </div>
                 )}
-                <div className="space-y-2">
-                  {classAnnouncements.length === 0 ? (
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
-                      No announcements posted for this class yet.
-                    </div>
-                  ) : classAnnouncements.slice(0, 6).map((item) => (
-                    <div key={item.id} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-                      <div className="text-sm font-medium text-gray-800">{item.title}</div>
-                      <div className="text-xs text-gray-500 mt-1">{new Date(item.created_at).toLocaleDateString('en-GB')}</div>
-                      <div className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">{item.message}</div>
-                    </div>
-                  ))}
-                </div>
+                {profile?.role === 'admin' ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {classAnnouncements.length === 0 ? (
+                      <div className="sm:col-span-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                        No announcements posted for this class yet.
+                      </div>
+                    ) : (
+                      classAnnouncements.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setSelectedAnnouncement(item)}
+                          className="text-left rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:border-green-300 hover:bg-green-50/40 transition-colors"
+                        >
+                          <div className="text-sm font-semibold text-gray-900 line-clamp-2">{item.title}</div>
+                          <div className="text-xs text-gray-500 mt-2">
+                            {new Date(item.created_at).toLocaleDateString('en-GB')}
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {classAnnouncements.length === 0 ? (
+                      <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                        No announcements posted for this class yet.
+                      </div>
+                    ) : classAnnouncements.slice(0, 6).map((item) => (
+                      <div key={item.id} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                        <div className="text-sm font-medium text-gray-800">{item.title}</div>
+                        <div className="text-xs text-gray-500 mt-1">{new Date(item.created_at).toLocaleDateString('en-GB')}</div>
+                        <div className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">{item.message}</div>
+                        {item.link_url && (
+                          <div className="mt-2 text-xs">
+                            <span className="text-gray-500">Link: </span>
+                            <a
+                              href={item.link_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline break-all"
+                            >
+                              {item.link_url}
+                            </a>
+                          </div>
+                        )}
+                        {item.attachment_url && (
+                          <div className="mt-1">
+                            <AnnouncementPdfButton
+                              storagePath={item.attachment_url}
+                              fileName={item.attachment_name}
+                              className="text-xs text-blue-600 hover:underline disabled:opacity-60"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+
+              {profile?.role === 'admin' && selectedAnnouncement && (
+                <div
+                  className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4"
+                  onClick={() => setSelectedAnnouncement(null)}
+                >
+                  <div
+                    className="w-full max-w-lg bg-white rounded-xl border border-gray-200 p-5 max-h-[min(90vh,32rem)] overflow-y-auto"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h4 className="text-base font-semibold text-gray-900">{selectedAnnouncement.title}</h4>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(selectedAnnouncement.created_at).toLocaleDateString('en-GB')}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedAnnouncement(null)}
+                        className="text-gray-400 hover:text-gray-600 shrink-0"
+                        aria-label="Close announcement"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div className="mt-4">
+                      <div className="text-xs font-medium text-gray-500">Message</div>
+                      <div className="text-sm text-gray-800 whitespace-pre-wrap mt-1">{selectedAnnouncement.message}</div>
+                      {selectedAnnouncement.link_url && (
+                        <div className="mt-4 text-xs">
+                          <span className="text-gray-500 font-medium">Link</span>
+                          <div className="mt-1">
+                            <a
+                              href={selectedAnnouncement.link_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline break-all"
+                            >
+                              {selectedAnnouncement.link_url}
+                            </a>
+                          </div>
+                        </div>
+                      )}
+                      {selectedAnnouncement.attachment_url && (
+                        <div className="mt-3">
+                          <span className="text-xs font-medium text-gray-500 block mb-1">Attachment</span>
+                          <AnnouncementPdfButton
+                            storagePath={selectedAnnouncement.attachment_url}
+                            fileName={selectedAnnouncement.attachment_name}
+                            className="text-sm text-blue-600 hover:underline disabled:opacity-60"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
