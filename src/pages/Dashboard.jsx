@@ -697,10 +697,11 @@ export default function Dashboard() {
           <div className="lg:col-span-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Admin Tools</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Card 1 - RED */}
               <Link
                 to="/admin/students"
                 className="relative bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block"
-                style={{ borderTopColor: CARD_ACCENT.students, borderTopWidth: 3 }}
+                style={{ borderTopColor: '#d1232a', borderTopWidth: 3 }}
               >
                 {newStudentPasswordResetCount > 0 && (
                   <span className="absolute top-3 right-3 min-w-[1.5rem] h-6 px-2 rounded-full bg-red-600 text-white text-xs font-semibold flex items-center justify-center">
@@ -710,18 +711,20 @@ export default function Dashboard() {
                 <div className="font-semibold text-gray-900">Student Management</div>
                 <div className="text-sm text-gray-500 mt-1">Add, edit or remove student accounts.</div>
               </Link>
+              {/* Card 2 - BLUE */}
               <Link
                 to="/admin/classes"
                 className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block"
-                style={{ borderTopColor: CARD_ACCENT.classes, borderTopWidth: 3 }}
+                style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}
               >
                 <div className="font-semibold text-gray-900">Class Management</div>
                 <div className="text-sm text-gray-500 mt-1">Add, edit or remove classes.</div>
               </Link>
+              {/* Card 3 - YELLOW */}
               <Link
                 to="/admin/users"
                 className="relative bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block"
-                style={{ borderTopColor: CARD_ACCENT.users, borderTopWidth: 3 }}
+                style={{ borderTopColor: '#ffc612', borderTopWidth: 3 }}
               >
                 {newTeacherPasswordResetCount > 0 && (
                   <span className="absolute top-3 right-3 min-w-[1.5rem] h-6 px-2 rounded-full bg-red-600 text-white text-xs font-semibold flex items-center justify-center">
@@ -731,26 +734,29 @@ export default function Dashboard() {
                 <div className="font-semibold text-gray-900">Teacher Management</div>
                 <div className="text-sm text-gray-500 mt-1">View, add, edit or remove teacher accounts.</div>
               </Link>
+              {/* Card 4 - RED */}
               <Link
                 to="/admin/resources"
                 className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block"
-                style={{ borderTopColor: CARD_ACCENT.resources, borderTopWidth: 3 }}
+                style={{ borderTopColor: '#d1232a', borderTopWidth: 3 }}
               >
                 <div className="font-semibold text-gray-900">Resource Management</div>
                 <div className="text-sm text-gray-500 mt-1">Add, edit or remove resources.</div>
               </Link>
+              {/* Card 5 - BLUE */}
               <Link
                 to="/admin/events-deadlines"
                 className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block"
-                style={{ borderTopColor: CARD_ACCENT.eventsDeadlines, borderTopWidth: 3 }}
+                style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}
               >
-                <div className="font-semibold text-gray-900">Event &amp; Admin Deadline Management</div>
+                <div className="font-semibold text-gray-900">Event & Admin Deadline Management</div>
                 <div className="text-sm text-gray-500 mt-1">Add, edit or remove events and deadlines.</div>
               </Link>
+              {/* Card 6 - YELLOW */}
               <Link
                 to="/admin/behavior-management"
                 className="relative bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block"
-                style={{ borderTopColor: CARD_ACCENT.behavior, borderTopWidth: 3 }}
+                style={{ borderTopColor: '#ffc612', borderTopWidth: 3 }}
               >
                 {newBehaviorReportsCount > 0 && (
                   <span className="absolute top-3 right-3 min-w-[1.5rem] h-6 px-2 rounded-full bg-red-600 text-white text-xs font-semibold flex items-center justify-center">
@@ -760,6 +766,7 @@ export default function Dashboard() {
                 <div className="font-semibold text-gray-900">Behavior Management</div>
                 <div className="text-sm text-gray-500 mt-1">Review teacher behavior reports and follow-up actions.</div>
               </Link>
+              {/* Card 7 - RED */}
               <Link
                 to="/admin/gradebooks"
                 className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block"
@@ -774,6 +781,7 @@ export default function Dashboard() {
                 <div className="font-semibold text-gray-900">Gradebook Management</div>
                 <div className="text-sm text-gray-500 mt-1">Review termly gradebooks for each class.</div>
               </Link>
+              {/* Card 8 - BLUE */}
               <Link
                 to="/admin/weekly-plans"
                 className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block"
