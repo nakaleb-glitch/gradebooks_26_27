@@ -243,6 +243,10 @@ export default function Layout({ children }) {
               alt="Royal School International"
               className="h-12 w-auto"
             />
+            <div className="flex flex-col">
+              <div className="text-xl font-bold text-white tracking-tight">Cambridge Programme Portal</div>
+              <div className="text-xs text-gray-400">Royal School International • Academic Year 2026-2027</div>
+            </div>
             {/* Nav menu */}
             <div className="flex gap-6 items-center">
               {profile?.role === 'admin' && location.pathname !== '/dashboard' && (
@@ -315,7 +319,7 @@ export default function Layout({ children }) {
 
             {/* Global Current Week Indicator */}
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-300">Current:</span>
+              <span className="text-xs text-gray-300">Current Week:</span>
               <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: '#ffc612', color: '#1a1a1a' }}>
                 {ALL_WEEKS[getCurrentWeekIndex()]?.label || 'Week 0'}
               </span>
