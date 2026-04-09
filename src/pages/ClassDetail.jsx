@@ -1458,13 +1458,13 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
               <th className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 min-w-48"></th>
               {isESL ? (
                 <>
-              <th colSpan={3} className="text-center px-3 py-2 font-medium bg-gray-200 text-gray-800 border-l border-gray-200">Progress Test - Scores</th>
-              <th colSpan={4} className="text-center px-3 py-2 font-medium bg-green-100 text-green-800 border-l border-gray-200">Progress Test - Percentages</th>
+              <th colSpan={3} className="text-center px-3 py-2 font-medium bg-gray-200 text-gray-800 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}>Progress Test - Scores</th>
+              <th colSpan={4} className="text-center px-3 py-2 font-medium bg-green-100 text-green-800 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}>Progress Test - Percentages</th>
                 </>
               ) : (
                 <>
-                <th className="text-center px-3 py-3 text-gray-500 font-medium min-w-32"></th>
-                <th className="text-center bg-green-100 border-l border-gray-200" style={{ backgroundClip: 'padding-box' }}></th>
+                <th className="text-center px-3 py-3 text-gray-500 font-medium min-w-32 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}></th>
+                <th className="text-center bg-green-100 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}></th>
                 </>
               )}
             </tr>
@@ -1475,9 +1475,9 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
               <th className="text-center px-3 py-3 font-medium min-w-36 bg-gray-200 text-gray-700 border-l border-gray-200">Reading & Writing</th>
               <th className="text-center px-3 py-3 font-medium min-w-32 bg-gray-200 text-gray-700 border-l border-gray-200">Listening</th>
               <th className="text-center px-3 py-3 font-medium min-w-32 bg-gray-200 text-gray-700 border-l border-gray-200">Speaking</th>
-              <th className="text-center px-3 py-3 font-medium min-w-36 bg-green-100 text-green-800 border-l border-gray-200">Reading & Writing</th>
-              <th className="text-center px-3 py-3 font-medium min-w-32 bg-green-100 text-green-800 border-l border-gray-200">Listening</th>
-              <th className="text-center px-3 py-3 font-medium min-w-32 bg-green-100 text-green-800 border-l border-gray-200">Speaking</th>
+                <th className="text-center px-3 py-3 font-medium min-w-36 bg-green-100 text-green-800 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}>Reading & Writing</th>
+              <th className="text-center px-3 py-3 font-medium min-w-32 bg-green-100 text-green-800 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}>Listening</th>
+              <th className="text-center px-3 py-3 font-medium min-w-32 bg-green-100 text-green-800 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}>Speaking</th>
                 </>
               ) : (
                 <th className="text-center px-3 py-3 text-gray-500 font-medium min-w-32">Score {totals.total_points ? `/ ${totals.total_points}` : ''}</th>
@@ -1833,7 +1833,7 @@ function StudentAttributesTab({ classId, term, students, onDirtyChange }) {
             <tr>
               <th className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 min-w-48">Student</th>
               {ATTRIBUTE_FIELDS.map(field => (
-                <th key={field.key} className="text-center px-3 py-3 font-medium min-w-44 border-l border-gray-100 bg-blue-100 text-blue-800">
+                <th key={field.key} className="text-center px-3 py-3 font-medium min-w-44 border-l border-gray-300 bg-blue-100 text-blue-800" style={{ backgroundClip: 'padding-box' }}>
                   {field.label}
                 </th>
               ))}
@@ -1855,7 +1855,7 @@ function StudentAttributesTab({ classId, term, students, onDirtyChange }) {
                    {ATTRIBUTE_FIELDS.map(field => {
                      const currentValue = row[field.key] ?? ''
                      return (
-                       <td key={field.key} className="px-3 py-2 text-center border-l border-gray-100 bg-blue-50">
+                       <td key={field.key} className="px-3 py-2 text-center border-l border-gray-300 bg-blue-50" style={{ backgroundClip: 'padding-box' }}>
                          <div className="flex justify-center gap-2">
                            {/* G Button - Good */}
                            <button

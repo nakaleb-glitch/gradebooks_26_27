@@ -1,6 +1,1 @@
-/* Global fix for table borders rendering above background colors */
-table th,
-table td {
-  background-clip: padding-box;
-  border-color: #d1d5db !important; /* border-gray-300 */
-}
+/* App CSS - empty, will use explicit cell styles instead */
