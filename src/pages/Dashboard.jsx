@@ -1293,17 +1293,38 @@ export default function Dashboard() {
                     <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
                       No upcoming deadlines yet. Admin updates will appear here.
                     </div>
-                  ) : teacherDeadlines.map(deadlineItem => (
-                    <button
-                      key={deadlineItem.id}
-                      type="button"
-                      onClick={() => setSelectedDashboardItem({ ...deadlineItem, label: 'Admin Deadline' })}
-                      className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-amber-50 transition-colors"
-                    >
-                      <div className="text-sm font-medium text-gray-800">{deadlineItem.title}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">{formatDateWithDay(deadlineItem.event_date)}</div>
-                    </button>
-                  ))}
+                  ) : teacherDeadlines.map(deadlineItem => {
+                    const today = new Date()
+                    today.setHours(0, 0, 0, 0)
+                    const deadlineDate = new Date(deadlineItem.event_date)
+                    deadlineDate.setHours(0, 0, 0, 0)
+                    const daysRemaining = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24))
+                    
+                    let statusColor = 'bg-gray-100 text-gray-600'
+                    if (daysRemaining < 0) statusColor = 'bg-gray-300 text-gray-700'
+                    else if (daysRemaining <= 2) statusColor = 'bg-red-100 text-red-700'
+                    else if (daysRemaining <= 5) statusColor = 'bg-amber-100 text-amber-700'
+                    else statusColor = 'bg-green-100 text-green-700'
+
+                    return (
+                      <button
+                        key={deadlineItem.id}
+                        type="button"
+                        onClick={() => setSelectedDashboardItem({ ...deadlineItem, label: 'Admin Deadline' })}
+                        className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-amber-50 transition-colors"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-gray-800">{deadlineItem.title}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">{formatDateWithDay(deadlineItem.event_date)}</div>
+                          </div>
+                          <span className={`shrink-0 text-xs font-semibold px-2 py-1 rounded-full ${statusColor}`}>
+                            {daysRemaining < 0 ? 'Past' : daysRemaining === 0 ? 'Today' : `${daysRemaining}d`}
+                          </span>
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
 
