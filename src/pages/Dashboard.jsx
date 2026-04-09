@@ -1098,6 +1098,96 @@ export default function Dashboard() {
       ) : (
         <>
           <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+              <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: CARD_ACCENT.deadlines, borderTopWidth: 3 }}>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Admin Deadlines</h3>
+                <div className="space-y-2">
+                  {teacherDeadlines.length === 0 ? (
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                      No upcoming deadlines yet. Admin updates will appear here.
+                    </div>
+                  ) : teacherDeadlines.map(deadlineItem => {
+                    const today = new Date()
+                    today.setHours(0, 0, 0, 0)
+                    const deadlineDate = new Date(deadlineItem.event_date)
+                    deadlineDate.setHours(0, 0, 0, 0)
+                    const daysRemaining = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24))
+                    
+                    let statusColor = 'bg-gray-100 text-gray-600'
+                    if (daysRemaining < 0) statusColor = 'bg-gray-300 text-gray-700'
+                    else if (daysRemaining <= 2) statusColor = 'bg-red-100 text-red-700'
+                    else if (daysRemaining <= 5) statusColor = 'bg-amber-100 text-amber-700'
+                    else statusColor = 'bg-green-100 text-green-700'
+
+                    return (
+                      <button
+                        key={deadlineItem.id}
+                        type="button"
+                        onClick={() => setSelectedDashboardItem({ ...deadlineItem, label: 'Admin Deadline' })}
+                        className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-amber-50 transition-colors"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-gray-800">{deadlineItem.title}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">{formatDateWithDay(deadlineItem.event_date)}</div>
+                          </div>
+                          <span className="shrink-0 text-xs text-gray-500 flex items-center gap-1">
+                            Days remaining: <span className={`font-semibold px-2 py-0.5 rounded-full ${statusColor}`}>
+                              {daysRemaining < 0 ? 'Past' : daysRemaining === 0 ? 'Today' : `${daysRemaining}d`}
+                            </span>
+                          </span>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: CARD_ACCENT.events, borderTopWidth: 3 }}>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Events</h3>
+                <div className="space-y-2">
+                  {teacherEvents.length === 0 ? (
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                      No upcoming events yet. Admin updates will appear here.
+                    </div>
+                  ) : teacherEvents.map(eventItem => {
+                    const today = new Date()
+                    today.setHours(0, 0, 0, 0)
+                    const eventDate = new Date(eventItem.event_date)
+                    eventDate.setHours(0, 0, 0, 0)
+                    const daysUntil = Math.ceil((eventDate - today) / (1000 * 60 * 60 * 24))
+                    
+                    let statusColor = 'bg-gray-100 text-gray-600'
+                    if (daysUntil < 0) statusColor = 'bg-gray-300 text-gray-700'
+                    else if (daysUntil <= 2) statusColor = 'bg-red-100 text-red-700'
+                    else if (daysUntil <= 5) statusColor = 'bg-amber-100 text-amber-700'
+                    else statusColor = 'bg-green-100 text-green-700'
+
+                    return (
+                      <button
+                        key={eventItem.id}
+                        type="button"
+                        onClick={() => setSelectedDashboardItem({ ...eventItem, label: 'Event' })}
+                        className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-blue-50 transition-colors"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-gray-800">{eventItem.title}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">{formatDateWithDay(eventItem.event_date)}</div>
+                          </div>
+                          <span className="shrink-0 text-xs text-gray-500 flex items-center gap-1">
+                            Days until: <span className={`font-semibold px-2 py-0.5 rounded-full ${statusColor}`}>
+                              {daysUntil < 0 ? 'Past' : daysUntil === 0 ? 'Today' : `${daysUntil}d`}
+                            </span>
+                          </span>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+
             <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: CARD_ACCENT.class, borderTopWidth: 3 }}>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">My Classes</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
