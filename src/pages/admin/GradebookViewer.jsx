@@ -246,12 +246,22 @@ export default function GradebookViewer() {
       .in('student_id', studentIds)
 
     // Fetch student attributes for this class
-    const { data: attributesData } = await supabase
+    console.log("🔍 Fetching attributes for class:", selectedSubject, "term:", selectedTerm)
+    const { data: attributesData, error: attributesError } = await supabase
       .from('student_attributes')
       .select('student_id, attribute, score')
       .eq('class_id', selectedSubject)
       .eq('term', selectedTerm)
       .in('student_id', studentIds)
+    
+    if (attributesError) {
+      console.error("❌ Attributes fetch error:", attributesError)
+    } else {
+      console.log("✅ Attributes received:", attributesData?.length, "records")
+      if (attributesData?.length > 0) {
+        console.log("📋 Sample attribute:", attributesData[0])
+      }
+    }
 
     // Create grade maps
     const participationMap = Object.fromEntries(participationData?.map(g => [g.student_id, g.score]) || [])
