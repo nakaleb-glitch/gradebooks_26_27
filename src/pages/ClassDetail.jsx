@@ -870,7 +870,7 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
             <tr>
               <th className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 min-w-48">Student</th>
               {weekSchedule.map((weekItem) => (
-                <th key={weekItem.week} className="text-center px-2 py-3 text-gray-500 font-medium min-w-28">
+                <th key={weekItem.week} className="text-center px-2 py-3 font-medium min-w-28 bg-gray-200 text-gray-700">
                   <div>{weekItem.label}</div>
                   <div className="text-[10px] text-gray-400 font-normal mt-0.5">{weekItem.range}</div>
                   {weekItem.isNoScore && (
@@ -878,7 +878,7 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
                   )}
                 </th>
               ))}
-              <th className="text-center px-4 py-3 text-gray-500 font-medium min-w-20">Participation %</th>
+              <th className="text-center px-4 py-3 font-medium min-w-20 bg-green-100 text-green-800">Participation - Overall</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -896,7 +896,7 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
                   const key = `${student.id}_${weekItem.week}`
                   const isNoScoreWeek = !!weekItem.isNoScore
                   return (
-                    <td key={weekItem.week} className="px-2 py-2">
+                    <td key={weekItem.week} className="px-2 py-2 bg-gray-50">
                       {isNoScoreWeek ? (
                         <div className="flex items-center justify-center h-[52px]">
                           <span className="px-2 py-0.5 bg-rose-100 text-rose-700 rounded text-[10px] font-semibold">
@@ -957,7 +957,7 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
                     </td>
                   )
                 })}
-                <td className="px-4 py-3 text-center">
+                <td className="px-4 py-3 text-center bg-green-50">
                   <span className={`font-semibold ${
                     getAvg(student.id) != null 
                       ? getAvg(student.id) >= 80 ? 'text-green-600' 
@@ -966,7 +966,7 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
                       : 'text-red-600'
                       : 'text-gray-300'
                   }`}>
-                    {getAvg(student.id) != null ? `${fmt(getAvg(student.id))}%` : '—'}
+                    {getAvg(student.id) != null ? fmt(getAvg(student.id)) : '—'}
                   </span>
                 </td>
               </tr>
@@ -1148,7 +1148,7 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
               <tr>
                 <th className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 min-w-48">Student</th>
                 {assignments.map(a => (
-                  <th key={a.id} className="text-center px-3 py-3 text-gray-500 font-medium min-w-32">
+                  <th key={a.id} className="text-center px-3 py-3 font-medium min-w-32 bg-gray-200 text-gray-700">
                     <div className="flex items-center justify-center gap-2">
                       <span>{a.name}</span>
                       <button
@@ -1165,7 +1165,7 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
                     <div className="text-xs font-normal text-gray-400">/ {a.max_points}</div>
                   </th>
                 ))}
-                <th className="text-center px-4 py-3 text-gray-500 font-medium min-w-24">Avg %</th>
+                <th className="text-center px-4 py-3 font-medium min-w-24 bg-green-100 text-green-800">Assignments - Overall</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -1183,7 +1183,7 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
                     const key = `${assignment.id}_${student.id}`
                     const g = grades[key] || {}
                     return (
-                      <td key={assignment.id} className="px-3 py-2 text-center">
+                      <td key={assignment.id} className="px-3 py-2 text-center bg-gray-50">
                         {g.is_absent ? (
                           <div className="flex flex-col items-center gap-1">
                             <span className="px-2 py-1 bg-orange-100 text-orange-600 rounded text-xs font-medium">Absent</span>
@@ -1285,9 +1285,9 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
                       </td>
                     )
                   })}
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-4 py-3 text-center bg-green-50">
                     <span className={`font-semibold ${getStudentAvg(student.id) != null ? 'text-blue-600' : 'text-gray-300'}`}>
-                      {fmt(getStudentAvg(student.id))}{getStudentAvg(student.id) != null ? '%' : ''}
+                      {fmt(getStudentAvg(student.id))}
                     </span>
                   </td>
                 </tr>
@@ -1458,14 +1458,14 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
               <th className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 min-w-48">Student</th>
               {isESL ? (
                 <>
-                  <th className="text-center px-3 py-3 text-gray-500 font-medium min-w-36">Reading & Writing {totals.rw_total ? `/ ${totals.rw_total}` : ''}</th>
-                  <th className="text-center px-3 py-3 text-gray-500 font-medium min-w-32">Listening {totals.l_total ? `/ ${totals.l_total}` : ''}</th>
-                  <th className="text-center px-3 py-3 text-gray-500 font-medium min-w-32">Speaking {totals.s_total ? `/ ${totals.s_total}` : ''}</th>
+                  <th className="text-center px-3 py-3 font-medium min-w-36 bg-gray-200 text-gray-700">Progress Test - Reading & Writing</th>
+                  <th className="text-center px-3 py-3 font-medium min-w-32 bg-gray-200 text-gray-700">Progress Test - Listening</th>
+                  <th className="text-center px-3 py-3 font-medium min-w-32 bg-gray-200 text-gray-700">Progress Test - Speaking</th>
                 </>
               ) : (
                 <th className="text-center px-3 py-3 text-gray-500 font-medium min-w-32">Score {totals.total_points ? `/ ${totals.total_points}` : ''}</th>
               )}
-              <th className="text-center px-4 py-3 text-gray-500 font-medium min-w-24">Overall %</th>
+                <th className="text-center px-4 py-3 font-medium min-w-24 bg-green-100 text-green-800">Progress Test - Overall</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -1484,7 +1484,7 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
                   </td>
                   {isESL ? (
                     <>
-                      <td className="px-3 py-2 text-center">
+                      <td className="px-3 py-2 text-center bg-gray-50">
                         <div className="flex flex-col items-center gap-1">
                           <input type="number" min="0" max={totals.rw_total || undefined} placeholder="—"
                             value={g.rw ?? ''}
@@ -1599,9 +1599,9 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
                       </div>
                     </td>
                   )}
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-4 py-3 text-center bg-green-50">
                     <span className={`font-semibold ${overall != null ? 'text-blue-600' : 'text-gray-300'}`}>
-                      {fmt(overall)}{overall != null ? '%' : ''}
+                      {fmt(overall)}
                     </span>
                   </td>
                 </tr>
