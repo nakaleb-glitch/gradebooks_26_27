@@ -468,7 +468,7 @@ export default function ClassDetail() {
                     )}
                   </>
                 )}
-                {profile?.role === 'admin' ? (
+                {profile?.role === 'admin' && showSentAnnouncements && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {classAnnouncements.length === 0 ? (
                       <div className="sm:col-span-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
@@ -490,40 +490,23 @@ export default function ClassDetail() {
                       ))
                     )}
                   </div>
-                ) : (
+                )}
+                {profile?.role === 'teacher' && profile?.id === cls.teacher_id && showSentAnnouncements && (
                   <div className="space-y-2">
                     {classAnnouncements.length === 0 ? (
                       <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
                         No announcements posted for this class yet.
                       </div>
                     ) : classAnnouncements.slice(0, 6).map((item) => (
-                      <div key={item.id} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setSelectedAnnouncement(item)}
+                        className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-green-50 transition-colors"
+                      >
                         <div className="text-sm font-medium text-gray-800">{item.title}</div>
-                        <div className="text-xs text-gray-500 mt-1">{new Date(item.created_at).toLocaleDateString('en-GB')}</div>
-                        <div className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">{item.message}</div>
-                        {item.link_url && (
-                          <div className="mt-2 text-xs">
-                            <span className="text-gray-500">Link: </span>
-                            <a
-                              href={item.link_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline break-all"
-                            >
-                              {item.link_url}
-                            </a>
-                          </div>
-                        )}
-                        {item.attachment_url && (
-                          <div className="mt-1">
-                            <AnnouncementPdfButton
-                              storagePath={item.attachment_url}
-                              fileName={item.attachment_name}
-                              className="text-xs text-blue-600 hover:underline disabled:opacity-60"
-                            />
-                          </div>
-                        )}
-                      </div>
+                        <div className="text-xs text-gray-500 mt-0.5">{new Date(item.created_at).toLocaleDateString('en-GB')}</div>
+                      </button>
                     ))}
                   </div>
                 )}
