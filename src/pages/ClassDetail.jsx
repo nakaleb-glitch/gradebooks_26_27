@@ -264,7 +264,10 @@ export default function ClassDetail() {
             }
             navigate(profile?.role === 'admin' ? '/admin/classes' : '/dashboard')
           }}
-          className="text-sm text-gray-400 hover:text-gray-600 mb-4 flex items-center gap-1"
+          className="text-sm text-white px-3 py-1.5 rounded-lg mb-4 flex items-center gap-1 transition-colors"
+          style={{ backgroundColor: '#1f86c7' }}
+          onMouseEnter={(e) => e.target.style.backgroundColor = '#1a74ad'}
+          onMouseLeave={(e) => e.target.style.backgroundColor = '#1f86c7'}
         >
           ← Go Back
         </button>

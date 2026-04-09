@@ -179,7 +179,10 @@ export default function StudentClassDetail() {
     return (
       <Layout>
         <div className="mb-8">
-          <button onClick={() => navigate('/dashboard')} className="text-sm text-gray-400 hover:text-gray-600 mb-4 flex items-center gap-1">
+          <button onClick={() => navigate('/dashboard')} className="text-sm text-white px-3 py-1.5 rounded-lg mb-4 flex items-center gap-1 transition-colors"
+            style={{ backgroundColor: '#1f86c7' }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = '#1a74ad'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = '#1f86c7'}>
             ← Go Back
           </button>
           <h2 className="text-2xl font-bold text-gray-900">Class Access</h2>
@@ -192,7 +195,10 @@ export default function StudentClassDetail() {
   return (
     <Layout>
       <div className="mb-8">
-        <button onClick={() => navigate('/dashboard')} className="text-sm text-gray-400 hover:text-gray-600 mb-4 flex items-center gap-1">
+        <button onClick={() => navigate('/dashboard')} className="text-sm text-white px-3 py-1.5 rounded-lg mb-4 flex items-center gap-1 transition-colors"
+          style={{ backgroundColor: '#1f86c7' }}
+          onMouseEnter={(e) => e.target.style.backgroundColor = '#1a74ad'}
+          onMouseLeave={(e) => e.target.style.backgroundColor = '#1f86c7'}>
           ← Go Back
         </button>
         <h2 className="text-2xl font-bold text-gray-900">{cls?.name}</h2>
