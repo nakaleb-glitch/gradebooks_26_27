@@ -1863,57 +1863,92 @@ function SummaryTab({ classId, term, students, isESL }) {
 // ── Comments Tab ──────────────────────────────────────────────────────────────
 function CommentsTab({ classId, term, students, onDirtyChange }) {
   const [comments, setComments] = useState({})
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [focusedStudent, setFocusedStudent] = useState(null)
+  const [savingIds, setSavingIds] = useState({})
+  const [savedIds, setSavedIds] = useState({})
+  const [dirtyIds, setDirtyIds] = useState({})
 
   useEffect(() => { fetchComments() }, [classId, term])
-  useEffect(() => { onDirtyChange?.(false) }, [classId, term])
+  useEffect(() => { onDirtyChange?.(Object.values(dirtyIds).some(Boolean)) }, [dirtyIds])
 
   const fetchComments = async () => {
     const { data } = await supabase.from('term_comments').select('*').eq('class_id', classId).eq('term', term)
     const map = {}
     data?.forEach(c => { map[c.student_id] = c.comment })
     setComments(map)
+    setDirtyIds({})
   }
 
-  const saveAll = async () => {
-    setSaving(true)
-    const rows = students
-      .filter(s => comments[s.id] !== undefined && comments[s.id] !== '')
-      .map(s => ({ class_id: classId, student_id: s.id, term, comment: comments[s.id] }))
-    await supabase.from('term_comments').upsert(rows, { onConflict: 'class_id,student_id,term' })
-    setSaving(false)
-    setSaved(true)
-    onDirtyChange?.(false)
-    setTimeout(() => setSaved(false), 2000)
+  const saveComment = async (studentId) => {
+    setSavingIds(prev => ({ ...prev, [studentId]: true }))
+    
+    await supabase.from('term_comments').upsert({
+      class_id: classId,
+      student_id: studentId,
+      term,
+      comment: comments[studentId]?.trim() || null
+    }, { onConflict: 'class_id,student_id,term' })
+    
+    setSavingIds(prev => ({ ...prev, [studentId]: false }))
+    setSavedIds(prev => ({ ...prev, [studentId]: true }))
+    setDirtyIds(prev => ({ ...prev, [studentId]: false }))
+    
+    setTimeout(() => setSavedIds(prev => {
+      const next = { ...prev }
+      delete next[studentId]
+      return next
+    }), 1500)
+  }
+
+  const setComment = (studentId, value) => {
+    setComments(prev => ({ ...prev, [studentId]: value }))
+    setDirtyIds(prev => ({ ...prev, [studentId]: true }))
   }
 
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-gray-500">Write end of term comments for each student.</p>
-        <button onClick={saveAll} disabled={saving} className="px-4 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300">
-          {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save'}
-        </button>
+        <p className="text-sm text-gray-500">Write end of term comments for each student. Click box to expand.</p>
       </div>
-      <div className="space-y-4">
+      <div className="space-y-3">
         {students.map(student => (
-          <div key={student.id} className="bg-white rounded-xl border border-gray-200 p-4">
-            <div className="mb-2">
-              <div className="font-medium">
-                <span className="text-gray-900">{student.name_eng || '—'}</span>
-                <span className="text-gray-400 px-1">-</span>
-                <span className="text-blue-700">{student.name_vn || '—'}</span>
+          <div key={student.id} className="bg-white rounded-xl border border-gray-200 p-3">
+            <div className="flex gap-4 items-start">
+              <div className="flex-grow">
+                <div className="mb-1.5">
+                  <div className="font-medium text-sm">
+                    <span className="text-gray-900">{student.name_eng || '—'}</span>
+                    <span className="text-gray-400 px-1">-</span>
+                    <span className="text-blue-700">{student.name_vn || '—'}</span>
+                  </div>
+                  <div className="text-xs text-gray-400">{student.student_id || '—'}</div>
+                </div>
+                <textarea 
+                  rows={focusedStudent === student.id ? 4 : 1} 
+                  placeholder="Write a comment for this student..."
+                  value={comments[student.id] ?? ''}
+                  onChange={e => setComment(student.id, e.target.value)}
+                  onFocus={() => setFocusedStudent(student.id)}
+                  onBlur={() => setFocusedStudent(null)}
+                  className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none transition-all"
+                />
               </div>
-              <div className="text-xs text-gray-400">{student.student_id || '—'}</div>
+              <div className="flex-shrink-0 mt-6">
+                <button 
+                  onClick={() => saveComment(student.id)} 
+                  disabled={savingIds[student.id] || !dirtyIds[student.id]}
+                  className={`px-3 py-1 text-xs rounded-lg font-medium transition-colors ${
+                    savedIds[student.id] 
+                      ? 'bg-green-100 text-green-700' 
+                      : dirtyIds[student.id] && !savingIds[student.id]
+                        ? 'bg-green-600 text-white hover:bg-green-700'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  {savingIds[student.id] ? 'Saving...' : savedIds[student.id] ? '✓ Saved' : 'Save'}
+                </button>
+              </div>
             </div>
-            <textarea rows={4} placeholder="Write a comment for this student..."
-              value={comments[student.id] ?? ''}
-              onChange={e => {
-                onDirtyChange?.(true)
-                setComments(prev => ({ ...prev, [student.id]: e.target.value }))
-              }}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
           </div>
         ))}
       </div>
