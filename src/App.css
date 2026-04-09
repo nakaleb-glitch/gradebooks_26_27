@@ -1,1 +1,14 @@
-/* App CSS - empty, will use explicit cell styles instead */
+/* Complete table borders fix */
+table {
+  border-collapse: separate !important;
+  border-spacing: 0px !important;
+  width: 100% !important;
+}
+
+table th,
+table td {
+  background-clip: padding-box !important;
+  border-width: 1px !important;
+  border-color: #9ca3af !important; /* border-gray-400 - darker visible border */
+  border-style: solid !important;
+}
