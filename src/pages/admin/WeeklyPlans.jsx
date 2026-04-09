@@ -189,7 +189,7 @@ export default function WeeklyPlans() {
           ← Go Back
         </button>
         <h2 className="text-2xl font-bold text-gray-900">Weekly Plan Management</h2>
-        <p className="text-gray-500 text-sm mt-1">Monitor weekly plan completion for all classes</p>
+        <p className="text-gray-500 text-sm mt-1">Monitor weekly plan completion for all classes.</p>
       </div>
 
       {/* Week Selector + Class Toggles */}

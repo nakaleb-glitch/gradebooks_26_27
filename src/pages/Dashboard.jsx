@@ -788,7 +788,7 @@ export default function Dashboard() {
                 style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}
               >
                 <div className="font-semibold text-gray-900">Weekly Plan Management</div>
-                <div className="text-sm text-gray-500 mt-1">Create and monitor weekly plans.</div>
+                <div className="text-sm text-gray-500 mt-1">Monitor weekly plan completion for all classes.</div>
               </Link>
             </div>
           </div>
