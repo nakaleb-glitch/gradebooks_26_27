@@ -218,7 +218,7 @@ export default function WeeklyPlans() {
                   onClick={() => setSelectedHomeroom(h)}
                   className={`px-4 py-2 text-sm font-medium transition-colors rounded-lg whitespace-nowrap shrink-0 h-10 ${
                     selectedHomeroom === h
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-amber-400 text-gray-900'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
