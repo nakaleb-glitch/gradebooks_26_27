@@ -350,12 +350,13 @@ export default function GradebookViewer() {
   return (
     <Layout>
       <div className="mb-8">
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors mb-4 flex items-center gap-2"
-        >
-          ← Go Back to Dashboard
-        </button>
+      <button
+        onClick={() => navigate('/dashboard')}
+        className="text-white px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity mb-4 flex items-center gap-2 text-sm"
+        style={{ backgroundColor: '#1f86c7' }}
+      >
+        ← Go Back
+      </button>
         <h2 className="text-2xl font-bold text-gray-900">Admin Gradebook Viewer</h2>
         <p className="text-gray-500 text-sm mt-1">
           View collective gradebooks for all subjects in a homeroom class
