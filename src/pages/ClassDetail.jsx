@@ -298,7 +298,7 @@ export default function ClassDetail() {
                         <th className="text-left px-4 py-3 text-gray-500 font-medium">Student Name (ENG - VN)</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-gray-300">
                       {studentRoster.map(student => (
                         <tr key={student.id} className="hover:bg-gray-50">
                           <td className="px-4 py-3 text-gray-600">{student.student_id || '—'}</td>
