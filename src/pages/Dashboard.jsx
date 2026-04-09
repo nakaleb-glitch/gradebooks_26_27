@@ -1134,7 +1134,7 @@ export default function Dashboard() {
                     {showTeacherSubmissions ? 'Hide Submissions' : 'View Submissions'}
                   </button>
                 </div>
-                <form onSubmit={submitBehaviorReportInline} className="space-y-2">
+                <form onSubmit={submitBehaviorReportInline} className="flex flex-col flex-1 gap-2">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <select
                       value={behaviorForm.class_id}
@@ -1189,10 +1189,9 @@ export default function Dashboard() {
                     ))}
                   </select>
                   <textarea
-                    rows={3}
                     value={behaviorForm.description}
                     onChange={(e) => setBehaviorForm((prev) => ({ ...prev, description: e.target.value }))}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    className="w-full min-h-[8rem] flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm resize-y"
                     placeholder="Describe what happened..."
                   />
                   <textarea
