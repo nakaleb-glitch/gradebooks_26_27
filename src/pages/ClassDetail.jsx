@@ -870,7 +870,7 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
             <tr>
               <th className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 min-w-48">Student</th>
               {weekSchedule.map((weekItem) => (
-                <th key={weekItem.week} className="text-center px-2 py-3 font-medium min-w-28 bg-gray-200 text-gray-700">
+                <th key={weekItem.week} className="text-center px-2 py-3 font-medium min-w-28 bg-gray-200 text-gray-700 border-l border-gray-200">
                   <div>{weekItem.label}</div>
                   <div className="text-[10px] text-gray-400 font-normal mt-0.5">{weekItem.range}</div>
                   {weekItem.isNoScore && (
@@ -878,7 +878,7 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
                   )}
                 </th>
               ))}
-              <th className="text-center px-4 py-3 font-medium min-w-20 bg-green-100 text-green-800">Participation - Overall</th>
+              <th className="text-center px-4 py-3 font-medium min-w-20 bg-green-100 text-green-800 border-l border-gray-200">Participation - Overall</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -896,7 +896,7 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
                   const key = `${student.id}_${weekItem.week}`
                   const isNoScoreWeek = !!weekItem.isNoScore
                   return (
-                    <td key={weekItem.week} className="px-2 py-2 bg-gray-50">
+                    <td key={weekItem.week} className="px-2 py-2 bg-gray-50 border-l border-gray-200">
                       {isNoScoreWeek ? (
                         <div className="flex items-center justify-center h-[52px]">
                           <span className="px-2 py-0.5 bg-rose-100 text-rose-700 rounded text-[10px] font-semibold">
@@ -957,7 +957,7 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
                     </td>
                   )
                 })}
-                <td className="px-4 py-3 text-center bg-green-50">
+                <td className="px-4 py-3 text-center bg-green-50 border-l border-gray-200">
                   <span className={`font-semibold ${
                     getAvg(student.id) != null 
                       ? getAvg(student.id) >= 80 ? 'text-green-600' 
@@ -1148,7 +1148,7 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
               <tr>
                 <th className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 min-w-48">Student</th>
                 {assignments.map(a => (
-                  <th key={a.id} className="text-center px-3 py-3 font-medium min-w-32 bg-gray-200 text-gray-700">
+                  <th key={a.id} className="text-center px-3 py-3 font-medium min-w-32 bg-gray-200 text-gray-700 border-l border-gray-200">
                     <div className="flex items-center justify-center gap-2">
                       <span>{a.name}</span>
                       <button
@@ -1165,7 +1165,7 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
                     <div className="text-xs font-normal text-gray-400">/ {a.max_points}</div>
                   </th>
                 ))}
-                <th className="text-center px-4 py-3 font-medium min-w-24 bg-green-100 text-green-800">Assignments - Overall</th>
+                <th className="text-center px-4 py-3 font-medium min-w-24 bg-green-100 text-green-800 border-l border-gray-200">Assignments - Overall</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -1183,7 +1183,7 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
                     const key = `${assignment.id}_${student.id}`
                     const g = grades[key] || {}
                     return (
-                      <td key={assignment.id} className="px-3 py-2 text-center bg-gray-50">
+                      <td key={assignment.id} className="px-3 py-2 text-center bg-gray-50 border-l border-gray-200">
                         {g.is_absent ? (
                           <div className="flex flex-col items-center gap-1">
                             <span className="px-2 py-1 bg-orange-100 text-orange-600 rounded text-xs font-medium">Absent</span>
@@ -1285,7 +1285,7 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
                       </td>
                     )
                   })}
-                  <td className="px-4 py-3 text-center bg-green-50">
+                  <td className="px-4 py-3 text-center bg-green-50 border-l border-gray-200">
                     <span className={`font-semibold ${getStudentAvg(student.id) != null ? 'text-blue-600' : 'text-gray-300'}`}>
                       {fmt(getStudentAvg(student.id))}
                     </span>
@@ -1849,9 +1849,9 @@ function SummaryTab({ classId, term, students, isESL }) {
         attainment, 
         ptOverall, 
         total,
-        ptRW: totals.rw_total && pt?.reading_writing_score != null ? pct(parseFloat(pt.reading_writing_score), parseFloat(totals.rw_total)) : null,
-        ptListening: totals.l_total && pt?.listening_score != null ? pct(parseFloat(pt.listening_score), parseFloat(totals.l_total)) : null,
-        ptSpeaking: totals.s_total && pt?.speaking_score != null ? pct(parseFloat(pt.speaking_score), parseFloat(totals.s_total)) : null,
+        ptRW: pt?.reading_writing_total && pt?.reading_writing_score != null ? pct(parseFloat(pt.reading_writing_score), parseFloat(pt.reading_writing_total)) : null,
+        ptListening: pt?.listening_total && pt?.listening_score != null ? pct(parseFloat(pt.listening_score), parseFloat(pt.listening_total)) : null,
+        ptSpeaking: pt?.speaking_total && pt?.speaking_score != null ? pct(parseFloat(pt.speaking_score), parseFloat(pt.speaking_total)) : null,
       }
     })
 
@@ -1887,20 +1887,20 @@ function SummaryTab({ classId, term, students, isESL }) {
               <tr>
                 <th className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 min-w-48">Student</th>
                 <th className="text-center px-4 py-3 font-medium bg-gray-200 text-gray-700">Participation</th>
-                <th className="text-center px-4 py-3 font-medium bg-gray-200 text-gray-700">Marked Assignments</th>
-                <th className="text-center px-4 py-3 font-medium bg-green-100 text-green-800">Attainment</th>
+                <th className="text-center px-4 py-3 font-medium bg-gray-200 text-gray-700 border-l border-gray-200">Marked Assignments</th>
+                <th className="text-center px-4 py-3 font-medium bg-green-100 text-green-800 border-l border-gray-200">Attainment</th>
                 
                 {isESL ? (
                   <>
-                    <th className="text-center px-4 py-3 font-medium bg-gray-200 text-gray-700">Progress Test (R/W)</th>
-                    <th className="text-center px-4 py-3 font-medium bg-gray-200 text-gray-700">Progress Test (L)</th>
-                    <th className="text-center px-4 py-3 font-medium bg-gray-200 text-gray-700">Progress Test (S)</th>
+                <th className="text-center px-4 py-3 font-medium bg-gray-200 text-gray-700 border-l border-gray-200">Progress Test (R/W)</th>
+                <th className="text-center px-4 py-3 font-medium bg-gray-200 text-gray-700 border-l border-gray-200">Progress Test (L)</th>
+                <th className="text-center px-4 py-3 font-medium bg-gray-200 text-gray-700 border-l border-gray-200">Progress Test (S)</th>
                   </>
                 ) : null}
 
-                <th className="text-center px-4 py-3 font-medium bg-green-100 text-green-800">Progress Test</th>
-                <th className="text-center px-4 py-3 font-medium bg-gray-200 text-gray-700">Overall</th>
-                <th className="text-center px-4 py-3 font-medium bg-gray-200 text-gray-700">Grade</th>
+                <th className="text-center px-4 py-3 font-medium bg-green-100 text-green-800 border-l border-gray-200">Progress Test</th>
+                <th className="text-center px-4 py-3 font-medium bg-gray-200 text-gray-700 border-l border-gray-200">Overall</th>
+                <th className="text-center px-4 py-3 font-medium bg-gray-200 text-gray-700 border-l border-gray-200">Grade</th>
                 
                 {ATTRIBUTE_FIELDS.map(attr => (
                   <th key={attr.key} className="text-center px-3 py-3 font-medium bg-blue-100 text-blue-800 text-xs">
@@ -1923,15 +1923,15 @@ function SummaryTab({ classId, term, students, isESL }) {
                       </div>
                       <div className="text-xs text-gray-400">{student.student_id || '—'}</div>
                     </td>
-                    <td className={`px-4 py-3 text-center font-medium bg-gray-50 ${scoreColor(d.partPct)}`}>{fmt(d.partPct)}</td>
-                    <td className={`px-4 py-3 text-center font-medium bg-gray-50 ${scoreColor(d.assignAvg)}`}>{fmt(d.assignAvg)}</td>
+                    <td className={`px-4 py-3 text-center font-medium bg-gray-50 ${scoreColor(d.partPct)} border-l border-gray-200`}>{fmt(d.partPct)}</td>
+                    <td className={`px-4 py-3 text-center font-medium bg-gray-50 ${scoreColor(d.assignAvg)} border-l border-gray-200`}>{fmt(d.assignAvg)}</td>
                     <td className={`px-4 py-3 text-center font-semibold bg-green-50 ${scoreColor(d.attainment)}`}>{fmt(d.attainment)}</td>
                     
                     {isESL ? (
                       <>
-                        <td className="px-4 py-3 text-center bg-gray-50 text-gray-600">{fmt(d.ptRW)}</td>
-                        <td className="px-4 py-3 text-center bg-gray-50 text-gray-600">{fmt(d.ptListening)}</td>
-                        <td className="px-4 py-3 text-center bg-gray-50 text-gray-600">{fmt(d.ptSpeaking)}</td>
+                        <td className="px-4 py-3 text-center bg-gray-50 text-gray-600 border-l border-gray-200">{fmt(d.ptRW)}</td>
+                        <td className="px-4 py-3 text-center bg-gray-50 text-gray-600 border-l border-gray-200">{fmt(d.ptListening)}</td>
+                        <td className="px-4 py-3 text-center bg-gray-50 text-gray-600 border-l border-gray-200">{fmt(d.ptSpeaking)}</td>
                       </>
                     ) : null}
 
