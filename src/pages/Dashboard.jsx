@@ -23,6 +23,7 @@ export default function Dashboard() {
   const [teacherDeadlines, setTeacherDeadlines] = useState([])
   const [selectedDashboardItem, setSelectedDashboardItem] = useState(null)
   const [showTeacherAnnouncements, setShowTeacherAnnouncements] = useState(false)
+  const [showAnnouncementForm, setShowAnnouncementForm] = useState(false)
   const [announcementScope, setAnnouncementScope] = useState('all_my_classes')
   const [announcementClassIds, setAnnouncementClassIds] = useState([])
   const [announcementTitle, setAnnouncementTitle] = useState('')
@@ -949,17 +950,32 @@ export default function Dashboard() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
               <div className="bg-white rounded-xl border border-gray-200 p-5 h-full flex flex-col" style={{ borderTopColor: '#22c55e', borderTopWidth: 3 }}>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Class Announcements</h3>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-semibold text-gray-900">Class Announcements</h3>
                   <button
                     type="button"
-                    onClick={() => setShowTeacherAnnouncements((prev) => !prev)}
+                    onClick={() => {
+                      setShowAnnouncementForm(!showAnnouncementForm)
+                      if (showAnnouncementForm === false) setShowTeacherAnnouncements(false)
+                    }}
                     className="text-[11px] px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
                   >
-                    {showTeacherAnnouncements ? 'Hide Announcements' : 'View Announcements'}
+                    {showAnnouncementForm ? 'Cancel' : 'Send New Announcement'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowTeacherAnnouncements(!showTeacherAnnouncements)
+                      if (showTeacherAnnouncements === false) setShowAnnouncementForm(false)
+                    }}
+                    className="text-[11px] px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
+                  >
+                    {showTeacherAnnouncements ? 'Hide Announcements' : 'View Sent Announcements'}
                   </button>
                 </div>
-                <div className="flex flex-col gap-3 flex-1 min-h-[16rem]">
+                
+                {showAnnouncementForm && (
+                  <div className="flex flex-col gap-3 flex-1 min-h-[16rem]">
                   <div>
                     <label htmlFor="dashboard-announcement-title" className="block text-xs font-medium text-gray-500 mb-1">
                       Title
@@ -1021,17 +1037,22 @@ export default function Dashboard() {
                       </div>
                     )}
                   </div>
-                  {announcementFeedback && (
-                    <div
-                      className={`text-xs px-2 py-1 rounded border ${
-                        announcementFeedback.type === 'success'
-                          ? 'bg-green-50 text-green-700 border-green-200'
-                          : 'bg-red-50 text-red-700 border-red-200'
-                      }`}
-                    >
-                      {announcementFeedback.text}
-                    </div>
-                  )}
+                    {announcementFeedback && (
+                      <div
+                        className={`text-xs px-2 py-1 rounded border ${
+                          announcementFeedback.type === 'success'
+                            ? 'bg-green-50 text-green-700 border-green-200'
+                            : 'bg-red-50 text-red-700 border-red-200'
+                        }`}
+                      >
+                        {announcementFeedback.text}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {showAnnouncementForm && (
+                  <div className="flex flex-col gap-3">
                   <div className="flex flex-col sm:flex-row sm:items-end gap-3">
                     <div className="flex-1 min-w-0">
                       <label htmlFor="dashboard-announcement-scope" className="block text-xs font-medium text-gray-500 mb-1">
@@ -1083,38 +1104,63 @@ export default function Dashboard() {
                           </label>
                         ))
                       )}
+                  </div>
+                  {announcementScope === 'selected_classes' && (
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-2 max-h-28 overflow-y-auto">
+                      {classes.length === 0 ? (
+                        <div className="text-xs text-gray-500">No classes available.</div>
+                      ) : (
+                        classes.map((cls) => (
+                          <label key={cls.id} className="flex items-center gap-2 py-1 text-xs text-gray-700">
+                            <input
+                              type="checkbox"
+                              checked={announcementClassIds.includes(cls.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setAnnouncementClassIds((prev) => [...prev, cls.id])
+                                } else {
+                                  setAnnouncementClassIds((prev) => prev.filter((id) => id !== cls.id))
+                                }
+                              }}
+                            />
+                            <span>{cls.name}</span>
+                          </label>
+                        ))
+                      )}
                     </div>
                   )}
-                </div>
-                {showTeacherAnnouncements && (
-                  <div className="mt-3 border-t border-gray-200 pt-3 space-y-2 max-h-48 overflow-y-auto">
-                    {teacherAnnouncements.length === 0 ? (
-                      <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
-                        No announcements posted yet.
-                      </div>
-                    ) : teacherAnnouncements.slice(0, 8).map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => setSelectedDashboardItem({
-                          title: item.title,
-                          event_date: item.created_at,
-                          label: 'Teacher Announcement',
-                          venue: item.targets.map((t) => t.class_name).join(', ') || '—',
-                          description: item.description,
-                          plan_url: null,
-                          link_url: item.link_url,
-                          attachment_url: item.attachment_url,
-                          attachment_name: item.attachment_name,
-                        })}
-                        className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-green-50 transition-colors"
-                      >
-                        <div className="text-sm font-medium text-gray-800">{item.title}</div>
-                        <div className="text-xs text-gray-500 mt-0.5">{formatDateWithDay(item.created_at)}</div>
-                      </button>
-                    ))}
                   </div>
                 )}
+
+                {showTeacherAnnouncements && !showAnnouncementForm && (
+                    <div className="border-t border-gray-200 pt-3 space-y-2 max-h-48 overflow-y-auto">
+                      {teacherAnnouncements.length === 0 ? (
+                        <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                          No announcements posted yet.
+                        </div>
+                      ) : teacherAnnouncements.slice(0, 8).map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setSelectedDashboardItem({
+                            title: item.title,
+                            event_date: item.created_at,
+                            label: 'Teacher Announcement',
+                            venue: item.targets.map((t) => t.class_name).join(', ') || '—',
+                            description: item.description,
+                            plan_url: null,
+                            link_url: item.link_url,
+                            attachment_url: item.attachment_url,
+                            attachment_name: item.attachment_name,
+                          })}
+                          className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-green-50 transition-colors"
+                        >
+                          <div className="text-sm font-medium text-gray-800">{item.title}</div>
+                          <div className="text-xs text-gray-500 mt-0.5">{formatDateWithDay(item.created_at)}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
               </div>
 
               <div className="bg-white rounded-xl border border-gray-200 p-5 h-full flex flex-col" style={{ borderTopColor: '#d1232a', borderTopWidth: 3 }}>
