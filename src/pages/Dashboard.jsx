@@ -130,6 +130,10 @@ export default function Dashboard() {
   const [gradeFilter, setGradeFilter] = useState('all')
   const [debugWeekOverride, setDebugWeekOverride] = useState(getCurrentWeekIndex())
   const [showDebugControls, setShowDebugControls] = useState(false)
+  const [showAnnouncementForm, setShowAnnouncementForm] = useState(false)
+  const [showBehaviorForm, setShowBehaviorForm] = useState(false)
+  const [showAnnouncementList, setShowAnnouncementList] = useState(false)
+  const [showBehaviorList, setShowBehaviorList] = useState(false)
 
   useEffect(() => {
     if (profile) fetchDashboardData()
