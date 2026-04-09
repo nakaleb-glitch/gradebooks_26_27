@@ -761,11 +761,11 @@ export default function Dashboard() {
                 <div className="text-sm text-gray-500 mt-1">Review teacher behavior reports and follow-up actions.</div>
               </Link>
               <Link
-                to="/admin/gradebooks"
+                to="/admin/gradebook-viewer"
                 className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block"
                 style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}
               >
-                <div className="font-semibold text-gray-900">Gradebook Viewer</div>
+                <div className="font-semibold text-gray-900">Gradebook Management</div>
                 <div className="text-sm text-gray-500 mt-1">Review termly gradebooks for each class.</div>
               </Link>
             </div>

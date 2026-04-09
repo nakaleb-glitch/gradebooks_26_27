@@ -31,7 +31,7 @@ export default function Layout({ children }) {
      { label: 'Dashboard', path: '/dashboard' },
      { label: 'Student Management', path: '/admin/students' },
      { label: 'Class Management', path: '/admin/classes' },
-     { label: 'Admin Gradebook Viewer', path: '/admin/gradebook-viewer' },
+      { label: 'Gradebook Management', path: '/admin/gradebook-viewer' },
      { label: 'Teacher Management', path: '/admin/users' },
      { label: 'Resource Management', path: '/admin/resources' },
      { label: 'Event & Admin Deadline Management', path: '/admin/events-deadlines' },
