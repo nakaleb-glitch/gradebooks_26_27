@@ -1462,7 +1462,10 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
               <th colSpan={4} className="text-center px-3 py-2 font-medium bg-green-100 text-green-800 border-l border-gray-200">Progress Test - Percentages</th>
                 </>
               ) : (
+                <>
                 <th className="text-center px-3 py-3 text-gray-500 font-medium min-w-32"></th>
+                <th className="text-center bg-green-100 border-l border-gray-200" style={{ backgroundClip: 'padding-box' }}></th>
+                </>
               )}
             </tr>
             <tr>
