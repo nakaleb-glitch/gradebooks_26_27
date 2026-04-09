@@ -413,27 +413,27 @@ export default function GradebookViewer() {
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
                       <th className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50">Student</th>
-                      <th className="text-center px-4 py-3 text-gray-500 font-medium">Participation %</th>
-                      <th className="text-center px-4 py-3 text-gray-500 font-medium">Marked Assignments</th>
-                      <th className="text-center px-4 py-3 text-gray-500 font-medium">Attainment</th>
+                      <th className="text-center px-4 py-3 font-medium bg-gray-100 text-gray-600">Participation</th>
+                      <th className="text-center px-4 py-3 font-medium bg-gray-100 text-gray-600">Marked Assignments</th>
+                      <th className="text-center px-4 py-3 font-medium bg-green-50 text-green-700">Attainment</th>
                       
                       {/* Conditional columns based on subject */}
                       {classes.find(c => c.id === selectedSubject)?.subject === 'ESL' ? (
                         <>
-                          <th className="text-center px-4 py-3 text-gray-500 font-medium">Progress Test (Reading & Writing)</th>
-                          <th className="text-center px-4 py-3 text-gray-500 font-medium">Progress Test (Listening)</th>
-                          <th className="text-center px-4 py-3 text-gray-500 font-medium">Progress Test (Speaking)</th>
-                          <th className="text-center px-4 py-3 text-gray-500 font-medium">Progress Test (Overall)</th>
+                          <th className="text-center px-4 py-3 font-medium bg-gray-100 text-gray-600">Progress Test (R/W)</th>
+                          <th className="text-center px-4 py-3 font-medium bg-gray-100 text-gray-600">Progress Test (L)</th>
+                          <th className="text-center px-4 py-3 font-medium bg-gray-100 text-gray-600">Progress Test (S)</th>
+                          <th className="text-center px-4 py-3 font-medium bg-green-50 text-green-700">Progress Test (Overall)</th>
                         </>
                       ) : (
-                        <th className="text-center px-4 py-3 text-gray-500 font-medium">Progress Test</th>
+                        <th className="text-center px-4 py-3 font-medium bg-green-50 text-green-700">Progress Test</th>
                       )}
                       
-                      <th className="text-center px-4 py-3 text-gray-500 font-medium">Overall</th>
-                      <th className="text-center px-4 py-3 text-gray-500 font-medium">Grade</th>
+                      <th className="text-center px-4 py-3 font-medium bg-gray-100 text-gray-600">Overall</th>
+                      <th className="text-center px-4 py-3 font-medium bg-gray-100 text-gray-600">Grade</th>
                       
                       {attributeNames.map(attr => (
-                        <th key={attr} className="text-center px-3 py-3 text-gray-500 font-medium text-xs">
+                        <th key={attr} className="text-center px-3 py-3 font-medium bg-blue-50 text-blue-700 text-xs">
                           {attr}
                         </th>
                       ))}
