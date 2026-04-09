@@ -10,7 +10,11 @@ const TERMS = [
   { key: 'final_2', label: 'Final 2' },
 ]
 
-const fmt = (n) => n != null ? n.toFixed(1) : '—'
+const fmt = (n) => {
+  if (n == null) return '—'
+  if (typeof n === 'string') return n
+  return n.toFixed(1)
+}
 const avg = (arr) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null
 
 const letterGradeFromPercentage = (score) => {
