@@ -100,7 +100,7 @@ export default function Dashboard() {
   const [teacherEvents, setTeacherEvents] = useState([])
   const [teacherDeadlines, setTeacherDeadlines] = useState([])
   const [selectedDashboardItem, setSelectedDashboardItem] = useState(null)
-  const [showTeacherAnnouncements, setShowTeacherAnnouncements] = useState(false)
+  const [showTeacherAnnouncements, setShowTeacherAnnouncements] = useState(null)
   const [announcementScope, setAnnouncementScope] = useState('all_my_classes')
   const [announcementClassIds, setAnnouncementClassIds] = useState([])
   const [announcementTitle, setAnnouncementTitle] = useState('')
@@ -113,7 +113,7 @@ export default function Dashboard() {
   const [behaviorStudents, setBehaviorStudents] = useState([])
   const [teacherSubmittedReports, setTeacherSubmittedReports] = useState([])
   const [selectedBehaviorSubmission, setSelectedBehaviorSubmission] = useState(null)
-  const [showTeacherSubmissions, setShowTeacherSubmissions] = useState(false)
+  const [showTeacherSubmissions, setShowTeacherSubmissions] = useState(null)
   const [savingBehaviorReport, setSavingBehaviorReport] = useState(false)
   const [behaviorMessage, setBehaviorMessage] = useState(null)
   const [behaviorForm, setBehaviorForm] = useState({
