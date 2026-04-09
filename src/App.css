@@ -1,14 +1,17 @@
-/* Complete table borders fix */
+/* Absolute final table borders fix */
+* {
+  box-sizing: border-box;
+}
+
 table {
-  border-collapse: separate !important;
-  border-spacing: 0px !important;
+  border-collapse: collapse !important;
   width: 100% !important;
 }
 
 table th,
 table td {
+  border: 1px solid #9ca3af !important;
   background-clip: padding-box !important;
-  border-width: 1px !important;
-  border-color: #9ca3af !important; /* border-gray-400 - darker visible border */
-  border-style: solid !important;
+  position: relative;
+  z-index: 1;
 }
