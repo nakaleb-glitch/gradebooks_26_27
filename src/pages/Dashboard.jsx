@@ -1136,13 +1136,28 @@ export default function Dashboard() {
               <div className="bg-white rounded-xl border border-gray-200 p-5 h-full flex flex-col" style={{ borderTopColor: '#22c55e', borderTopWidth: 3 }}>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-lg font-semibold text-gray-900">Class Announcements</h3>
-                  <button
-                    type="button"
-                    onClick={() => setShowTeacherAnnouncements((prev) => !prev)}
-                    className="text-[11px] px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
-                  >
-                    {showTeacherAnnouncements ? 'Hide Announcements' : 'View Announcements'}
-                  </button>
+                  {showTeacherAnnouncements === 'create' && (
+                    <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
+                      <h4 className="text-sm font-medium text-gray-700">Create Announcement</h4>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowTeacherAnnouncements(null)}
+                          className="py-1 px-3 rounded-lg bg-gray-200 text-gray-700 text-xs font-medium hover:bg-gray-300 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => postTeacherAnnouncement()}
+                          disabled={postingAnnouncement}
+                          className="py-1 px-3 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-700 transition-colors disabled:opacity-60"
+                        >
+                          {postingAnnouncement ? 'Posting...' : 'Send'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col gap-3 flex-1 min-h-[16rem]">
                   <div>
