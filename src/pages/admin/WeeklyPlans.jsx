@@ -199,7 +199,7 @@ export default function WeeklyPlans() {
             <select
               value={selectedWeek}
               onChange={(e) => setSelectedWeek(Number(e.target.value))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 h-10"
             >
               {ALL_WEEKS.map((weekItem, idx) => (
                 <option key={weekItem.week} value={idx}>
@@ -211,12 +211,12 @@ export default function WeeklyPlans() {
           
           {/* Homeroom Class Toggles */}
           {homerooms.length > 0 && (
-            <div className="flex-1 flex gap-1 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent pb-1">
+            <div className="flex-1 flex gap-1 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
               {homerooms.map(h => (
                 <button
                   key={h}
                   onClick={() => setSelectedHomeroom(h)}
-                  className={`px-4 py-2 text-sm font-medium transition-colors rounded-lg whitespace-nowrap shrink-0 ${
+                  className={`px-4 py-2 text-sm font-medium transition-colors rounded-lg whitespace-nowrap shrink-0 h-10 ${
                     selectedHomeroom === h
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
