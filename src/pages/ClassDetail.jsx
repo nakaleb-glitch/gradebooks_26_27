@@ -1863,24 +1863,31 @@ function SummaryTab({ classId, term, students, isESL }) {
 // ── Comments Tab ──────────────────────────────────────────────────────────────
 function CommentsTab({ classId, term, students, onDirtyChange }) {
   const [comments, setComments] = useState({})
-  const [focusedStudent, setFocusedStudent] = useState(null)
-  const [savingIds, setSavingIds] = useState({})
-  const [savedIds, setSavedIds] = useState({})
-  const [dirtyIds, setDirtyIds] = useState({})
+  const [originalComments, setOriginalComments] = useState({})
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [editingStudentId, setEditingStudentId] = useState(null)
 
   useEffect(() => { fetchComments() }, [classId, term])
-  useEffect(() => { onDirtyChange?.(Object.values(dirtyIds).some(Boolean)) }, [dirtyIds])
+  useEffect(() => { 
+    const hasChanges = Object.entries(comments).some(([id, val]) => originalComments[id] !== val)
+    onDirtyChange?.(hasChanges) 
+  }, [comments, originalComments])
 
   const fetchComments = async () => {
     const { data } = await supabase.from('term_comments').select('*').eq('class_id', classId).eq('term', term)
     const map = {}
-    data?.forEach(c => { map[c.student_id] = c.comment })
+    const original = {}
+    data?.forEach(c => { 
+      map[c.student_id] = c.comment 
+      original[c.student_id] = c.comment
+    })
     setComments(map)
-    setDirtyIds({})
+    setOriginalComments(original)
   }
 
   const saveComment = async (studentId) => {
-    setSavingIds(prev => ({ ...prev, [studentId]: true }))
+    setSaving(true)
     
     await supabase.from('term_comments').upsert({
       class_id: classId,
@@ -1889,68 +1896,90 @@ function CommentsTab({ classId, term, students, onDirtyChange }) {
       comment: comments[studentId]?.trim() || null
     }, { onConflict: 'class_id,student_id,term' })
     
-    setSavingIds(prev => ({ ...prev, [studentId]: false }))
-    setSavedIds(prev => ({ ...prev, [studentId]: true }))
-    setDirtyIds(prev => ({ ...prev, [studentId]: false }))
+    setOriginalComments(prev => ({ ...prev, [studentId]: comments[studentId] }))
+    setSaving(false)
+    setSaved(true)
+    setEditingStudentId(null)
     
-    setTimeout(() => setSavedIds(prev => {
-      const next = { ...prev }
-      delete next[studentId]
-      return next
-    }), 1500)
+    setTimeout(() => setSaved(false), 2000)
   }
 
-  const setComment = (studentId, value) => {
-    setComments(prev => ({ ...prev, [studentId]: value }))
-    setDirtyIds(prev => ({ ...prev, [studentId]: true }))
+  const cancelEdit = (studentId) => {
+    setComments(prev => ({ ...prev, [studentId]: originalComments[studentId] ?? '' }))
+    setEditingStudentId(null)
+  }
+
+  const isDirty = (studentId) => {
+    return comments[studentId] !== originalComments[studentId]
   }
 
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <p className="text-sm text-gray-500">Write end of term comments for each student. Click box to expand.</p>
+        {saved && <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 font-medium">✓ Saved</span>}
       </div>
-      <div className="space-y-3">
-        {students.map(student => (
-          <div key={student.id} className="bg-white rounded-xl border border-gray-200 p-3">
-            <div className="flex gap-4 items-start">
-              <div className="flex-grow">
-                <div className="mb-1.5">
-                  <div className="font-medium text-sm">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 min-w-48">Student</th>
+              <th className="text-left px-4 py-3 text-gray-500 font-medium">Comment</th>
+              <th className="text-center px-4 py-3 text-gray-500 font-medium min-w-28">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {students.map(student => (
+              <tr key={student.id} className="hover:bg-gray-50">
+                <td className="px-4 py-3 sticky left-0 bg-white">
+                  <div className="font-medium">
                     <span className="text-gray-900">{student.name_eng || '—'}</span>
                     <span className="text-gray-400 px-1">-</span>
                     <span className="text-blue-700">{student.name_vn || '—'}</span>
                   </div>
                   <div className="text-xs text-gray-400">{student.student_id || '—'}</div>
-                </div>
-                <textarea 
-                  rows={focusedStudent === student.id ? 4 : 1} 
-                  placeholder="Write a comment for this student..."
-                  value={comments[student.id] ?? ''}
-                  onChange={e => setComment(student.id, e.target.value)}
-                  onFocus={() => setFocusedStudent(student.id)}
-                  onBlur={() => setFocusedStudent(null)}
-                  className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none transition-all"
-                />
-              </div>
-              <div className="flex-shrink-0 mt-6">
-                <button 
-                  onClick={() => saveComment(student.id)} 
-                  disabled={savingIds[student.id] || !dirtyIds[student.id]}
-                  className={`px-3 py-1 text-xs rounded-lg font-medium transition-colors ${
-                    savedIds[student.id] 
-                      ? 'bg-green-100 text-green-700' 
-                      : dirtyIds[student.id] && !savingIds[student.id]
-                        ? 'bg-green-600 text-white hover:bg-green-700'
-                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  }`}
-                >
-                  {savingIds[student.id] ? 'Saving...' : savedIds[student.id] ? '✓ Saved' : 'Save'}
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
+                </td>
+                <td className="px-4 py-3">
+                  <textarea 
+                    rows={editingStudentId === student.id ? 4 : 1} 
+                    placeholder="Write a comment for this student..."
+                    value={comments[student.id] ?? ''}
+                    onChange={e => {
+                      setComments(prev => ({ ...prev, [student.id]: e.target.value }))
+                    }}
+                    onFocus={() => setEditingStudentId(student.id)}
+                    onBlur={() => !isDirty(student.id) && setEditingStudentId(null)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none transition-all"
+                  />
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    {isDirty(student.id) && (
+                      <>
+                        <button 
+                          onClick={() => saveComment(student.id)} 
+                          disabled={saving}
+                          className="px-3 py-1 text-xs rounded-lg font-medium bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-300"
+                        >
+                          {saving ? 'Saving...' : 'Save'}
+                        </button>
+                        <button 
+                          onClick={() => cancelEdit(student.id)}
+                          className="px-3 py-1 text-xs rounded-lg font-medium bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    )}
+                    {!isDirty(student.id) && editingStudentId !== student.id && (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   )
