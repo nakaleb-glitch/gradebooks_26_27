@@ -136,67 +136,63 @@ export default function GradebookViewer() {
     }
   }
 
-  // Fetch student data when homeroom, term, and subject are selected
+  // Fetch all homeroom students once when homeroom is selected
   useEffect(() => {
-    if (selectedHomeroom && selectedTerm && selectedSubject && classes.length > 0) {
-      fetchStudentData()
+    if (selectedHomeroom && selectedTerm) {
+      fetchAllHomeroomStudents()
+      fetchStandardAttributeNames()
     } else {
       setStudentData([])
     }
-  }, [selectedHomeroom, selectedTerm, selectedSubject, classes])
+  }, [selectedHomeroom, selectedTerm])
 
-  // Fetch attribute names when classes are loaded
+  // Load subject specific data when subject changes
   useEffect(() => {
-    if (selectedHomeroom && selectedTerm && sortedClasses.length > 0) {
-      fetchAttributeNames()
+    if (selectedHomeroom && selectedTerm && selectedSubject) {
+      fetchStudentGradesForSubject()
     }
-  }, [selectedHomeroom, selectedTerm, sortedClasses])
+  }, [selectedHomeroom, selectedTerm, selectedSubject])
 
-  const fetchAttributeNames = async () => {
-    // Get attribute names from the currently selected class
-    const selectedClass = classes.find(c => c.id === selectedSubject)
-    if (!selectedClass) return
-
-    const { data } = await supabase
-      .from('student_attributes')
-      .select('attribute')
-      .eq('class_id', selectedClass.id)
-      .eq('term', selectedTerm)
-      .limit(100)
-    
-    // Get unique attribute names and sort them
-    const uniqueAttributes = [...new Set(data?.map(d => d.attribute) || [])]
-    
-    // If no attributes found, use standard attribute names
-    const fallbackAttributes = ['Confident', 'Responsible', 'Reflective', 'Innovative', 'Engaged']
-    setAttributeNames(uniqueAttributes.length > 0 ? uniqueAttributes : fallbackAttributes)
+  const fetchStandardAttributeNames = async () => {
+    // Always use standard consistent attributes across all subjects
+    const standardAttributes = ['Confident', 'Responsible', 'Reflective', 'Innovative', 'Engaged']
+    setAttributeNames(standardAttributes)
   }
 
-  const fetchStudentData = async () => {
+  const fetchAllHomeroomStudents = async () => {
+    // Get all students in this homeroom (not just per subject)
+    const { data: students } = await supabase
+      .from('students')
+      .select('*')
+      .eq('homeroom', selectedHomeroom)
+      .order('name_eng')
+
+    // Initialize empty student map with all homeroom students
+    const studentMap = {}
+    students?.forEach(student => {
+      studentMap[student.id] = {
+        student,
+        participation: null,
+        attainment: null,
+        progressTest: null,
+        progressTestRW: null,
+        progressTestListening: null,
+        progressTestSpeaking: null,
+        overall: null,
+        letterGrade: '—',
+        attributes: {},
+      }
+    })
+
+    setStudentData(Object.values(studentMap))
+  }
+
+  const fetchStudentGradesForSubject = async () => {
     const selectedClass = classes.find(c => c.id === selectedSubject)
     if (!selectedClass) return
 
-    // Fetch students enrolled in this specific class
-    const { data: enrollmentData } = await supabase
-      .from('class_students')
-      .select('student_id')
-      .eq('class_id', selectedSubject)
+    const studentIds = studentData.map(s => s.student.id)
     
-    // Get student IDs from enrollment
-    const studentIds = enrollmentData?.map(e => e.student_id) || []
-    
-    if (studentIds.length === 0) {
-      setStudentData([])
-      return
-    }
-
-    // Fetch student details - match by id
-    const { data: studentData } = await supabase
-      .from('students')
-      .select('*')
-      .in('id', studentIds)
-      .order('name_eng')
-
     // Fetch participation grades for this class
     const { data: participationData } = await supabase
       .from('participation_grades')
@@ -217,16 +213,16 @@ export default function GradebookViewer() {
     if (assignmentIds.length > 0) {
       const { data: agData } = await supabase
         .from('assignment_grades')
-        .select('student_id, score')
+        .select('student_id, assignment_id, score')
         .in('assignment_id', assignmentIds)
         .in('student_id', studentIds)
       assignmentGradesData = agData || []
     }
 
-    // Fetch progress test grades for this class
+    // Fetch progress test grades including ESL components
     const { data: progressTestData } = await supabase
       .from('progress_test_grades')
-      .select('student_id, score')
+      .select('student_id, score, reading_writing, listening, speaking')
       .eq('class_id', selectedSubject)
       .eq('term', selectedTerm)
       .in('student_id', studentIds)
@@ -239,99 +235,57 @@ export default function GradebookViewer() {
       .eq('term', selectedTerm)
       .in('student_id', studentIds)
 
-    // Fetch comments for this class (only for final terms)
-    const { data: commentsData } = await supabase
-      .from('gradebook_comments')
-      .select('student_id, comment')
-      .eq('class_id', selectedSubject)
-      .eq('term', selectedTerm)
-      .in('student_id', studentIds)
-
-    // Organize comments by student
-    const commentMap = {}
-    commentsData?.forEach(c => {
-      commentMap[c.student_id] = c.comment
-    })
-    setComments(commentMap)
-
-    // Organize data by student
-    const studentMap = {}
-    studentData?.forEach(student => {
-      studentMap[student.id] = {
-        student,
-        participation: [],
-        assignments: { total: 0, max: 0, gradedCount: 0 },
-        progressTest: [],
-        attributes: {},
-      }
-    })
-
-    // Populate participation
-    participationData?.forEach(grade => {
-      if (studentMap[grade.student_id]) {
-        studentMap[grade.student_id].participation.push(grade.score)
-      }
-    })
-
-    // Populate assignments - only count assignments that have grades
-    assignmentGradesData?.forEach(grade => {
-      if (studentMap[grade.student_id]) {
-        studentMap[grade.student_id].assignments.total += grade.score || 0
-        studentMap[grade.student_id].assignments.gradedCount += 1
-      }
-    })
-    
-    // Only add max_points for assignments that have grades (exclude missing assignments)
-    assignmentGradesData?.forEach(ag => {
-      const assignment = assignmentData?.find(a => a.id === ag.assignment_id)
-      if (assignment) {
-        Object.values(studentMap).forEach(s => {
-          s.assignments.max += assignment.max_points || 0
-        })
-      }
-    })
-
-    // Populate progress test
-    progressTestData?.forEach(grade => {
-      if (studentMap[grade.student_id]) {
-        studentMap[grade.student_id].progressTest.push(grade.score)
-      }
-    })
-
-    // Populate attributes
+    // Create grade maps
+    const participationMap = Object.fromEntries(participationData?.map(g => [g.student_id, g.score]) || [])
+    const progressTestMap = Object.fromEntries(progressTestData?.map(g => [g.student_id, g]) || [])
+    const attributesMap = {}
     attributesData?.forEach(attr => {
-      if (studentMap[attr.student_id]) {
-        studentMap[attr.student_id].attributes[attr.attribute] = attr.score
+      if (!attributesMap[attr.student_id]) attributesMap[attr.student_id] = {}
+      attributesMap[attr.student_id][attr.attribute] = attr.score
+    })
+
+    // Calculate assignment totals correctly
+    const assignmentTotals = {}
+    const assignmentMax = {}
+    
+    assignmentGradesData?.forEach(grade => {
+      if (!assignmentTotals[grade.student_id]) {
+        assignmentTotals[grade.student_id] = 0
+        assignmentMax[grade.student_id] = 0
+      }
+      assignmentTotals[grade.student_id] += grade.score || 0
+      const assignment = assignmentData?.find(a => a.id === grade.assignment_id)
+      if (assignment) {
+        assignmentMax[grade.student_id] += assignment.max_points || 0
       }
     })
 
-    // Calculate totals and format data
-    const formattedData = Object.values(studentMap).map(({ student, participation, assignments, progressTest, attributes }) => {
-      // Convert participation from /10 to percentage
-      const participationAvg = avg(participation) != null ? avg(participation) * 10 : null
-      // Calculate assignment average only from graded assignments (exclude missing)
-      const assignmentAvg = assignments.max > 0 ? (assignments.total / assignments.max) * 100 : null
-      const progressTestAvg = avg(progressTest)
+    // Update existing student data with grades for this subject
+    setStudentData(prevData => prevData.map(({ student, ...rest }) => {
+      const participation = participationMap[student.id] != null ? participationMap[student.id] * 10 : null
+      const attainment = assignmentMax[student.id] > 0 ? (assignmentTotals[student.id] / assignmentMax[student.id]) * 100 : null
+      const pt = progressTestMap[student.id]
 
-      // Calculate overall (Participation 20%, Assignments 50%, Progress Test 30%)
       const overallParts = []
-      if (participationAvg != null) overallParts.push(participationAvg * 0.2)
-      if (assignmentAvg != null) overallParts.push(assignmentAvg * 0.5)
-      if (progressTestAvg != null) overallParts.push(progressTestAvg * 0.3)
-      const overall = overallParts.length > 0 ? (overallParts.reduce((a, b) => a + b, 0) / overallParts.length) : null
+      if (participation != null) overallParts.push(participation * 0.2)
+      if (attainment != null) overallParts.push(attainment * 0.5)
+      if (pt?.score != null) overallParts.push(pt.score * 0.3)
+      const overall = overallParts.length > 0 ? overallParts.reduce((a, b) => a + b, 0) : null
 
       return {
         student,
-        participation: participationAvg,
-        attainment: assignmentAvg,
-        progressTest: progressTestAvg,
+        participation,
+        attainment,
+        progressTest: pt?.score || null,
+        progressTestRW: pt?.reading_writing || null,
+        progressTestListening: pt?.listening || null,
+        progressTestSpeaking: pt?.speaking || null,
         overall,
         letterGrade: letterGradeFromPercentage(overall),
-        attributes,
+        attributes: attributesMap[student.id] || {},
+        ...rest
       }
-    })
-
-    setStudentData(formattedData)
+    }))
   }
 
   const getSubjectClasses = () => {
@@ -442,11 +396,24 @@ export default function GradebookViewer() {
                     <tr>
                       <th className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50">Student</th>
                       <th className="text-center px-4 py-3 text-gray-500 font-medium">Participation %</th>
-                      <th className="text-center px-4 py-3 text-gray-500 font-medium">Marked Assignments (80%)</th>
+                      <th className="text-center px-4 py-3 text-gray-500 font-medium">Marked Assignments</th>
                       <th className="text-center px-4 py-3 text-gray-500 font-medium">Attainment</th>
-                      <th className="text-center px-4 py-3 text-gray-500 font-medium">Progress Test</th>
+                      
+                      {/* Conditional columns based on subject */}
+                      {classes.find(c => c.id === selectedSubject)?.subject === 'ESL' ? (
+                        <>
+                          <th className="text-center px-4 py-3 text-gray-500 font-medium">R/W</th>
+                          <th className="text-center px-4 py-3 text-gray-500 font-medium">Listening</th>
+                          <th className="text-center px-4 py-3 text-gray-500 font-medium">Speaking</th>
+                          <th className="text-center px-4 py-3 text-gray-500 font-medium">Progress Test</th>
+                        </>
+                      ) : (
+                        <th className="text-center px-4 py-3 text-gray-500 font-medium">Progress Test</th>
+                      )}
+                      
                       <th className="text-center px-4 py-3 text-gray-500 font-medium">Overall</th>
                       <th className="text-center px-4 py-3 text-gray-500 font-medium">Grade</th>
+                      
                       {attributeNames.map(attr => (
                         <th key={attr} className="text-center px-3 py-3 text-gray-500 font-medium text-xs">
                           {attr}
@@ -455,7 +422,7 @@ export default function GradebookViewer() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {studentData.map(({ student, participation, attainment, progressTest, overall, letterGrade, attributes }) => (
+                    {studentData.map(({ student, participation, attainment, progressTest, progressTestRW, progressTestListening, progressTestSpeaking, overall, letterGrade, attributes }) => (
                       <tr key={student.id} className="hover:bg-gray-50">
                         <td className="px-4 py-3 sticky left-0 bg-white">
                           <div className="font-medium">
@@ -492,9 +459,19 @@ export default function GradebookViewer() {
                             {fmt(attainment)}%
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="text-gray-600">{fmt(progressTest)}</span>
-                        </td>
+                        
+                        {/* Conditional ESL columns */}
+                        {classes.find(c => c.id === selectedSubject)?.subject === 'ESL' ? (
+                          <>
+                            <td className="px-4 py-3 text-center"><span className="text-gray-600">{fmt(progressTestRW)}</span></td>
+                            <td className="px-4 py-3 text-center"><span className="text-gray-600">{fmt(progressTestListening)}</span></td>
+                            <td className="px-4 py-3 text-center"><span className="text-gray-600">{fmt(progressTestSpeaking)}</span></td>
+                            <td className="px-4 py-3 text-center"><span className="text-gray-600">{fmt(progressTest)}</span></td>
+                          </>
+                        ) : (
+                          <td className="px-4 py-3 text-center"><span className="text-gray-600">{fmt(progressTest)}</span></td>
+                        )}
+                        
                         <td className="px-4 py-3 text-center">
                           <span className={`font-semibold ${
                             overall != null 
@@ -517,6 +494,7 @@ export default function GradebookViewer() {
                             {letterGrade}
                           </span>
                         </td>
+                        
                         {attributeNames.map(attr => (
                           <td key={attr} className="px-3 py-3 text-center">
                             <span className="text-gray-600">{attributes[attr] != null ? fmt(attributes[attr]) : '—'}</span>
