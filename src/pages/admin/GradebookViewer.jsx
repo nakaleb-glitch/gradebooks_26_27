@@ -249,7 +249,7 @@ export default function GradebookViewer() {
     console.log("🔍 Fetching attributes for class:", selectedSubject, "term:", selectedTerm)
     const { data: attributesData, error: attributesError } = await supabase
       .from('student_attributes')
-      .select('student_id, attribute, score')
+      .select('student_id, confident, responsible, reflective, innovative, engaged')
       .eq('class_id', selectedSubject)
       .eq('term', selectedTerm)
       .in('student_id', studentIds)
@@ -266,11 +266,7 @@ export default function GradebookViewer() {
     // Create grade maps
     const participationMap = Object.fromEntries(participationData?.map(g => [g.student_id, g.score]) || [])
     const progressTestMap = Object.fromEntries(progressTestData?.map(g => [g.student_id, g]) || [])
-    const attributesMap = {}
-    attributesData?.forEach(attr => {
-      if (!attributesMap[attr.student_id]) attributesMap[attr.student_id] = {}
-      attributesMap[attr.student_id][attr.attribute] = attr.score
-    })
+    const attributesMap = Object.fromEntries(attributesData?.map(row => [row.student_id, row]) || [])
 
     // Calculate assignment totals correctly
     const assignmentTotals = {}
