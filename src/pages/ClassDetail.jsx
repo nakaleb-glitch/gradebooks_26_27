@@ -491,28 +491,9 @@ export default function ClassDetail() {
                     )}
                   </div>
                 )}
-                {profile?.role === 'teacher' && profile?.id === cls.teacher_id && showSentAnnouncements && (
-                  <div className="space-y-2">
-                    {classAnnouncements.length === 0 ? (
-                      <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
-                        No announcements posted for this class yet.
-                      </div>
-                    ) : classAnnouncements.slice(0, 6).map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => setSelectedAnnouncement(item)}
-                        className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-green-50 transition-colors"
-                      >
-                        <div className="text-sm font-medium text-gray-800">{item.title}</div>
-                        <div className="text-xs text-gray-500 mt-0.5">{new Date(item.created_at).toLocaleDateString('en-GB')}</div>
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
 
-              {profile?.role === 'admin' && selectedAnnouncement && (
+              {(profile?.role === 'admin' || (profile?.role === 'teacher' && profile?.id === cls.teacher_id)) && selectedAnnouncement && (
                 <div
                   className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4"
                   onClick={() => setSelectedAnnouncement(null)}
