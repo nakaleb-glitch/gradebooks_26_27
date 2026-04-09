@@ -468,7 +468,7 @@ export default function ClassDetail() {
                     )}
                   </>
                 )}
-                {profile?.role === 'admin' && showSentAnnouncements && (
+                {profile?.role === 'admin' && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {classAnnouncements.length === 0 ? (
                       <div className="sm:col-span-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
