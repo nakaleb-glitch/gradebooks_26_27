@@ -1849,21 +1849,56 @@ function StudentAttributesTab({ classId, term, students, onDirtyChange }) {
                     </div>
                     <div className="text-xs text-gray-400">{student.student_id || '—'}</div>
                   </td>
-                  {ATTRIBUTE_FIELDS.map(field => (
-                    <td key={field.key} className="px-3 py-2 text-center border-l border-gray-100 bg-blue-50">
-                      <select
-                        value={row[field.key] ?? ''}
-                        onChange={e => setAttribute(student.id, field.key, e.target.value)}
-                        className="w-40 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                      >
-                        {OPTIONS.map(option => (
-                          <option key={`${field.key}_${option.value || 'empty'}`} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                  ))}
+                   {ATTRIBUTE_FIELDS.map(field => {
+                     const currentValue = row[field.key] ?? ''
+                     return (
+                       <td key={field.key} className="px-3 py-2 text-center border-l border-gray-100 bg-blue-50">
+                         <div className="flex justify-center gap-2">
+                           {/* G Button - Good */}
+                           <button
+                             type="button"
+                             onClick={() => setAttribute(student.id, field.key, currentValue === 'G' ? '' : 'G')}
+                             className={`w-9 h-9 rounded-full text-sm font-bold transition-all flex items-center justify-center ${
+                               currentValue === 'G'
+                                 ? 'bg-green-500 text-white shadow-sm'
+                                 : 'bg-white border-2 border-gray-200 text-gray-500 hover:border-green-400 hover:text-green-600'
+                             }`}
+                             title="Good"
+                           >
+                             G
+                           </button>
+                           
+                           {/* S Button - Satisfactory */}
+                           <button
+                             type="button"
+                             onClick={() => setAttribute(student.id, field.key, currentValue === 'S' ? '' : 'S')}
+                             className={`w-9 h-9 rounded-full text-sm font-bold transition-all flex items-center justify-center ${
+                               currentValue === 'S'
+                                 ? 'bg-amber-500 text-white shadow-sm'
+                                 : 'bg-white border-2 border-gray-200 text-gray-500 hover:border-amber-400 hover:text-amber-600'
+                             }`}
+                             title="Satisfactory"
+                           >
+                             S
+                           </button>
+                           
+                           {/* N Button - Needs Improvement */}
+                           <button
+                             type="button"
+                             onClick={() => setAttribute(student.id, field.key, currentValue === 'N' ? '' : 'N')}
+                             className={`w-9 h-9 rounded-full text-sm font-bold transition-all flex items-center justify-center ${
+                               currentValue === 'N'
+                                 ? 'bg-red-500 text-white shadow-sm'
+                                 : 'bg-white border-2 border-gray-200 text-gray-500 hover:border-red-400 hover:text-red-600'
+                             }`}
+                             title="Needs Improvement"
+                           >
+                             N
+                           </button>
+                         </div>
+                       </td>
+                     )
+                   })}
                 </tr>
               )
             })}
