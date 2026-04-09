@@ -1455,20 +1455,31 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
+              <th className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 min-w-48"></th>
+              {isESL ? (
+                <>
+              <th colSpan={3} className="text-center px-3 py-2 font-medium bg-gray-200 text-gray-800 border-l border-gray-200">Progress Test - Scores</th>
+              <th colSpan={4} className="text-center px-3 py-2 font-medium bg-green-100 text-green-800 border-l border-gray-200">Progress Test - Percentages</th>
+                </>
+              ) : (
+                <th className="text-center px-3 py-3 text-gray-500 font-medium min-w-32"></th>
+              )}
+            </tr>
+            <tr>
               <th className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 min-w-48">Student</th>
               {isESL ? (
                 <>
-              <th className="text-center px-3 py-3 font-medium min-w-36 bg-gray-200 text-gray-700 border-l border-gray-200">R/W Score</th>
-              <th className="text-center px-3 py-3 font-medium min-w-32 bg-gray-200 text-gray-700 border-l border-gray-200">Listening Score</th>
-              <th className="text-center px-3 py-3 font-medium min-w-32 bg-gray-200 text-gray-700 border-l border-gray-200">Speaking Score</th>
-              <th className="text-center px-3 py-3 font-medium min-w-36 bg-green-100 text-green-800 border-l border-gray-200">R/W %</th>
-              <th className="text-center px-3 py-3 font-medium min-w-32 bg-green-100 text-green-800 border-l border-gray-200">Listening %</th>
-              <th className="text-center px-3 py-3 font-medium min-w-32 bg-green-100 text-green-800 border-l border-gray-200">Speaking %</th>
+              <th className="text-center px-3 py-3 font-medium min-w-36 bg-gray-200 text-gray-700 border-l border-gray-200">Reading & Writing</th>
+              <th className="text-center px-3 py-3 font-medium min-w-32 bg-gray-200 text-gray-700 border-l border-gray-200">Listening</th>
+              <th className="text-center px-3 py-3 font-medium min-w-32 bg-gray-200 text-gray-700 border-l border-gray-200">Speaking</th>
+              <th className="text-center px-3 py-3 font-medium min-w-36 bg-green-100 text-green-800 border-l border-gray-200">Reading & Writing</th>
+              <th className="text-center px-3 py-3 font-medium min-w-32 bg-green-100 text-green-800 border-l border-gray-200">Listening</th>
+              <th className="text-center px-3 py-3 font-medium min-w-32 bg-green-100 text-green-800 border-l border-gray-200">Speaking</th>
                 </>
               ) : (
                 <th className="text-center px-3 py-3 text-gray-500 font-medium min-w-32">Score {totals.total_points ? `/ ${totals.total_points}` : ''}</th>
               )}
-                <th className="text-center px-4 py-3 font-medium min-w-24 bg-green-100 text-green-800 border-l border-gray-200">Progress Test - Overall</th>
+                <th className="text-center px-4 py-3 font-medium min-w-24 bg-green-100 text-green-800 border-l border-gray-200">Overall</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -1538,16 +1549,106 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
                         </div>
                       </td>
                       <td className="px-3 py-2 text-center bg-gray-50 border-l border-gray-200">
-                        <input type="number" min="0" max={totals.l_total || undefined} placeholder="—"
-                          value={g.l ?? ''}
-                          onChange={e => setGrade(student.id, 'l', e.target.value)}
-                          className="w-20 text-center border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <div className="flex flex-col items-center gap-1">
+                          <input type="number" min="0" max={totals.l_total || undefined} placeholder="—"
+                            value={g.l ?? ''}
+                            onChange={e => setGrade(student.id, 'l', e.target.value)}
+                            className="w-20 text-center border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                          
+                          {openCommentStudentId === student.id ? (
+                            <div className="w-full space-y-1">
+                              <input
+                                type="text"
+                                placeholder="Type comment"
+                                value={draftComment}
+                                onChange={e => setDraftComment(e.target.value)}
+                                className="w-full border border-gray-200 bg-gray-50 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => saveComment(student.id)}
+                                  className="text-[10px] px-2 py-0.5 rounded bg-green-600 text-white hover:bg-green-700"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenCommentStudentId(null)
+                                    setDraftComment('')
+                                  }}
+                                  className="text-[10px] text-gray-400 hover:text-gray-600"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => openCommentEditor(student.id)}
+                              className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                                g.comment
+                                  ? 'border-blue-200 bg-blue-50 text-blue-600'
+                                  : 'border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                              }`}
+                            >
+                              {g.comment ? 'Edit Comment' : 'Add Comment'}
+                            </button>
+                          )}
+                        </div>
                       </td>
                       <td className="px-3 py-2 text-center bg-gray-50 border-l border-gray-200">
-                        <input type="number" min="0" max={totals.s_total || undefined} placeholder="—"
-                          value={g.s ?? ''}
-                          onChange={e => setGrade(student.id, 's', e.target.value)}
-                          className="w-20 text-center border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <div className="flex flex-col items-center gap-1">
+                          <input type="number" min="0" max={totals.s_total || undefined} placeholder="—"
+                            value={g.s ?? ''}
+                            onChange={e => setGrade(student.id, 's', e.target.value)}
+                            className="w-20 text-center border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                          
+                          {openCommentStudentId === student.id ? (
+                            <div className="w-full space-y-1">
+                              <input
+                                type="text"
+                                placeholder="Type comment"
+                                value={draftComment}
+                                onChange={e => setDraftComment(e.target.value)}
+                                className="w-full border border-gray-200 bg-gray-50 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => saveComment(student.id)}
+                                  className="text-[10px] px-2 py-0.5 rounded bg-green-600 text-white hover:bg-green-700"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenCommentStudentId(null)
+                                    setDraftComment('')
+                                  }}
+                                  className="text-[10px] text-gray-400 hover:text-gray-600"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => openCommentEditor(student.id)}
+                              className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                                g.comment
+                                  ? 'border-blue-200 bg-blue-50 text-blue-600'
+                                  : 'border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                              }`}
+                            >
+                              {g.comment ? 'Edit Comment' : 'Add Comment'}
+                            </button>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-center bg-green-50 border-l border-gray-200">
                         <span className="font-semibold text-gray-700">
