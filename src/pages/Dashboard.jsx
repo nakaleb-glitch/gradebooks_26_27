@@ -1139,7 +1139,8 @@ export default function Dashboard() {
                   <button
                     type="button"
                     onClick={() => setShowTeacherAnnouncements(showTeacherAnnouncements === 'create' ? null : 'create')}
-                    className="py-2 px-4 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+                    className="py-2 px-4 rounded-lg text-white text-sm font-medium transition-colors"
+                    style={{ backgroundColor: 'rgb(31, 134, 199)' }}
                   >
                     Create new
                   </button>
@@ -1316,7 +1317,8 @@ export default function Dashboard() {
                   <button
                     type="button"
                     onClick={() => setShowTeacherSubmissions(showTeacherSubmissions === 'create' ? null : 'create')}
-                    className="py-2 px-4 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+                    className="py-2 px-4 rounded-lg text-white text-sm font-medium transition-colors"
+                    style={{ backgroundColor: 'rgb(31, 134, 199)' }}
                   >
                     Create new
                   </button>
