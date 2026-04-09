@@ -1101,6 +1101,9 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
             </div>
 
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+            </div>
+
             <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: CARD_ACCENT.class, borderTopWidth: 3 }}>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">My Classes</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
