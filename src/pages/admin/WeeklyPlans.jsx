@@ -194,50 +194,25 @@ export default function WeeklyPlans() {
 
       {/* Week Selector */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">School Week</label>
-            <select
-              value={selectedWeek}
-              onChange={(e) => setSelectedWeek(Number(e.target.value))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {ALL_WEEKS.map((weekItem, idx) => (
-                <option key={weekItem.week} value={idx}>
-                  {weekItem.label} — {weekItem.range}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-end">
-            <p className="text-xs text-gray-400">
-              {programme && (
-                <span className={`inline-block px-2 py-1 rounded-full font-medium ${
-                  programme === 'bilingual' 
-                    ? 'bg-purple-100 text-purple-700' 
-                    : 'bg-teal-100 text-teal-700'
-                }`}>
-                  {programme === 'bilingual' ? 'Bilingual Programme' : 'Integrated Programme'}
-                </span>
-              )}
-            </p>
-          </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">School Week</label>
+          <select
+            value={selectedWeek}
+            onChange={(e) => setSelectedWeek(Number(e.target.value))}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {ALL_WEEKS.map((weekItem, idx) => (
+              <option key={weekItem.week} value={idx}>
+                {weekItem.label} — {weekItem.range}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
       {/* Homeroom Class Toggles */}
       {homerooms.length > 0 && (
         <div className="flex gap-1 border-b border-gray-200 mb-6 overflow-x-auto pb-1">
-          <button
-            onClick={() => setSelectedHomeroom('')}
-            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
-              selectedHomeroom === ''
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            All Classes
-          </button>
           {homerooms.map(h => (
             <button
               key={h}
@@ -259,12 +234,21 @@ export default function WeeklyPlans() {
         <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Homeroom {selectedHomeroom} Weekly Plan</h3>
-              <p className="text-sm text-gray-500 mt-1">{programme === 'bilingual' ? 'Bilingual Programme' : 'Integrated Programme'}</p>
+              <h3 className="text-lg font-semibold text-gray-900">{selectedHomeroom} Weekly Plan</h3>
+              <span className={`inline-block px-2 py-1 rounded-full font-medium mt-2 ${
+                programme === 'bilingual' 
+                  ? 'bg-purple-100 text-purple-700' 
+                  : 'bg-teal-100 text-teal-700'
+              }`}>
+                {programme === 'bilingual' ? 'Bilingual Programme' : 'Integrated Programme'}
+              </span>
             </div>
-            <span className="text-sm px-3 py-1.5 rounded-full font-medium bg-gray-100 text-gray-500">
-              Weekly Plan Status: Not Complete
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600">Weekly Plan Status:</span>
+              <span className="text-sm px-3 py-1.5 rounded-full font-medium bg-red-100 text-red-700">
+                Incomplete
+              </span>
+            </div>
           </div>
         </div>
       )}
@@ -278,9 +262,9 @@ export default function WeeklyPlans() {
               return (
                 <div key={cls.id} className="p-5">
                   <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-4">
-                      <h4 className="font-semibold text-gray-900 w-36">{cls.subject}</h4>
-                      <span className="text-sm text-gray-500">
+                    <div>
+                      <h4 className="font-bold text-gray-900 text-xl">{cls.subject}</h4>
+                      <span className="text-sm text-gray-500 mt-1 block">
                         Teacher: {cls.users?.full_name || 'Unassigned'}
                       </span>
                     </div>
@@ -297,9 +281,6 @@ export default function WeeklyPlans() {
                         </div>
                         <div className="flex-1 h-10 bg-gray-50 rounded-lg border border-gray-200 border-dashed cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition-colors">
                         </div>
-                        <span className="w-24 text-center text-xs text-gray-400">
-                          Not Submitted
-                        </span>
                       </div>
                     ))}
                   </div>
