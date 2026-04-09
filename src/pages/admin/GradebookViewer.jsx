@@ -375,7 +375,7 @@ export default function GradebookViewer() {
       >
         ← Go Back
       </button>
-        <h2 className="text-2xl font-bold text-gray-900">Admin Gradebook Viewer</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Gradebook Management</h2>
         <p className="text-gray-500 text-sm mt-1">
           View collective gradebooks for all subjects in a homeroom class
         </p>
