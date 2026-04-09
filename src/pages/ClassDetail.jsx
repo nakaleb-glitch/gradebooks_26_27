@@ -1468,7 +1468,7 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
               ) : (
                 <th className="text-center px-3 py-3 text-gray-500 font-medium min-w-32">Score {totals.total_points ? `/ ${totals.total_points}` : ''}</th>
               )}
-                <th className="text-center px-4 py-3 font-medium min-w-24 bg-green-100 text-green-800">Progress Test - Overall</th>
+                <th className="text-center px-4 py-3 font-medium min-w-24 bg-green-100 text-green-800 border-l border-gray-200">Progress Test - Overall</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -1617,7 +1617,7 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
                       </div>
                     </td>
                   )}
-                  <td className="px-4 py-3 text-center bg-green-50">
+                  <td className="px-4 py-3 text-center bg-green-50 border-l border-gray-200">
                     <span className={`font-semibold ${overall != null ? 'text-blue-600' : 'text-gray-300'}`}>
                       {fmt(overall)}
                     </span>
@@ -1849,9 +1849,9 @@ function SummaryTab({ classId, term, students, isESL }) {
         attainment, 
         ptOverall, 
         total,
-        ptRW: pt?.reading_writing_score,
-        ptListening: pt?.listening_score,
-        ptSpeaking: pt?.speaking_score,
+        ptRW: totals.rw_total && pt?.reading_writing_score != null ? pct(parseFloat(pt.reading_writing_score), parseFloat(totals.rw_total)) : null,
+        ptListening: totals.l_total && pt?.listening_score != null ? pct(parseFloat(pt.listening_score), parseFloat(totals.l_total)) : null,
+        ptSpeaking: totals.s_total && pt?.speaking_score != null ? pct(parseFloat(pt.speaking_score), parseFloat(totals.s_total)) : null,
       }
     })
 
