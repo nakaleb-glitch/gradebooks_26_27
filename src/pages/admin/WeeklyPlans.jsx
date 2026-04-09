@@ -63,6 +63,23 @@ const ALL_WEEKS = [
   ...PARTICIPATION_WEEK_SCHEDULE.final_2,
 ]
 
+// Calculate current week based on date - default to Week 0 for pre launch
+const getCurrentWeekIndex = () => {
+  // Check for debug override
+  const override = sessionStorage.getItem('debug_week_override')
+  if (override !== null) {
+    const idx = Number(override)
+    if (idx >= 0 && idx < ALL_WEEKS.length) return idx
+  }
+
+  const today = new Date()
+  // Default to Week 0 for all dates before August 2026
+  if (today < new Date('2026-08-17')) return 0
+
+  // TODO: Implement actual date mapping
+  return 0
+}
+
 // Fixed subject sort order
 const SUBJECT_ORDER = ['ESL', 'Mathematics', 'Science', 'Global Perspectives']
 
@@ -84,7 +101,7 @@ export default function WeeklyPlans() {
   const navigate = useNavigate()
   const [homerooms, setHomerooms] = useState([])
   const [selectedHomeroom, setSelectedHomeroom] = useState('')
-  const [selectedWeek, setSelectedWeek] = useState(ALL_WEEKS.findIndex(w => w.week === 1)) // Default to Week 1
+  const [selectedWeek, setSelectedWeek] = useState(getCurrentWeekIndex())
   const [classes, setClasses] = useState([])
   const [sortedClasses, setSortedClasses] = useState([])
   const [loading, setLoading] = useState(true)
