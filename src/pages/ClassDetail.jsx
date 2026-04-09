@@ -1858,7 +1858,7 @@ function StudentAttributesTab({ classId, term, students, onDirtyChange }) {
                            <button
                              type="button"
                              onClick={() => setAttribute(student.id, field.key, currentValue === 'G' ? '' : 'G')}
-                             className={`w-9 h-9 rounded-full text-sm font-bold transition-all flex items-center justify-center ${
+                             className={`w-8 h-8 rounded-full text-sm font-bold transition-all flex items-center justify-center ${
                                currentValue === 'G'
                                  ? 'bg-green-500 text-white shadow-sm'
                                  : 'bg-white border-2 border-gray-200 text-gray-500 hover:border-green-400 hover:text-green-600'
@@ -1872,7 +1872,7 @@ function StudentAttributesTab({ classId, term, students, onDirtyChange }) {
                            <button
                              type="button"
                              onClick={() => setAttribute(student.id, field.key, currentValue === 'S' ? '' : 'S')}
-                             className={`w-9 h-9 rounded-full text-sm font-bold transition-all flex items-center justify-center ${
+                             className={`w-8 h-8 rounded-full text-sm font-bold transition-all flex items-center justify-center ${
                                currentValue === 'S'
                                  ? 'bg-amber-500 text-white shadow-sm'
                                  : 'bg-white border-2 border-gray-200 text-gray-500 hover:border-amber-400 hover:text-amber-600'
@@ -1886,7 +1886,7 @@ function StudentAttributesTab({ classId, term, students, onDirtyChange }) {
                            <button
                              type="button"
                              onClick={() => setAttribute(student.id, field.key, currentValue === 'N' ? '' : 'N')}
-                             className={`w-9 h-9 rounded-full text-sm font-bold transition-all flex items-center justify-center ${
+                             className={`w-8 h-8 rounded-full text-sm font-bold transition-all flex items-center justify-center ${
                                currentValue === 'N'
                                  ? 'bg-red-500 text-white shadow-sm'
                                  : 'bg-white border-2 border-gray-200 text-gray-500 hover:border-red-400 hover:text-red-600'
@@ -2018,7 +2018,7 @@ function SummaryTab({ classId, term, students, isESL }) {
         <div className="text-center text-gray-400 py-10">Calculating...</div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm border-collapse">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 min-w-48">Student</th>
@@ -2050,7 +2050,7 @@ function SummaryTab({ classId, term, students, isESL }) {
                 const d = data[student.id] || {}
                 const attrs = attributes[student.id] || {}
                 return (
-                  <tr key={student.id} className="hover:bg-gray-50">
+                  <tr key={student.id} className="hover:bg-gray-50 border-b border-gray-200">
                     <td className="px-4 py-3 sticky left-0 bg-white">
                       <div className="font-medium">
                         <span className="text-gray-900">{student.name_eng || '—'}</span>
