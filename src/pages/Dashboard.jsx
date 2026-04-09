@@ -1134,9 +1134,26 @@ export default function Dashboard() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
               <div className="bg-white rounded-xl border border-gray-200 p-5 h-full flex flex-col" style={{ borderTopColor: '#22c55e', borderTopWidth: 3 }}>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-semibold text-gray-900">Class Announcements</h3>
-                  {showTeacherAnnouncements === 'create' && (
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Class Announcements</h3>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowTeacherAnnouncements('create')}
+                    className="py-2 px-4 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    Create new
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowTeacherAnnouncements('view')}
+                    className="py-2 px-4 rounded-lg bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition-colors"
+                  >
+                    View all announcements
+                  </button>
+                </div>
+
+                {showTeacherAnnouncements === 'create' && (
+                  <>
                     <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
                       <h4 className="text-sm font-medium text-gray-700">Create Announcement</h4>
                       <div className="flex gap-2">
@@ -1157,8 +1174,53 @@ export default function Dashboard() {
                         </button>
                       </div>
                     </div>
-                  )}
-                </div>
+                  </>
+                )}
+
+                {showTeacherAnnouncements === 'view' && (
+                  <>
+                    <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
+                      <h4 className="text-sm font-medium text-gray-700">All Announcements</h4>
+                      <button
+                        type="button"
+                        onClick={() => setShowTeacherAnnouncements(null)}
+                        className="py-1 px-3 rounded-lg bg-gray-200 text-gray-700 text-xs font-medium hover:bg-gray-300 transition-colors"
+                      >
+                        Close
+                      </button>
+                    </div>
+                    <div className="space-y-2 max-h-[20rem] overflow-y-auto">
+                      {teacherAnnouncements.length === 0 ? (
+                        <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                          No announcements posted yet.
+                        </div>
+                      ) : teacherAnnouncements.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setSelectedDashboardItem({
+                            title: item.title,
+                            event_date: item.created_at,
+                            label: 'Teacher Announcement',
+                            venue: item.targets.map((t) => t.class_name).join(', ') || '—',
+                            description: item.description,
+                            plan_url: null,
+                            link_url: item.link_url,
+                            attachment_url: item.attachment_url,
+                            attachment_name: item.attachment_name,
+                          })}
+                          className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 hover:bg-green-50 transition-colors"
+                        >
+                          <div className="text-sm font-medium text-gray-800">{item.title}</div>
+                          <div className="text-xs text-gray-500 mt-1">{formatDateWithDay(item.created_at)}</div>
+                          <div className="text-[10px] text-gray-400 mt-0.5">
+                            Sent to: {item.targets.map((t) => t.class_name).join(', ')}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
                 <div className="flex flex-col gap-3 flex-1 min-h-[16rem]">
                   <div>
                     <label htmlFor="dashboard-announcement-title" className="block text-xs font-medium text-gray-500 mb-1">
