@@ -420,10 +420,10 @@ export default function GradebookViewer() {
                       {/* Conditional columns based on subject */}
                       {classes.find(c => c.id === selectedSubject)?.subject === 'ESL' ? (
                         <>
-                          <th className="text-center px-4 py-3 text-gray-500 font-medium">R/W</th>
-                          <th className="text-center px-4 py-3 text-gray-500 font-medium">Listening</th>
-                          <th className="text-center px-4 py-3 text-gray-500 font-medium">Speaking</th>
-                          <th className="text-center px-4 py-3 text-gray-500 font-medium">Progress Test</th>
+                          <th className="text-center px-4 py-3 text-gray-500 font-medium">Progress Test (Reading & Writing)</th>
+                          <th className="text-center px-4 py-3 text-gray-500 font-medium">Progress Test (Listening)</th>
+                          <th className="text-center px-4 py-3 text-gray-500 font-medium">Progress Test (Speaking)</th>
+                          <th className="text-center px-4 py-3 text-gray-500 font-medium">Progress Test (Overall)</th>
                         </>
                       ) : (
                         <th className="text-center px-4 py-3 text-gray-500 font-medium">Progress Test</th>
