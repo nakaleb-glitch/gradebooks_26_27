@@ -763,7 +763,7 @@ export default function Dashboard() {
               <Link
                 to="/admin/gradebooks"
                 className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block"
-                style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}
+                style={{ borderTopColor: '#d1232a', borderTopWidth: 3 }}
                 onClick={e => {
                   const hasUnsaved = sessionStorage.getItem('gradebook_unsaved_changes') === '1'
                   if (hasUnsaved && !window.confirm('You have unsaved gradebook changes. Please click Save before leaving this page. Continue anyway?')) {
@@ -773,6 +773,14 @@ export default function Dashboard() {
               >
                 <div className="font-semibold text-gray-900">Gradebook Management</div>
                 <div className="text-sm text-gray-500 mt-1">Review termly gradebooks for each class.</div>
+              </Link>
+              <Link
+                to="/admin/weekly-plans"
+                className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block"
+                style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}
+              >
+                <div className="font-semibold text-gray-900">Weekly Plan Management</div>
+                <div className="text-sm text-gray-500 mt-1">Create and monitor weekly plans.</div>
               </Link>
             </div>
           </div>

@@ -10,6 +10,7 @@ import Resources from './pages/admin/Resources'
 import EventsDeadlines from './pages/admin/EventsDeadlines'
 import BehaviorManagement from './pages/admin/BehaviorManagement'
 import GradebookViewer from './pages/admin/GradebookViewer'
+import WeeklyPlans from './pages/admin/WeeklyPlans'
 import ClassDetail from './pages/ClassDetail'
 import UserSettings from './pages/UserSettings'
 import BehaviorReport from './pages/BehaviorReport'
@@ -43,6 +44,7 @@ function AppRoutes() {
       <Route path="/admin/events-deadlines" element={<ProtectedRoute adminOnly><EventsDeadlines /></ProtectedRoute>} />
       <Route path="/admin/behavior-management" element={<ProtectedRoute adminOnly><BehaviorManagement /></ProtectedRoute>} />
       <Route path="/admin/gradebooks" element={<ProtectedRoute adminOnly><GradebookViewer /></ProtectedRoute>} />
+      <Route path="/admin/weekly-plans" element={<ProtectedRoute adminOnly><WeeklyPlans /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/login" />} />
     </Routes>
   )
