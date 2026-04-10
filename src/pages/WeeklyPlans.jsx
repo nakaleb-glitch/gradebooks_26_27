@@ -554,6 +554,64 @@ export default function WeeklyPlans() {
                 </div>
               )
             }
+
+            return (
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div className="divide-y divide-gray-100">
+                  {getVisibleClasses().map(cls => {
+                    const lessonCount = getLessonsForSubject(cls.subject)
+                    return (
+                      <div key={cls.id} className="p-5">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h4 className="font-bold text-gray-900 text-xl">{cls.subject}</h4>
+                            <span className="text-sm text-gray-500 mt-1 block">
+                              Teacher: {cls.users?.full_name || 'Unassigned'}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          {Array.from({ length: lessonCount }, (_, i) => i + 1).map(lesson => {
+                            const content = getLessonContent(cls.id, lesson)
+                            const status = getLessonStatus(cls.id, lesson)
+
+                            let borderStyle = 'border-dashed border-gray-200'
+                            if (status === 'submitted') borderStyle = 'border-solid border-green-500'
+
+                            return (
+                              <div key={lesson} className="flex items-center gap-4">
+                                <div className="w-24">
+                                  <div className="text-sm font-medium text-gray-600">
+                                    Lesson #{lesson}:
+                                  </div>
+                                  <div className="text-xs text-gray-400 mt-0.5">
+                                    Day - P#/P#
+                                  </div>
+                                </div>
+                                <div
+                                  className={`flex-1 min-h-[48px] rounded-lg border ${borderStyle} bg-gray-50 p-3`}
+                                >
+                                  {content ? (
+                                    <div className="text-sm text-gray-800 whitespace-pre-wrap">
+                                      {content}
+                                    </div>
+                                  ) : (
+                                    <div className="text-xs text-gray-400 italic">
+                                      No lesson plan yet
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
           })()
         : null
       )}
