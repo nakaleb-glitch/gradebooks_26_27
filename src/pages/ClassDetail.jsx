@@ -1167,7 +1167,7 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-16"></th>
-              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 min-w-48">Student</th>
+              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 min-w-48">Student Information</th>
                 {assignments.map(a => (
                   <th key={a.id} className="text-center px-3 py-3 font-medium min-w-32 bg-gray-200 text-gray-700 border-l border-gray-200">
                     <div className="flex items-center justify-center gap-2">
@@ -1483,7 +1483,7 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th colSpan={2} className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 min-w-64">Student</th>
+              <th colSpan={2} className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 min-w-64">Student Information</th>
               {isESL ? (
                 <>
               <th colSpan={3} className="text-center px-3 py-2 font-medium bg-gray-200 text-gray-800 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}>Progress Test - Scores</th>
@@ -1868,7 +1868,7 @@ function StudentAttributesTab({ classId, term, students, onDirtyChange }) {
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-16"></th>
-              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 min-w-48">Student</th>
+              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 min-w-48">Student Information</th>
               {ATTRIBUTE_FIELDS.map(field => (
                 <th key={field.key} className="text-center px-3 py-3 font-medium min-w-44 border-l border-gray-300 bg-blue-100 text-blue-800" style={{ backgroundClip: 'padding-box' }}>
                   {field.label}
@@ -2069,7 +2069,7 @@ function SummaryTab({ classId, term, students, isESL }) {
             <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-16"></th>
-              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 min-w-48">Student</th>
+              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 min-w-48">Student Information</th>
                 <th className="text-center px-4 py-3 font-medium bg-gray-200 text-gray-700">Participation</th>
                 <th className="text-center px-4 py-3 font-medium bg-gray-200 text-gray-700 border-l border-gray-200">Marked Assignments</th>
                 <th className="text-center px-4 py-3 font-medium bg-green-100 text-green-800 border-l border-gray-200">Attainment</th>
