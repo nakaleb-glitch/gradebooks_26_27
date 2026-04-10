@@ -261,8 +261,8 @@ export default function WeeklyPlans() {
     let completedCount = 0
 
     for (let lesson = 1; lesson <= lessonCount; lesson++) {
-      const content = getLessonContent(cls.id, lesson)
-      if (content && content.trim().length > 0) completedCount++
+      const status = getLessonStatus(cls.id, lesson)
+      if (status === 'submitted') completedCount++
     }
 
     if (completedCount === 0) return 'not_started'
@@ -394,19 +394,47 @@ export default function WeeklyPlans() {
           {/* Homeroom Class Toggles */}
           {homerooms.length > 0 && (
             <div className="flex-1 flex gap-1 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-              {homerooms.map(h => (
-                <button
-                  key={h}
-                  onClick={() => setSelectedHomeroom(h)}
-                  className={`px-4 py-2 text-sm font-medium transition-colors rounded-lg whitespace-nowrap shrink-0 h-10 ${
-                    selectedHomeroom === h
-                      ? 'bg-amber-400 text-gray-900'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {h}
-                </button>
-              ))}
+              {homerooms.map(h => {
+                const isSelected = selectedHomeroom === h
+                let statusStyle = 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                
+                if (isAdmin && !isSelected) {
+                  // Only calculate status for admin view and not selected
+                  // Count submitted lessons for this homeroom
+                  const classIdsForHomeroom = classes.filter(c => c.name?.startsWith(`${h} `)).map(c => c.id)
+                  let total = 0
+                  let submitted = 0
+
+                  classIdsForHomeroom.forEach(cls => {
+                    const lessonCount = getLessonsForSubject(cls.subject)
+                    total += lessonCount
+                    for (let lesson = 1; lesson <= lessonCount; lesson++) {
+                      const status = getLessonStatus(cls.id, lesson)
+                      if (status === 'submitted') submitted++
+                    }
+                  })
+
+                  if (submitted > 0 && submitted < total) {
+                    statusStyle = 'bg-amber-100 text-amber-900 hover:bg-amber-200'
+                  } else if (submitted === total && total > 0) {
+                    statusStyle = 'bg-green-100 text-green-900 hover:bg-green-200'
+                  }
+                }
+
+                return (
+                  <button
+                    key={h}
+                    onClick={() => setSelectedHomeroom(h)}
+                    className={`px-4 py-2 text-sm font-medium transition-colors rounded-lg whitespace-nowrap shrink-0 h-10 ${
+                      isSelected
+                        ? 'bg-amber-400 text-gray-900'
+                        : statusStyle
+                    }`}
+                  >
+                    {h}
+                  </button>
+                )
+              })}
             </div>
           )}
         </div>
