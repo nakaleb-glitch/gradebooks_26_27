@@ -533,6 +533,33 @@ export default function WeeklyPlans() {
 
       {/* Weekly Plan Horizontal Table */}
       {selectedHomeroom && sortedClasses.length > 0 && (
+        isStudent ? (
+          (() => {
+            // Check every single lesson is submitted before showing anything to students
+            let totalLessons = 0
+            let submittedCount = 0
+            
+            getVisibleClasses().forEach(cls => {
+              const lessonCount = getLessonsForSubject(cls.subject)
+              for (let lesson = 1; lesson <= lessonCount; lesson++) {
+                totalLessons++
+                if (getLessonStatus(cls.id, lesson) === 'submitted') submittedCount++
+              }
+            })
+
+            if (submittedCount !== totalLessons) {
+              return (
+                <div className="bg-white rounded-xl border border-gray-200 p-16 text-center">
+                  <div className="text-gray-400 text-lg font-medium">Weekly plan will be uploaded soon!</div>
+                </div>
+              )
+            }
+          })()
+        : null
+      )}
+
+      {/* Teacher / Admin always see full table */}
+      {!isStudent && selectedHomeroom && sortedClasses.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="divide-y divide-gray-100">
             {getVisibleClasses().map(cls => {
