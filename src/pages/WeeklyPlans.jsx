@@ -109,6 +109,7 @@ export default function WeeklyPlans() {
   const [loading, setLoading] = useState(true)
   const [programme, setProgramme] = useState('')
   const [weeklyPlans, setWeeklyPlans] = useState({})
+  const [homeroomStatus, setHomeroomStatus] = useState({})
   const [editingLesson, setEditingLesson] = useState(null)
   const [editValue, setEditValue] = useState('')
   const [savingLesson, setSavingLesson] = useState(false)
@@ -149,6 +150,13 @@ export default function WeeklyPlans() {
     }
   }, [selectedHomeroom])
 
+  // Fetch all homeroom statuses for admin when week changes
+  useEffect(() => {
+    if (isAdmin) {
+      fetchAllHomeroomStatuses()
+    }
+  }, [selectedWeek, homerooms])
+
   // Fetch weekly plans when homeroom or week changes
   useEffect(() => {
     if (selectedHomeroom && sortedClasses.length > 0) {
@@ -157,6 +165,56 @@ export default function WeeklyPlans() {
       setWeeklyPlans({})
     }
   }, [selectedHomeroom, selectedWeek, sortedClasses])
+
+  // Prefetch all homeroom statuses for admin
+  const fetchAllHomeroomStatuses = async () => {
+    // First get all classes
+    const { data: allClasses } = await supabase.from('classes').select('id, name, subject, programme')
+    
+    // Get all submitted lessons for current week
+    const { data: allPlans } = await supabase
+      .from('weekly_plan_lessons')
+      .select('class_id, lesson_number, status')
+      .eq('week', selectedWeek)
+      .eq('status', 'submitted')
+
+    const submittedMap = {}
+    allPlans?.forEach(row => {
+      if (!submittedMap[row.class_id]) submittedMap[row.class_id] = new Set()
+      submittedMap[row.class_id].add(row.lesson_number)
+    })
+
+    const statusMap = {}
+    homerooms.forEach(h => {
+      const classIdsForHomeroom = allClasses?.filter(c => c.name?.startsWith(`${h} `)) || []
+      let total = 0
+      let submitted = 0
+
+      classIdsForHomeroom.forEach(cls => {
+        let lessonCount = 1
+        if (cls.subject === 'ESL') {
+          lessonCount = cls.programme === 'integrated' ? 6 : 4
+        } else if (cls.subject === 'Mathematics' || cls.subject === 'Science') {
+          lessonCount = cls.programme === 'bilingual' ? 3 : 2
+        } else if (cls.subject === 'Global Perspectives') {
+          lessonCount = 1
+        }
+        total += lessonCount
+        const submittedForClass = submittedMap[cls.id]?.size || 0
+        submitted += submittedForClass
+      })
+
+      if (submitted > 0 && submitted < total) {
+        statusMap[h] = 'partial'
+      } else if (submitted === total && total > 0) {
+        statusMap[h] = 'complete'
+      } else {
+        statusMap[h] = 'not_started'
+      }
+    })
+
+    setHomeroomStatus(statusMap)
+  }
 
   const fetchClasses = async () => {
     const { data } = await supabase
@@ -399,24 +457,10 @@ export default function WeeklyPlans() {
                 let statusStyle = 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 
                 if (isAdmin && !isSelected) {
-                  // Only calculate status for admin view and not selected
-                  // Count submitted lessons for this homeroom
-                  const classIdsForHomeroom = classes.filter(c => c.name?.startsWith(`${h} `)).map(c => c.id)
-                  let total = 0
-                  let submitted = 0
-
-                  classIdsForHomeroom.forEach(cls => {
-                    const lessonCount = getLessonsForSubject(cls.subject)
-                    total += lessonCount
-                    for (let lesson = 1; lesson <= lessonCount; lesson++) {
-                      const status = getLessonStatus(cls.id, lesson)
-                      if (status === 'submitted') submitted++
-                    }
-                  })
-
-                  if (submitted > 0 && submitted < total) {
+                  // Use preloaded status
+                  if (homeroomStatus[h] === 'partial') {
                     statusStyle = 'bg-amber-100 text-amber-900 hover:bg-amber-200'
-                  } else if (submitted === total && total > 0) {
+                  } else if (homeroomStatus[h] === 'complete') {
                     statusStyle = 'bg-green-100 text-green-900 hover:bg-green-200'
                   }
                 }
