@@ -908,13 +908,13 @@ export default function Dashboard() {
                  className="relative bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block min-h-[120px]"
                  style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}
                >
-                 <div className="font-semibold text-gray-900">Weekly Plans</div>
-                 <div className="text-sm text-gray-500 mt-1">Lessons remaining to complete this week:</div>
                  {incompleteWeeklyPlanCount > 0 && (
-                   <span className="inline-block mt-2 min-w-[1.5rem] h-6 px-2 rounded-full bg-red-600 text-white text-xs font-semibold flex items-center justify-center">
+                   <span className="absolute top-3 right-3 min-w-[1.5rem] h-6 px-2 rounded-full bg-red-600 text-white text-xs font-semibold flex items-center justify-center">
                      {incompleteWeeklyPlanCount}
                    </span>
                  )}
+                 <div className="font-semibold text-gray-900">Weekly Plan Management</div>
+                 <div className="text-sm text-gray-500 mt-1">Monitor weekly plan completion for all classes.</div>
                </Link>
             </div>
           </div>
@@ -1212,30 +1212,21 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* 2. Weekly Plan Status */}
+                {/* 2. Weekly Plans */}
                 <Link
                   to="/weekly-plans"
                   className="relative bg-white rounded-xl border border-gray-200 p-5 hover:shadow-sm transition-all block"
                   style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}
                 >
-                  {incompleteWeeklyPlanCount > 0 && (
-                    <span className="absolute top-3 right-3 min-w-[1.5rem] h-6 px-2 rounded-full bg-red-600 text-white text-xs font-semibold flex items-center justify-center">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Weekly Plans</h3>
+                  <div className="text-sm text-gray-500 mb-3">Lessons remaining to complete this week:</div>
+                  {incompleteWeeklyPlanCount > 0 ? (
+                    <span className="inline-block min-w-[1.5rem] h-6 px-2 rounded-full bg-red-600 text-white text-xs font-semibold flex items-center justify-center">
                       {incompleteWeeklyPlanCount}
                     </span>
+                  ) : (
+                    <span className="text-sm text-green-600 font-medium">All submitted ✓</span>
                   )}
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Weekly Plan Status</h3>
-                  <div className="text-sm text-gray-600 mb-4">
-                    {ALL_WEEKS[getCurrentWeekIndex()].label} - {ALL_WEEKS[getCurrentWeekIndex()].range}
-                  </div>
-                  <div className="text-sm text-gray-500 mb-4">
-                    {incompleteWeeklyPlanCount > 0 
-                      ? `${incompleteWeeklyPlanCount} lessons remaining to complete this week`
-                      : `All weekly plans have been submitted ✓`
-                    }
-                  </div>
-                  <div className="w-full rounded-lg text-white px-4 py-2.5 text-sm font-medium text-center" style={{ backgroundColor: 'rgb(31, 134, 199)' }}>
-                    Complete weekly plans now!
-                  </div>
                 </Link>
 
                 {/* 3. Class Announcements */}
