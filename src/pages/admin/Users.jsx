@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import Layout from '../../components/Layout'
+import ProfileAvatar from '../../components/ProfileAvatar'
 import { useAuth } from '../../contexts/AuthContext'
 import Papa from 'papaparse'
 import { useNavigate } from 'react-router-dom'
@@ -646,9 +647,10 @@ export default function Users() {
           <div className="p-8 text-center text-gray-400">No users yet.</div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Name</th>
+             <thead className="bg-gray-50 border-b border-gray-200">
+               <tr>
+                 <th className="text-left px-6 py-3 text-gray-500 font-medium w-[52px]"></th>
+                 <th className="text-left px-6 py-3 text-gray-500 font-medium">Name</th>
                 <th className="text-left px-6 py-3 text-gray-500 font-medium">Staff ID</th>
                 <th className="text-left px-6 py-3 text-gray-500 font-medium">Email</th>
                 <th className="text-left px-6 py-3 text-gray-500 font-medium">Role</th>
@@ -664,8 +666,11 @@ export default function Users() {
                 const isRowEditing = !editing && rowEditingId === user.id
                 const resetRequestCount = resetRequestsByStaffId[String(user.staff_id || '').trim().toLowerCase()] || 0
                 return (
-                <tr key={user.id} className={editing ? 'bg-yellow-50' : 'hover:bg-gray-50'}>
-                  <td className="px-6 py-3">
+                 <tr key={user.id} className={editing ? 'bg-yellow-50' : 'hover:bg-gray-50'}>
+                   <td className="px-3 py-3">
+                     <ProfileAvatar avatarUrl={user.avatar_url} name={user.full_name} size={36} />
+                   </td>
+                   <td className="px-3 py-3">
                     {editing ? (
                       <input
                         type="text"
