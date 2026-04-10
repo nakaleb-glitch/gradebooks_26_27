@@ -164,7 +164,7 @@ export default function Students() {
         .in('student_id', studentIds)
         .in('class_id', classIds)
     }
-
+ store
     const enrollRows = []
     const missingStudents = []
     studentRows.forEach((student) => {
@@ -233,10 +233,7 @@ export default function Students() {
     const [{ data: studentRows }, { data: userRows }, { data: resetRows }, { data: classRows }] = await Promise.all([
       supabase
         .from('students')
-        .select(`
-          id, student_id, name_eng, name_vn, class, level, programme,
-          users!student_id_ref(avatar_url)
-        `)
+        .select('id, student_id, name_eng, name_vn, class, level, programme')
         .order('name_eng'),
       supabase
         .from('users')
@@ -909,7 +906,6 @@ export default function Students() {
                 <tr key={student.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <ProfileAvatar 
-                      avatarUrl={student.users?.avatar_url} 
                       name={student.name_eng} 
                       size={36} 
                     />
