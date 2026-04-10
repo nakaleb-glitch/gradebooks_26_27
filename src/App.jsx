@@ -44,7 +44,7 @@ function AppRoutes() {
       <Route path="/admin/events-deadlines" element={<ProtectedRoute adminOnly><EventsDeadlines /></ProtectedRoute>} />
       <Route path="/admin/behavior-management" element={<ProtectedRoute adminOnly><BehaviorManagement /></ProtectedRoute>} />
       <Route path="/admin/gradebooks" element={<ProtectedRoute adminOnly><GradebookViewer /></ProtectedRoute>} />
-      <Route path="/weekly-plans" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><WeeklyPlans /></ProtectedRoute>} />
+      <Route path="/weekly-plans" element={<ProtectedRoute><WeeklyPlans /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/login" />} />
     </Routes>
   )
