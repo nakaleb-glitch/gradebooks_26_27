@@ -115,12 +115,33 @@ export default function WeeklyPlans() {
   const [savingLesson, setSavingLesson] = useState(false)
   
   const isAdmin = profile?.role === 'admin'
+  const isStudent = profile?.role === 'student'
   const currentWeek = ALL_WEEKS[selectedWeek]
 
   // Fetch unique homerooms on mount
   useEffect(() => {
-    fetchHomerooms()
-  }, [])
+    if (isStudent && profile?.student_id_ref) {
+      // Auto setup for student view
+      const fetchStudentHomeroom = async () => {
+        // Get student's homeroom class
+        const { data: enrollment } = await supabase
+          .from('class_students')
+          .select('classes(name)')
+          .eq('student_id', profile.student_id_ref)
+          .limit(1)
+          .single()
+
+        if (enrollment?.classes?.name) {
+          const homeroom = enrollment.classes.name.split(' ')[0]
+          setSelectedHomeroom(homeroom)
+        }
+        setLoading(false)
+      }
+      fetchStudentHomeroom()
+    } else {
+      fetchHomerooms()
+    }
+  }, [profile])
 
   const fetchHomerooms = async () => {
     const { data } = await supabase
@@ -428,8 +449,8 @@ export default function WeeklyPlans() {
         >
           ← Go Back
         </button>
-        <h2 className="text-2xl font-bold text-gray-900">Weekly Plan Management</h2>
-        <p className="text-gray-500 text-sm mt-1">Monitor weekly plan completion for all classes.</p>
+        <h2 className="text-2xl font-bold text-gray-900">{isStudent ? 'Weekly Plans' : 'Weekly Plan Management'}</h2>
+        <p className="text-gray-500 text-sm mt-1">{isStudent ? 'View your class weekly lesson plans' : 'Monitor weekly plan completion for all classes.'}</p>
       </div>
 
       {/* Week Selector + Class Toggles */}
@@ -449,8 +470,8 @@ export default function WeeklyPlans() {
             </select>
           </div>
           
-          {/* Homeroom Class Toggles */}
-          {homerooms.length > 0 && (
+      {/* Homeroom Class Toggles - only for admin/teachers */}
+      {!isStudent && homerooms.length > 0 && (
             <div className="flex-1 flex gap-1 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
               {homerooms.map(h => {
                 const isSelected = selectedHomeroom === h
@@ -498,12 +519,14 @@ export default function WeeklyPlans() {
                 {programme === 'bilingual' ? 'Bilingual' : 'Integrated'}
               </span>
             </div>
+            {!isStudent && (
             <div className="flex items-center gap-3">
               <span className="text-sm text-gray-600">Weekly Plan Status:</span>
               <span className="text-sm px-3 py-1.5 rounded-full font-medium bg-red-100 text-red-700">
                 Incomplete
               </span>
             </div>
+            )}
           </div>
         </div>
       )}
