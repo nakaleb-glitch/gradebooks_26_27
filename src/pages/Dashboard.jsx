@@ -904,7 +904,7 @@ export default function Dashboard() {
               </Link>
               {/* Card 8 - BLUE */}
               <Link
-                to="/admin/weekly-plans"
+                to="/weekly-plans"
                 className="relative bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block min-h-[120px]"
                 style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}
               >
