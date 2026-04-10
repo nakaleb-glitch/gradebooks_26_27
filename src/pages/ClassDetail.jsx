@@ -120,20 +120,16 @@ export default function ClassDetail() {
     setLoading(false)
   }
 
-  const fetchStudentRoster = async () => {
+   const fetchStudentRoster = async () => {
     const { data } = await supabase
       .from('class_students')
       .select(`
-        students(*),
-        students(user_id)
+        students(id, student_id, name_eng, name_vn, avatar_url)
       `)
       .eq('class_id', classId)
 
     const list = (data || [])
-      .map(row => ({
-        ...row.students,
-        avatar_url: row.students.user_id?.avatar_url
-      }))
+      .map(row => row.students)
       .filter(Boolean)
       .sort((a, b) => (a.name_eng || '').localeCompare(b.name_eng || '', undefined, { numeric: true }))
 
