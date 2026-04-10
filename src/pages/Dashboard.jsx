@@ -1043,56 +1043,70 @@ export default function Dashboard() {
           </div>
         </div>
       ) : profile?.role === 'student' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
-          <div className="bg-white rounded-xl border border-gray-200 p-5 h-full" style={{ borderTopColor: CARD_ACCENT.class, borderTopWidth: 3 }}>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">My Classes</h3>
-            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-              {classes.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-400">
-                  No classes assigned yet. Please contact your administrator.
-                </div>
-              ) : (
-                classes.map(cls => (
-                  <Link
-                    key={cls.id}
-                    to={`/student/class/${cls.id}`}
-                    className="block bg-white rounded-xl border border-gray-200 p-4 hover:shadow-sm transition-all"
-                    style={{ borderTopColor: '#9ca3af', borderTopWidth: 3 }}
-                  >
-                    <div className="font-semibold text-gray-900">{cls.name}</div>
-                    <div className="text-sm text-gray-500 mt-1">
-                      {levelLabel(cls.level)} - {programmeLabel(cls.programme)}
-                    </div>
-                    <div className="text-xs text-gray-400 mt-2">
-                      Teacher: {cls.teacher_name || 'TBA'}
-                    </div>
-                  </Link>
-                ))
-              )}
-            </div>
-          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+           <div className="bg-white rounded-xl border border-gray-200 p-5 h-full" style={{ borderTopColor: CARD_ACCENT.class, borderTopWidth: 3 }}>
+             <h3 className="text-lg font-semibold text-gray-900 mb-4">My Classes</h3>
+             <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+               {classes.length === 0 ? (
+                 <div className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-400">
+                   No classes assigned yet. Please contact your administrator.
+                 </div>
+               ) : (
+                 classes.map(cls => (
+                   <Link
+                     key={cls.id}
+                     to={`/student/class/${cls.id}`}
+                     className="block bg-white rounded-xl border border-gray-200 p-4 hover:shadow-sm transition-all"
+                     style={{ borderTopColor: '#9ca3af', borderTopWidth: 3 }}
+                   >
+                     <div className="font-semibold text-gray-900">{cls.name}</div>
+                     <div className="text-sm text-gray-500 mt-1">
+                       {levelLabel(cls.level)} - {programmeLabel(cls.programme)}
+                     </div>
+                     <div className="text-xs text-gray-400 mt-2">
+                       Teacher: {cls.teacher_name || 'TBA'}
+                     </div>
+                   </Link>
+                 ))
+               )}
+             </div>
+           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 p-5 h-full" style={{ borderTopColor: CARD_ACCENT.events, borderTopWidth: 3 }}>
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">Announcements</h3>
-            <p className="text-xs text-gray-500 mb-3">Class updates from your teachers.</p>
-            <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
-              {studentAnnouncements.length === 0 ? (
-                <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
-                  No announcements posted yet.
-                </div>
-              ) : studentAnnouncements.map(item => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setSelectedDashboardItem({ ...item, label: item.label || 'Announcement' })}
-                  className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-blue-50 transition-colors"
-                >
-                  <div className="text-sm font-medium text-gray-800">{item.title}</div>
-                  <div className="text-xs text-gray-500 mt-0.5">{formatDateWithDay(item.event_date)}</div>
-                </button>
-              ))}
-            </div>
-          </div>
+           <div className="space-y-4">
+             <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: CARD_ACCENT.events, borderTopWidth: 3 }}>
+               <h3 className="text-lg font-semibold text-gray-900 mb-1">Announcements</h3>
+               <p className="text-xs text-gray-500 mb-3">Class updates from your teachers.</p>
+               <div className="space-y-2 max-h-[45vh] overflow-y-auto pr-1">
+                 {studentAnnouncements.length === 0 ? (
+                   <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                     No announcements posted yet.
+                   </div>
+                 ) : studentAnnouncements.map(item => (
+                   <button
+                     key={item.id}
+                     type="button"
+                     onClick={() => setSelectedDashboardItem({ ...item, label: item.label || 'Announcement' })}
+                     className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-blue-50 transition-colors"
+                   >
+                     <div className="text-sm font-medium text-gray-800">{item.title}</div>
+                     <div className="text-xs text-gray-500 mt-0.5">{formatDateWithDay(item.event_date)}</div>
+                   </button>
+                 ))}
+               </div>
+             </div>
+
+             <Link
+               to="/weekly-plans"
+               className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-sm transition-all block"
+               style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}
+             >
+               <h3 className="text-lg font-semibold text-gray-900 mb-2">Weekly Plans</h3>
+               <p className="text-xs text-gray-500 mb-4">View weekly lesson plans for all your classes</p>
+               <div className="w-full rounded-lg text-white px-4 py-2 text-sm font-medium text-center" style={{ backgroundColor: 'rgb(31, 134, 199)' }}>
+                 Open Weekly Plans
+               </div>
+             </Link>
+           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 p-5 h-full" style={{ borderTopColor: CARD_ACCENT.deadlines, borderTopWidth: 3 }}>
             <h3 className="text-lg font-semibold text-gray-900 mb-1">Graded Assignments</h3>
