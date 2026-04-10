@@ -230,7 +230,7 @@ export default function Students() {
 
   const fetchStudents = async () => {
     setLoading(true)
-    const [{ data: studentRows }, { data: resetRows }, { data: classRows }] = await Promise.all([
+    const [{ data: studentRows }, { data: userRows }, { data: resetRows }, { data: classRows }] = await Promise.all([
       supabase
         .from('students')
         .select(`
