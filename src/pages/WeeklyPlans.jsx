@@ -522,9 +522,37 @@ export default function WeeklyPlans() {
             {!isStudent && (
             <div className="flex items-center gap-3">
               <span className="text-sm text-gray-600">Weekly Plan Status:</span>
-              <span className="text-sm px-3 py-1.5 rounded-full font-medium bg-red-100 text-red-700">
-                Incomplete
-              </span>
+              {(() => {
+                let totalLessons = 0
+                let submittedCount = 0
+                
+                getVisibleClasses().forEach(cls => {
+                  const lessonCount = getLessonsForSubject(cls.subject)
+                  for (let lesson = 1; lesson <= lessonCount; lesson++) {
+                    totalLessons++
+                    if (getLessonStatus(cls.id, lesson) === 'submitted') submittedCount++
+                  }
+                })
+
+                let badgeClass = 'bg-red-100 text-red-700'
+                let badgeText = 'Incomplete'
+                
+                if (submittedCount > 0 && submittedCount < totalLessons) {
+                  badgeClass = 'bg-amber-100 text-amber-700'
+                  badgeText = 'In Progress'
+                }
+                
+                if (submittedCount === totalLessons && totalLessons > 0) {
+                  badgeClass = 'bg-green-100 text-green-700'
+                  badgeText = 'Completed ✓'
+                }
+
+                return (
+                  <span className={`text-sm px-3 py-1.5 rounded-full font-medium ${badgeClass}`}>
+                    {badgeText}
+                  </span>
+                )
+              })()}
             </div>
             )}
           </div>
