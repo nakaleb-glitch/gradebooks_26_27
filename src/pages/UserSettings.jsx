@@ -79,6 +79,14 @@ export default function UserSettings() {
         .update({ avatar_url: publicUrl })
         .eq('id', profile.student_id_ref)
     }
+    
+    // For teacher/admin users: also save avatar_url directly to users table
+    if ((profile?.role === 'teacher' || profile?.role === 'admin') && user?.id) {
+      await supabase
+        .from('users')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user.id)
+    }
   }
 
   const handleImageUpload = async (e) => {
