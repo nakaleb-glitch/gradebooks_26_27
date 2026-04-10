@@ -284,16 +284,16 @@ export default function ClassDetail() {
         <div className="space-y-10">
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Student List */}
-            <div className="lg:col-span-5 bg-white rounded-xl border border-gray-200 overflow-hidden" style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}>
+             {/* Student List */}
+             <div className="lg:col-span-4 bg-white rounded-xl border border-gray-200 overflow-hidden" style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}>
               <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900">Student List</h3>
                 <span className="text-xs text-gray-500">{studentRoster.length} students</span>
               </div>
-              {studentRoster.length === 0 ? (
-                <div className="p-6 text-sm text-gray-400">No students enrolled in this class yet.</div>
-              ) : (
-                <div className="overflow-x-auto">
+               {studentRoster.length === 0 ? (
+                 <div className="p-6 text-sm text-gray-400">No students enrolled in this class yet.</div>
+               ) : (
+                 <div className="overflow-y-auto" style={{ maxHeight: 'calc(8 * 57px)' }}>
                   <table className="w-full text-sm">
                       <thead className="bg-gray-50 border-b border-gray-200">
                         <tr>
