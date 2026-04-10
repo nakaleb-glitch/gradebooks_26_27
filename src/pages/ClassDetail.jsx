@@ -105,7 +105,11 @@ export default function ClassDetail() {
   // Listen for changes to current week from navigation bar
   useEffect(() => {
     const updateWeek = () => {
-      const w = window.sessionStorage.getItem('current_week_number') || 0
+      // Admin debug override takes highest priority
+      let w = window.localStorage.getItem('debug_current_week')
+      if (w == null) {
+        w = window.sessionStorage.getItem('current_week_number') || 0
+      }
       setActiveWeek(parseInt(w, 10))
     }
 
