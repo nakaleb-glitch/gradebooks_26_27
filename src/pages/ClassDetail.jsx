@@ -1483,8 +1483,7 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-16"></th>
-              <th colSpan={2} className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 min-w-48"></th>
+              <th colSpan={2} className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 min-w-64">Student</th>
               {isESL ? (
                 <>
               <th colSpan={3} className="text-center px-3 py-2 font-medium bg-gray-200 text-gray-800 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}>Progress Test - Scores</th>
@@ -1498,7 +1497,8 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
               )}
             </tr>
             <tr>
-              <th colSpan={2} className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 min-w-64">Student</th>
+              <th className="text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-16"></th>
+              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 min-w-48"></th>
               {isESL ? (
                 <>
               <th className="text-center px-3 py-3 font-medium min-w-36 bg-gray-200 text-gray-700 border-l border-gray-200">Reading & Writing</th>
