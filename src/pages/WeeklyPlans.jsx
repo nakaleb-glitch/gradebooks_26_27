@@ -506,7 +506,7 @@ export default function WeeklyPlans() {
       </div>
 
       {/* Overall Status */}
-      {selectedHomeroom && sortedClasses.length > 0 && (
+      {!isStudent && selectedHomeroom && sortedClasses.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
           <div className="flex items-center justify-between">
             <div>
