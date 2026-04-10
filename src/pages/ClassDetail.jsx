@@ -881,7 +881,7 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-16"></th>
-              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 min-w-48">Student</th>
+              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 min-w-48">Student Information</th>
               {weekSchedule.map((weekItem) => (
                 <th key={weekItem.week} className="text-center px-2 py-3 font-medium min-w-28 bg-gray-200 text-gray-700 border-l border-gray-200">
                   <div>{weekItem.label}</div>
@@ -2212,7 +2212,7 @@ function CommentsTab({ classId, term, students, onDirtyChange }) {
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-16"></th>
-              <th colSpan={2} className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 w-64 min-w-64">Student</th>
+              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 w-64 min-w-64">Student Information</th>
               <th className="text-left px-4 py-3 text-gray-500 font-medium">Comment</th>
               <th className="text-center px-4 py-3 text-gray-500 font-medium w-28 min-w-28">Actions</th>
             </tr>
