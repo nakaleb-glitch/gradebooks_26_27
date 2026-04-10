@@ -129,14 +129,42 @@ export default function ClassDetail() {
     return () => clearInterval(interval)
   }, [])
 
+  // Always read directly from storage for latest value - no local caching
   const detectCurrentTerm = () => {
-    const week = activeWeek
+    // Always get fresh value when this function runs
+    let week
+
+    const debugVal = window.localStorage.getItem('debug_current_week')
+    if (debugVal != null && debugVal !== '') {
+      week = parseInt(debugVal, 10)
+    } else {
+      const navVal = window.sessionStorage.getItem('current_week_number')
+      week = navVal != null ? parseInt(navVal, 10) : 0
+    }
+
+    if (Number.isNaN(week) || week < 0 || week > 40) {
+      week = 0
+    }
+
     if (week >= 0 && week <= 7) return 'midterm_1'
     if (week >= 8 && week <= 15) return 'final_1'
     if (week >= 16 && week <= 27) return 'midterm_2'
     if (week >= 28 && week <= 39) return 'final_2'
     return null
   }
+
+  // Force re-render when returning to page to refresh the badge
+  useEffect(() => {
+    const onPageVisible = () => {
+      // Trigger re-render to update current term badge
+      forceUpdate(x => x + 1)
+    }
+
+    window.addEventListener('visibilitychange', onPageVisible)
+    return () => window.removeEventListener('visibilitychange', onPageVisible)
+  }, [])
+
+  const [forceUpdate, setForceUpdate] = useState(0)
 
   useEffect(() => { fetchClass() }, [classId])
   useEffect(() => { fetchStudentRoster() }, [classId])
@@ -147,6 +175,10 @@ export default function ClassDetail() {
   useEffect(() => {
     if (selectedTerm) setSelectedAnnouncement(null)
   }, [selectedTerm])
+  useEffect(() => {
+    // Refresh current term detection when activeWeek updates
+    setForceUpdate(x => x + 1)
+  }, [activeWeek])
 
   const fetchClass = async () => {
     const { data } = await supabase
