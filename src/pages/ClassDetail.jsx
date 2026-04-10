@@ -299,7 +299,7 @@ export default function ClassDetail() {
                         <tr>
                           <th className="text-left px-4 py-3 text-gray-500 font-medium">Student ID</th>
                           <th className="text-left px-4 py-3 text-gray-500 font-medium">Student Name (ENG - VN)</th>
-                          <th className="text-right px-4 py-3 text-gray-500 font-medium w-[64px]"></th>
+                          <th className="text-right px-4 py-3 text-gray-500 font-medium w-[80px]"></th>
                         </tr>
                       </thead>
                     <tbody className="divide-y divide-gray-300">
@@ -880,8 +880,8 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-[64px]"></th>
-              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 w-[256px]">Student Information</th>
+              <th className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-[80px]"></th>
+              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 w-[280px]">Student Information</th>
               {weekSchedule.map((weekItem) => (
                 <th key={weekItem.week} className="text-center px-2 py-3 font-medium min-w-28 bg-gray-200 text-gray-700 border-l border-gray-200">
                   <div>{weekItem.label}</div>
@@ -1166,8 +1166,8 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-[64px]"></th>
-              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 w-[256px]">Student Information</th>
+                <th className="text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-[80px]"></th>
+              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 w-[280px]">Student Information</th>
                 {assignments.map(a => (
                   <th key={a.id} className="text-center px-3 py-3 font-medium min-w-32 bg-gray-200 text-gray-700 border-l border-gray-200">
                     <div className="flex items-center justify-center gap-2">
@@ -1264,7 +1264,7 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
                             <input type="number" min="0" max={assignment.max_points} placeholder="—"
                               value={g.score ?? ''}
                               onChange={e => setGrade(assignment.id, student.id, 'score', e.target.value)}
-                              className="w-[64px] text-center border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                              className="w-[80px] text-center border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                             <button onClick={() => setGrade(assignment.id, student.id, 'is_absent', true)} className="text-xs text-gray-400 hover:text-orange-500">A (absent)</button>
                             {openCommentKey === key ? (
                               <div className="w-full space-y-1">
@@ -1483,7 +1483,7 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th colSpan={2} className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-[256px]">Student Information</th>
+              <th colSpan={2} className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-[280px]">Student Information</th>
               {isESL ? (
                 <>
               <th colSpan={3} className="text-center px-3 py-2 font-medium bg-gray-200 text-gray-800 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}>Progress Test - Scores</th>
@@ -1497,8 +1497,8 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
               )}
             </tr>
             <tr>
-              <th className="text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-[64px]"></th>
-              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 w-[256px]"></th>
+              <th className="text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-[80px]"></th>
+              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 w-[280px]"></th>
               {isESL ? (
                 <>
               <th className="text-center px-3 py-3 font-medium min-w-36 bg-gray-200 text-gray-700 border-l border-gray-200">Reading & Writing</th>
@@ -1867,8 +1867,8 @@ function StudentAttributesTab({ classId, term, students, onDirtyChange }) {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-[64px]"></th>
-              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 w-[256px]">Student Information</th>
+              <th className="text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-[80px]"></th>
+              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 w-[280px]">Student Information</th>
               {ATTRIBUTE_FIELDS.map(field => (
                 <th key={field.key} className="text-center px-3 py-3 font-medium min-w-44 border-l border-gray-300 bg-blue-100 text-blue-800" style={{ backgroundClip: 'padding-box' }}>
                   {field.label}
@@ -2068,8 +2068,8 @@ function SummaryTab({ classId, term, students, isESL }) {
           <table className="w-full text-sm border-collapse">
             <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-[64px]"></th>
-              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 w-[256px]">Student Information</th>
+              <th className="text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-[80px]"></th>
+              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 w-[280px]">Student Information</th>
                 <th className="text-center px-4 py-3 font-medium bg-gray-200 text-gray-700">Participation</th>
                 <th className="text-center px-4 py-3 font-medium bg-gray-200 text-gray-700 border-l border-gray-200">Marked Assignments</th>
                 <th className="text-center px-4 py-3 font-medium bg-green-100 text-green-800 border-l border-gray-200">Attainment</th>
@@ -2211,8 +2211,8 @@ function CommentsTab({ classId, term, students, onDirtyChange }) {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-[64px]"></th>
-              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 w-64 w-[256px]">Student Information</th>
+              <th className="text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-[80px]"></th>
+              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 w-64 w-[280px]">Student Information</th>
               <th className="text-left px-4 py-3 text-gray-500 font-medium">Comment</th>
               <th className="text-center px-4 py-3 text-gray-500 font-medium w-28 min-w-28">Actions</th>
             </tr>
