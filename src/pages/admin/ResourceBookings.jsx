@@ -672,18 +672,25 @@ export default function ResourceBookings() {
                 onClick={async () => {
                   setSaving(true)
 
-                  const { count } = await supabase
+                  // First count rows to delete
+                  const { count: preCount } = await supabase
+                    .from('resource_bookings')
+                    .select('*', { count: 'exact', head: true })
+                    .gte('week', clearWeek)
+                    .eq('location_id', clearLocation)
+
+                  // Execute delete
+                  await supabase
                     .from('resource_bookings')
                     .delete()
                     .gte('week', clearWeek)
                     .eq('location_id', clearLocation)
-                    .select('count', { count: 'exact', head: true })
 
                   setShowClearModal(false)
                   setSaving(false)
                   fetchBookings()
 
-                  alert(`✅ Successfully cleared ${count} total bookings from Week ${clearWeek} and all future weeks.`)
+                  alert(`✅ Successfully cleared ${preCount} total bookings from Week ${clearWeek} and all future weeks.`)
                 }}
                 disabled={saving}
                 className="flex-1 px-4 py-2 rounded-lg text-white text-sm font-medium bg-black"
