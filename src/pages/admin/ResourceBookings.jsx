@@ -199,18 +199,46 @@ export default function ResourceBookings() {
           </button>
 
           {profile?.role === 'admin' && (
-            <button
-              onClick={() => {
-                setBlockWeek(selectedWeek)
-                setBlockLocation(selectedLocation)
-                setBlockSlots({})
-                setShowBlockModal(true)
-              }}
-              className="text-white px-4 py-1.5 rounded-lg hover:opacity-90 transition-opacity text-sm font-medium"
-              style={{ backgroundColor: '#d1232a' }}
-            >
-              Block Periods
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setBlockWeek(selectedWeek)
+                  setBlockLocation(selectedLocation)
+                  setBlockSlots({})
+                  setShowBlockModal(true)
+                }}
+                className="text-white px-4 py-1.5 rounded-lg hover:opacity-90 transition-opacity text-sm font-medium"
+                style={{ backgroundColor: '#d1232a' }}
+              >
+                Block Periods
+              </button>
+              
+              <button
+                onClick={async () => {
+                  if (!confirm(`⚠️ WARNING: This will DELETE ALL bookings for ${currentLocation.name} from Week ${selectedWeek} AND ALL FUTURE WEEKS. This includes both normal bookings AND blocked periods.\n\nThis action CANNOT be undone.\n\nAre you absolutely sure you want to continue?`)) {
+                    return
+                  }
+                  
+                  setSaving(true)
+                  
+                  const { count } = await supabase
+                    .from('resource_bookings')
+                    .delete()
+                    .gte('week', selectedWeek)
+                    .eq('location_id', selectedLocation)
+                    .select('count', { count: 'exact', head: true })
+                  
+                  setSaving(false)
+                  fetchBookings()
+                  
+                  alert(`✅ Successfully cleared ${count} bookings from Week ${selectedWeek} and all future weeks.`)
+                }}
+                disabled={saving}
+                className="text-white px-4 py-1.5 rounded-lg hover:opacity-90 transition-opacity text-sm font-medium bg-black"
+              >
+                Clear All Future
+              </button>
+            </div>
           )}
         </div>
 
