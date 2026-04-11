@@ -880,7 +880,7 @@ export default function Dashboard() {
                 style={{ borderTopColor: '#ffc612', borderTopWidth: 3 }}
               >
                 {newBehaviorReportsCount > 0 && (
-                  <span className="absolute top-3 right-3 min-w-[1.5rem] h-6 px-2 rounded-full bg-red-600 text-white text-xs font-semibold flex items-center justify-center">
+                  <span className="absolute bottom-3 right-3 min-w-[1.5rem] h-6 px-2 rounded-full bg-red-600 text-white text-xs font-semibold flex items-center justify-center">
                     {newBehaviorReportsCount}
                   </span>
                 )}
@@ -909,7 +909,7 @@ export default function Dashboard() {
                   style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}
                 >
                   {incompleteWeeklyPlanCount > 0 && (
-                    <span className="absolute top-3 right-3 min-w-[1.5rem] h-6 px-2 rounded-full bg-red-600 text-white text-xs font-semibold flex items-center justify-center">
+                    <span className="absolute bottom-3 right-3 min-w-[1.5rem] h-6 px-2 rounded-full bg-red-600 text-white text-xs font-semibold flex items-center justify-center">
                       {incompleteWeeklyPlanCount}
                     </span>
                   )}
