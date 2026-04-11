@@ -88,6 +88,7 @@ const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']
 
 export default function ResourceBookings() {
   const navigate = useNavigate()
+  const { user, profile } = useAuth()
   const [selectedWeek, setSelectedWeek] = useState(ALL_WEEKS[0].week)
   const [selectedLocation, setSelectedLocation] = useState('library')
   const [bookings, setBookings] = useState({})
@@ -109,13 +110,25 @@ export default function ResourceBookings() {
   }, [selectedWeek, selectedLocation])
 
   const fetchBookings = async () => {
-    // Fetch bookings from database will be implemented here
+    const { data } = await supabase
+      .from('resource_bookings')
+      .select('*')
+      .eq('week', selectedWeek)
+      .eq('location_id', selectedLocation)
+    
+    if (data) {
+      const mapped = {}
+      data.forEach(b => {
+        mapped[`${b.period}-${b.day}`] = b
+      })
+      setBookings(mapped)
+    }
   }
 
   const openBookingModal = (period, day) => {
     setBookingSlot({ period, day })
     setBookingForm({
-      staff: '',
+      staff: profile?.full_name || '',
       class: '',
       subject: '',
       plan: '',
@@ -125,9 +138,31 @@ export default function ResourceBookings() {
 
   const saveBooking = async () => {
     setSaving(true)
-    // Save logic will be implemented here
+    
+    await supabase.from('resource_bookings').insert({
+      week: selectedWeek,
+      location_id: selectedLocation,
+      period: bookingSlot.period,
+      day: bookingSlot.day,
+      user_id: user.id,
+      staff_name: bookingForm.staff,
+      class: bookingForm.class,
+      subject: bookingForm.subject,
+      plan: bookingForm.plan,
+    })
+
     setShowBookingModal(false)
     setSaving(false)
+    fetchBookings()
+  }
+
+  const cancelBooking = async (id) => {
+    await supabase.from('resource_bookings').delete().eq('id', id)
+    fetchBookings()
+  }
+
+  const canModifyBooking = (booking) => {
+    return user && (user.id === booking.user_id || profile?.role === 'admin')
   }
 
   return (
@@ -218,18 +253,36 @@ export default function ResourceBookings() {
                     </div>
                   )}
                 </td>
-                {DAYS.map((day, dayIdx) => (
-                  <td key={dayIdx} className="px-1 py-1 border-r border-gray-100 align-top">
-                    {!row.isBreak && (
-                      <button
-                        onClick={() => openBookingModal(row.period, dayIdx)}
-                        className="w-full min-h-[60px] p-1 rounded border border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-colors text-xs text-gray-400 hover:text-blue-600"
-                      >
-                        + Book
-                      </button>
-                    )}
-                  </td>
-                ))}
+                {DAYS.map((day, dayIdx) => {
+                  const booking = bookings[`${row.period}-${dayIdx}`]
+                  return (
+                    <td key={dayIdx} className="px-1 py-1 border-r border-gray-100 align-top">
+                      {!row.isBreak && (
+                        booking ? (
+                          <div className="w-full min-h-[60px] p-2 rounded border border-gray-300 bg-blue-50 text-xs">
+                            <div className="font-medium text-gray-800">{booking.staff_name}</div>
+                            <div className="text-gray-600">{booking.class} - {booking.subject}</div>
+                            {canModifyBooking(booking) && (
+                              <button
+                                onClick={() => cancelBooking(booking.id)}
+                                className="mt-1 text-xs text-red-600 hover:text-red-800"
+                              >
+                                Cancel
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => openBookingModal(row.period, dayIdx)}
+                            className="w-full min-h-[60px] p-1 rounded border border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-colors text-xs text-gray-400 hover:text-blue-600"
+                          >
+                            + Book
+                          </button>
+                        )
+                      )}
+                    </td>
+                  )
+                })}
               </tr>
             ))}
           </tbody>
