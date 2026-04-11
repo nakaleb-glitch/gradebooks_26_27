@@ -114,7 +114,7 @@ export default function Layout({ children }) {
       { label: 'Resource Management', path: '/admin/resources' },
       { label: 'Event & Admin Deadline Management', path: '/admin/events-deadlines' },
       { label: 'Behavior Management', path: '/admin/behavior-management' },
-       { label: 'Library & ICT & Science Lab Booking Management', path: '/admin/resource-bookings' },
+       { label: 'Library, ICT & Science Lab Booking Management', path: '/admin/resource-bookings' },
       { label: 'Student Gradebook Lookup', path: '/admin/student-gradebook-lookup' },
     ]
   const navLabelClass = 'text-sm font-medium inline-flex items-center h-6 leading-6 transition-colors'
