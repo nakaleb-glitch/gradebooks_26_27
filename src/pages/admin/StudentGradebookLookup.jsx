@@ -273,7 +273,7 @@ export default function StudentGradebookLookup() {
       </div>
 
       {student && (
-        <>
+        <div>
           {/* Student info */}
           <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -447,7 +447,7 @@ export default function StudentGradebookLookup() {
                   </div>
                 </div>
               )}
-            </>
+            </div>
           )}
 
       {/* Comment Modal */}
