@@ -288,22 +288,37 @@ export default function ResourceBookings() {
                 </td>
                 {DAYS.map((day, dayIdx) => {
                   const booking = bookings[`${row.period}-${dayIdx}`]
+                  const isBlocked = booking?.staff_name === 'BLOCKED'
                   return (
                     <td key={dayIdx} className="px-1 py-1 border-r border-gray-100 align-top">
                       {!row.isBreak && (
                         booking ? (
-                          <div className="w-full min-h-[60px] p-2 rounded border border-gray-300 bg-blue-50 text-xs">
-                            <div className="font-medium text-gray-800">{booking.staff_name}</div>
-                            <div className="text-gray-600">{booking.class} - {booking.subject}</div>
-                            {canModifyBooking(booking) && (
-                              <button
-                                onClick={() => cancelBooking(booking.id)}
-                                className="mt-1 text-xs text-red-600 hover:text-red-800"
-                              >
-                                Cancel
-                              </button>
-                            )}
-                          </div>
+                          isBlocked ? (
+                            <div className="w-full min-h-[60px] p-2 rounded border border-gray-400 bg-gray-500 text-white text-xs flex items-center justify-center">
+                              <div className="font-medium">BLOCKED</div>
+                              {profile?.role === 'admin' && (
+                                <button
+                                  onClick={() => cancelBooking(booking.id)}
+                                  className="ml-2 text-xs text-white underline hover:text-gray-200"
+                                >
+                                  Cancel Block
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="w-full min-h-[60px] p-2 rounded border border-gray-300 bg-blue-50 text-xs">
+                              <div className="font-medium text-gray-800">{booking.staff_name}</div>
+                              <div className="text-gray-600">{booking.class} - {booking.subject}</div>
+                              {canModifyBooking(booking) && (
+                                <button
+                                  onClick={() => cancelBooking(booking.id)}
+                                  className="mt-1 text-xs text-red-600 hover:text-red-800"
+                                >
+                                  Cancel
+                                </button>
+                              )}
+                            </div>
+                          )
                         ) : (
                           <button
                             onClick={() => openBookingModal(row.period, dayIdx)}
@@ -521,10 +536,47 @@ export default function ResourceBookings() {
               </button>
               <button
                 type="button"
+                onClick={async () => {
+                  setSaving(true)
+
+                  const toInsert = []
+                  Object.entries(blockSlots).forEach(([key, isBlocked]) => {
+                    if (!isBlocked) return
+                    const [period, day] = key.split('-').map(Number)
+
+                    // Apply block to every week from selected week onwards
+                    for (let week = blockWeek; week < ALL_WEEKS.length; week++) {
+                      toInsert.push({
+                        week,
+                        location_id: blockLocation,
+                        period,
+                        day,
+                        user_id: user.id,
+                        staff_name: 'BLOCKED',
+                        class: 'SYSTEM',
+                        subject: 'PERIOD BLOCKED',
+                        plan: '',
+                      })
+                    }
+                  })
+
+                  await supabase
+                    .from('resource_bookings')
+                    .upsert(toInsert, {
+                      onConflict: 'week, location_id, period, day'
+                    })
+
+                  setShowBlockModal(false)
+                  setSaving(false)
+                  fetchBookings()
+
+                  alert(`✅ Periods blocked successfully from Week ${blockWeek} and all future weeks.`)
+                }}
+                disabled={saving}
                 className="flex-1 px-4 py-2 rounded-lg text-white text-sm font-medium"
                 style={{ backgroundColor: '#d1232a' }}
               >
-                Block Periods
+                {saving ? 'Saving...' : 'Block Periods'}
               </button>
             </div>
           </div>
