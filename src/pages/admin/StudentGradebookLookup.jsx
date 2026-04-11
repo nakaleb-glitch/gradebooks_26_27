@@ -141,6 +141,7 @@ export default function StudentGradebookLookup() {
             }
           })
           .filter(Boolean)
+          .filter((a) => a.term === selectedTerm)
 
         // Calculate averages
         const part = partData
@@ -186,9 +187,9 @@ export default function StudentGradebookLookup() {
         if (attainment != null && ptOverall != null) {
           overall = (attainment * 0.75) + (ptOverall * 0.25)
         } else if (attainment != null) {
-          overall = attainment
+          overall = attainment * 0.75
         } else if (ptOverall != null) {
-          overall = ptOverall
+          overall = ptOverall * 0.25
         }
 
         return {
