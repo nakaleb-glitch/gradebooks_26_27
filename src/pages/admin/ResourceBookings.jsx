@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../../lib/supabase'
 
 // School official week calendar - matching system standard
 const PARTICIPATION_WEEK_SCHEDULE = {
@@ -93,9 +94,44 @@ export default function ResourceBookings() {
   const [selectedWeek, setSelectedWeek] = useState(ALL_WEEKS[0].week)
   const [selectedLocation, setSelectedLocation] = useState('library')
   const [bookings, setBookings] = useState({})
+  const [showBookingModal, setShowBookingModal] = useState(false)
+  const [bookingSlot, setBookingSlot] = useState(null)
+  const [bookingForm, setBookingForm] = useState({
+    staff: '',
+    class: '',
+    subject: '',
+    plan: '',
+  })
+  const [saving, setSaving] = useState(false)
 
   const currentWeek = ALL_WEEKS.find(w => w.week === selectedWeek)
   const currentLocation = LOCATIONS.find(l => l.id === selectedLocation)
+
+  useEffect(() => {
+    fetchBookings()
+  }, [selectedWeek, selectedLocation])
+
+  const fetchBookings = async () => {
+    // Fetch bookings from database will be implemented here
+  }
+
+  const openBookingModal = (period, day) => {
+    setBookingSlot({ period, day })
+    setBookingForm({
+      staff: '',
+      class: '',
+      subject: '',
+      plan: '',
+    })
+    setShowBookingModal(true)
+  }
+
+  const saveBooking = async () => {
+    setSaving(true)
+    // Save logic will be implemented here
+    setShowBookingModal(false)
+    setSaving(false)
+  }
 
   return (
     <Layout>
@@ -117,26 +153,26 @@ export default function ResourceBookings() {
       </div>
 
       {/* Week Selector */}
-      <div className="bg-white rounded-xl border border-gray-200 mb-4 overflow-x-auto">
-        <div className="flex gap-1 border-b border-gray-200">
-          {ALL_WEEKS.map(week => (
-            <button
-              key={week.week}
-              onClick={() => setSelectedWeek(week.week)}
-              className={`px-3 py-2 text-xs font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
-                selectedWeek === week.week
-                  ? 'border-blue-600 text-blue-600 bg-blue-50'
-                  : week.isNoScore
-                  ? 'border-transparent text-gray-400 hover:text-gray-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              {week.label}
-            </button>
-          ))}
-        </div>
-        <div className="px-5 py-3 text-sm text-gray-500">
-          {currentWeek?.range}
+      <div className="bg-white rounded-xl border border-gray-200 mb-4 p-4">
+        <div className="flex items-center justify-center gap-6">
+          <button
+            onClick={() => setSelectedWeek(Math.max(0, selectedWeek - 1))}
+            disabled={selectedWeek === 0}
+            className="w-10 h-10 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            ←
+          </button>
+          <div className="text-center">
+            <div className="font-semibold text-lg text-gray-900">{currentWeek?.label}</div>
+            <div className="text-sm text-gray-500">{currentWeek?.range}</div>
+          </div>
+          <button
+            onClick={() => setSelectedWeek(Math.min(ALL_WEEKS.length - 1, selectedWeek + 1))}
+            disabled={selectedWeek === ALL_WEEKS.length - 1}
+            className="w-10 h-10 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            →
+          </button>
         </div>
       </div>
 
@@ -161,7 +197,7 @@ export default function ResourceBookings() {
 
       {/* Booking Sheet */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-fixed">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50">
               <th className="px-3 py-2 text-left font-medium text-gray-600 w-[180px]">Time</th>
@@ -189,6 +225,7 @@ export default function ResourceBookings() {
                   <td key={dayIdx} className="px-1 py-1 border-r border-gray-100 align-top">
                     {!row.isBreak && (
                       <button
+                        onClick={() => openBookingModal(row.period, dayIdx)}
                         className="w-full min-h-[60px] p-1 rounded border border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-colors text-xs text-gray-400 hover:text-blue-600"
                       >
                         + Book
@@ -214,6 +251,87 @@ export default function ResourceBookings() {
           </div>
         </div>
       </div>
+
+    {/* Booking Modal */}
+    {showBookingModal && (
+      <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
+        <div className="w-full max-w-md bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <h4 className="text-base font-semibold text-gray-900">New Booking</h4>
+              <p className="text-xs text-gray-500 mt-1">
+                {currentWeek?.label} • {DAYS[bookingSlot?.day]} • Period {bookingSlot?.period}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowBookingModal(false)}
+              className="text-gray-400 hover:text-gray-600"
+              aria-label="Close booking modal"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Staff</label>
+              <input
+                type="text"
+                value={bookingForm.staff}
+                onChange={(e) => setBookingForm({ ...bookingForm, staff: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Class</label>
+              <input
+                type="text"
+                value={bookingForm.class}
+                onChange={(e) => setBookingForm({ ...bookingForm, class: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Subject</label>
+              <input
+                type="text"
+                value={bookingForm.subject}
+                onChange={(e) => setBookingForm({ ...bookingForm, subject: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Plan</label>
+              <textarea
+                value={bookingForm.plan}
+                onChange={(e) => setBookingForm({ ...bookingForm, plan: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm min-h-[80px] resize-none"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowBookingModal(false)}
+                className="flex-1 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={saveBooking}
+                disabled={saving}
+                className="flex-1 px-4 py-2 rounded-lg text-white text-sm font-medium"
+                style={{ backgroundColor: '#1f86c7' }}
+              >
+                {saving ? 'Saving...' : 'Save Booking'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
     </Layout>
   )
 }
