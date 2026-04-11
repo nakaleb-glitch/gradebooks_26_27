@@ -1267,9 +1267,9 @@ export default function Dashboard() {
                     className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-sm transition-all block"
                     style={{ borderTopColor: '#ffc612', borderTopWidth: 3 }}
                   >
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Resource Bookings</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Library, ICT & Science Lab Booking</h3>
                     <div className="w-full rounded-lg text-gray-900 px-4 py-2 text-sm font-medium text-center" style={{ backgroundColor: '#ffc612' }}>
-                      Library / ICT / Labs
+                      Open booking system
                     </div>
                   </Link>
                 </div>
