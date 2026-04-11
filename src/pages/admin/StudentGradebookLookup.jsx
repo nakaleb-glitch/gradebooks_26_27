@@ -310,15 +310,127 @@ export default function StudentGradebookLookup() {
               </div>
 
               {selectedSubject && subjectGradeCache[selectedSubject] && (
-                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                  <div className="px-5 py-4 border-b border-gray-100">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {classes.find(c => c.id === selectedSubject)?.name}
-                    </h3>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Teacher: {classes.find(c => c.id === selectedSubject)?.users?.full_name || '—'}
-                    </p>
+                <div>
+                  <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}>
+                    <h3 className="font-semibold text-gray-900 mb-3">Overall Calculation</h3>
+                    <div className="grid grid-cols-[88px_1fr_1fr_1fr] gap-3">
+                      {/* Letter Grade */}
+                      <div className="rounded-lg border flex items-center justify-center aspect-square" style={
+                        subjectGradeCache[selectedSubject].letterGrade === 'A*' || subjectGradeCache[selectedSubject].letterGrade === 'A' ? { borderColor: '#22c55e', backgroundColor: '#22c55e1A' }
+                        : subjectGradeCache[selectedSubject].letterGrade === 'B' ? { borderColor: '#3b82f6', backgroundColor: '#3b82f61A' }
+                        : subjectGradeCache[selectedSubject].letterGrade === 'C' ? { borderColor: '#f59e0b', backgroundColor: '#f59e0b1A' }
+                        : { borderColor: '#ef4444', backgroundColor: '#ef44441A' }
+                      }>
+                        <div className="text-4xl font-bold" style={
+                          subjectGradeCache[selectedSubject].letterGrade === 'A*' || subjectGradeCache[selectedSubject].letterGrade === 'A' ? { color: '#22c55e' }
+                          : subjectGradeCache[selectedSubject].letterGrade === 'B' ? { color: '#3b82f6' }
+                          : subjectGradeCache[selectedSubject].letterGrade === 'C' ? { color: '#f59e0b' }
+                          : { color: '#ef4444' }
+                        }>
+                          {subjectGradeCache[selectedSubject].letterGrade || '—'}
+                        </div>
+                      </div>
+
+                      {/* Overall */}
+                      <div className="rounded-lg border p-3" style={{ borderColor: '#1f86c7', backgroundColor: '#1f86c71A' }}>
+                        <div className="text-gray-500 text-xs mb-2">Overall</div>
+                        <div className="font-semibold text-gray-900 text-xl">{fmt(subjectGradeCache[selectedSubject].overall)}{subjectGradeCache[selectedSubject].overall != null ? '%' : ''}</div>
+                        <div className="mt-2 h-2 rounded-full bg-gray-200 overflow-hidden">
+                          <div
+                            className="h-full rounded-full"
+                            style={{ width: `${Math.max(0, Math.min(100, subjectGradeCache[selectedSubject].overall || 0))}%`, backgroundColor: '#1f86c7' }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Attainment */}
+                      <div className="rounded-lg border p-3" style={{ borderColor: '#d1232a', backgroundColor: '#d1232a1A' }}>
+                        <div className="text-gray-500 text-xs mb-2">Attainment</div>
+                        <div className="font-semibold text-gray-900 text-xl">{fmt(subjectGradeCache[selectedSubject].calculatedAttainment)}{subjectGradeCache[selectedSubject].calculatedAttainment != null ? '%' : ''}</div>
+                        <div className="mt-2 h-2 rounded-full bg-gray-200 overflow-hidden">
+                          <div
+                            className="h-full rounded-full"
+                            style={{ width: `${Math.max(0, Math.min(100, subjectGradeCache[selectedSubject].calculatedAttainment || 0))}%`, backgroundColor: '#d1232a' }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Progress Test */}
+                      <div className="rounded-lg border p-3" style={{ borderColor: '#ffc612', backgroundColor: '#ffc6121A' }}>
+                        <div className="text-gray-500 text-xs mb-2">Progress Test</div>
+                        <div className="font-semibold text-gray-900 text-xl">{fmt(subjectGradeCache[selectedSubject].progressTest)}{subjectGradeCache[selectedSubject].progressTest != null ? '%' : ''}</div>
+                        <div className="mt-2 h-2 rounded-full bg-gray-200 overflow-hidden">
+                          <div
+                            className="h-full rounded-full"
+                            style={{ width: `${Math.max(0, Math.min(100, subjectGradeCache[selectedSubject].progressTest || 0))}%`, backgroundColor: '#ffc612' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
+
+                  <div className="mt-6 grid grid-cols-3 gap-6">
+                    {/* Participation */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: '#d1232a', borderTopWidth: 3 }}>
+                      <h3 className="font-semibold text-gray-900 mb-3">Participation</h3>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center justify-between border-b border-gray-100 pb-1">
+                          <span className="text-gray-600">Score</span>
+                          <span className="font-medium text-gray-900">{fmt(subjectGradeCache[selectedSubject].participation)}{subjectGradeCache[selectedSubject].participation != null ? '%' : '—'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Attainment Breakdown */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: '#d1232a', borderTopWidth: 3 }}>
+                      <h3 className="font-semibold text-gray-900 mb-3">Attainment</h3>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center justify-between border-b border-gray-100 pb-1">
+                          <span className="text-gray-600">Participation (20%)</span>
+                          <span className="font-medium text-gray-900">{fmt(subjectGradeCache[selectedSubject].participation)}{subjectGradeCache[selectedSubject].participation != null ? '%' : '—'}</span>
+                        </div>
+                        <div className="flex items-center justify-between border-b border-gray-100 pb-1">
+                          <span className="text-gray-600">Assignments (80%)</span>
+                          <span className="font-medium text-gray-900">{fmt(subjectGradeCache[selectedSubject].attainment)}{subjectGradeCache[selectedSubject].attainment != null ? '%' : '—'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Progress Test Details */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: '#ffc612', borderTopWidth: 3 }}>
+                      <h3 className="font-semibold text-gray-900 mb-3">Progress Test</h3>
+                      {classes.find(c => c.id === selectedSubject)?.subject === 'ESL' ? (
+                        <div className="space-y-2 text-sm">
+                          <div className="flex items-center justify-between border-b border-gray-100 pb-1">
+                            <span className="text-gray-600">Reading & Writing</span>
+                            <span className="font-medium text-gray-900">{fmt(subjectGradeCache[selectedSubject].progressTestRW)}{subjectGradeCache[selectedSubject].progressTestRW != null ? '%' : '—'}</span>
+                          </div>
+                          <div className="flex items-center justify-between border-b border-gray-100 pb-1">
+                            <span className="text-gray-600">Listening</span>
+                            <span className="font-medium text-gray-900">{fmt(subjectGradeCache[selectedSubject].progressTestListening)}{subjectGradeCache[selectedSubject].progressTestListening != null ? '%' : '—'}</span>
+                          </div>
+                          <div className="flex items-center justify-between border-b border-gray-100 pb-1">
+                            <span className="text-gray-600">Speaking</span>
+                            <span className="font-medium text-gray-900">{fmt(subjectGradeCache[selectedSubject].progressTestSpeaking)}{subjectGradeCache[selectedSubject].progressTestSpeaking != null ? '%' : '—'}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 text-sm">
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-600">Overall Score</span>
+                            <span className="font-medium text-gray-900">{fmt(subjectGradeCache[selectedSubject].progressTest)}{subjectGradeCache[selectedSubject].progressTest != null ? '%' : '—'}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {subjectGradeCache[selectedSubject].comment && (
+                    <div className="mt-6 bg-white rounded-xl border border-gray-200 p-5">
+                      <h3 className="font-semibold text-gray-900 mb-3">Teacher Comment</h3>
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">{subjectGradeCache[selectedSubject].comment}</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
