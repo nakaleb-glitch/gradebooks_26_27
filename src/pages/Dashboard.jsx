@@ -1768,7 +1768,17 @@ function SnapshotCard({ title, color, totals, metricColors }) {
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: color, borderTopWidth: 3 }}>
-      <h4 className="font-semibold text-gray-900">{title}</h4>
+      <div className="flex items-center justify-between">
+        <h4 className="font-semibold text-gray-900">{title}</h4>
+        {title === "Students Snapshot" && (
+          <Link
+            to="/admin/student-gradebook-lookup"
+            className="text-xs px-2 py-1 rounded border border-gray-300 text-gray-500 hover:bg-gray-50 transition-colors"
+          >
+            Find a student...
+          </Link>
+        )}
+      </div>
       <div className="grid grid-cols-3 gap-2 mt-4">
         <div className="rounded-lg border p-3" style={cardStyle(metricColors.total)}>
           <div className="text-[11px] text-gray-600">Total</div>
