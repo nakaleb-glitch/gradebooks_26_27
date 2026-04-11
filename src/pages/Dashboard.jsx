@@ -817,7 +817,7 @@ export default function Dashboard() {
           {/* Left column — Admin tools */}
           <div className="lg:col-span-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Admin Tools</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Card 1 - RED */}
               <Link
                 to="/admin/students"
@@ -902,20 +902,29 @@ export default function Dashboard() {
                 <div className="font-semibold text-gray-900">Gradebook Management</div>
                 <div className="text-sm text-gray-500 mt-1">Review termly gradebooks for each class.</div>
               </Link>
-              {/* Card 8 - BLUE */}
-               <Link
-                 to="/weekly-plans"
-                 className="relative bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block min-h-[120px]"
-                 style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}
-               >
-                 {incompleteWeeklyPlanCount > 0 && (
-                   <span className="absolute top-3 right-3 min-w-[1.5rem] h-6 px-2 rounded-full bg-red-600 text-white text-xs font-semibold flex items-center justify-center">
-                     {incompleteWeeklyPlanCount}
-                   </span>
-                 )}
-                 <div className="font-semibold text-gray-900">Weekly Plan Management</div>
-                 <div className="text-sm text-gray-500 mt-1">Monitor weekly plan completion for all classes.</div>
-               </Link>
+               {/* Card 8 - BLUE */}
+                <Link
+                  to="/weekly-plans"
+                  className="relative bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block min-h-[120px]"
+                  style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}
+                >
+                  {incompleteWeeklyPlanCount > 0 && (
+                    <span className="absolute top-3 right-3 min-w-[1.5rem] h-6 px-2 rounded-full bg-red-600 text-white text-xs font-semibold flex items-center justify-center">
+                      {incompleteWeeklyPlanCount}
+                    </span>
+                  )}
+                  <div className="font-semibold text-gray-900">Weekly Plan Management</div>
+                  <div className="text-sm text-gray-500 mt-1">Monitor weekly plan completion for all classes.</div>
+                </Link>
+               {/* Card 9 - YELLOW */}
+                <Link
+                  to="#"
+                  className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block min-h-[120px]"
+                  style={{ borderTopColor: '#ffc612', borderTopWidth: 3 }}
+                >
+                  <div className="font-semibold text-gray-900">Library & ICT & Science Lab Booking Management</div>
+                  <div className="text-sm text-gray-500 mt-1">Review and accept booking requests.</div>
+                </Link>
             </div>
           </div>
 
