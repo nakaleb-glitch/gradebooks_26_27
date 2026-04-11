@@ -104,17 +104,18 @@ export default function Layout({ children }) {
     navigate('/login')
   }
 
-   const menuItems = [
-     { label: 'Dashboard', path: '/dashboard' },
-     { label: 'Student Management', path: '/admin/students' },
-     { label: 'Class Management', path: '/admin/classes' },
-     { label: 'Gradebook Management', path: '/admin/gradebooks' },
-     { label: 'Weekly Plan Management', path: '/weekly-plans' },
-     { label: 'Teacher Management', path: '/admin/users' },
-     { label: 'Resource Management', path: '/admin/resources' },
-     { label: 'Event & Admin Deadline Management', path: '/admin/events-deadlines' },
-     { label: 'Behavior Management', path: '/admin/behavior-management' },
-   ]
+    const menuItems = [
+      { label: 'Dashboard', path: '/dashboard' },
+      { label: 'Student Management', path: '/admin/students' },
+      { label: 'Class Management', path: '/admin/classes' },
+      { label: 'Gradebook Management', path: '/admin/gradebooks' },
+      { label: 'Weekly Plan Management', path: '/weekly-plans' },
+      { label: 'Teacher Management', path: '/admin/users' },
+      { label: 'Resource Management', path: '/admin/resources' },
+      { label: 'Event & Admin Deadline Management', path: '/admin/events-deadlines' },
+      { label: 'Behavior Management', path: '/admin/behavior-management' },
+      { label: 'Library & ICT & Science Lab Booking Management', path: '#' },
+    ]
   const navLabelClass = 'text-sm font-medium inline-flex items-center h-6 leading-6 transition-colors'
   const navLabelBaseStyle = {
     fontFamily: 'inherit',
