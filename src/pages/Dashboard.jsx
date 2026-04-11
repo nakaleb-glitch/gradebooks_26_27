@@ -1274,315 +1274,318 @@ export default function Dashboard() {
                   </Link>
                 </div>
 
-                {/* 3. Class Announcements */}
-                <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: '#22c55e', borderTopWidth: 3 }}>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Class Announcements</h3>
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <button
-                      type="button"
-                      onClick={() => setShowTeacherAnnouncements(showTeacherAnnouncements === 'create' ? null : 'create')}
-                      className="py-2 px-4 rounded-lg text-white text-sm font-medium transition-colors"
-                      style={{ backgroundColor: 'rgb(31, 134, 199)' }}
-                    >
-                      Create new
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowTeacherAnnouncements(showTeacherAnnouncements === 'view' ? null : 'view')}
-                      className="py-2 px-4 rounded-lg bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition-colors"
-                    >
-                      View all announcements
-                    </button>
-                  </div>
-
-                  {showTeacherAnnouncements === 'create' && (
-                    <div className="flex flex-col gap-3 mt-2 pt-4 border-t border-gray-100">
-                      <div>
-                        <label htmlFor="dashboard-announcement-title" className="block text-xs font-medium text-gray-500 mb-1">
-                          Title
-                        </label>
-                        <input
-                          id="dashboard-announcement-title"
-                          type="text"
-                          value={announcementTitle}
-                          onChange={(e) => setAnnouncementTitle(e.target.value)}
-                          placeholder="Short headline"
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="dashboard-announcement-message" className="block text-xs font-medium text-gray-500 mb-1">
-                          Message
-                        </label>
-                        <textarea
-                          id="dashboard-announcement-message"
-                          value={announcementMessage}
-                          onChange={(e) => setAnnouncementMessage(e.target.value)}
-                          placeholder="Write your announcement..."
-                          className="w-full min-h-[8rem] max-h-[min(24rem,50vh)] rounded-lg border border-gray-300 px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-blue-200"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="dashboard-announcement-link" className="block text-xs font-medium text-gray-500 mb-1">
-                          Link (optional)
-                        </label>
-                        <input
-                          id="dashboard-announcement-link"
-                          type="text"
-                          inputMode="url"
-                          autoComplete="url"
-                          value={announcementLinkUrl}
-                          onChange={(e) => setAnnouncementLinkUrl(e.target.value)}
-                          placeholder="e.g. Google Drive or class resource"
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="dashboard-announcement-pdf" className="block text-xs font-medium text-gray-500 mb-1">
-                          PDF attachment (optional)
-                        </label>
-                        <input
-                          id="dashboard-announcement-pdf"
-                          ref={announcementPdfInputRef}
-                          type="file"
-                          accept="application/pdf"
-                          className="block w-full text-xs text-gray-600 file:mr-2 file:rounded file:border-0 file:bg-gray-100 file:px-2 file:py-1 file:text-sm"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0] || null
-                            setAnnouncementPdfFile(f)
-                          }}
-                        />
-                        {announcementPdfFile && (
-                          <div className="text-xs text-gray-500 mt-1 truncate" title={announcementPdfFile.name}>
-                            {announcementPdfFile.name}
-                          </div>
-                        )}
-                      </div>
-                      {announcementFeedback && (
-                        <div
-                          className={`text-xs px-2 py-1 rounded border ${
-                            announcementFeedback.type === 'success'
-                              ? 'bg-green-50 text-green-700 border-green-200'
-                              : 'bg-red-50 text-red-700 border-red-200'
-                          }`}
-                        >
-                          {announcementFeedback.text}
-                        </div>
-                      )}
-                      <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                        <div className="text-xs font-medium text-gray-600 mb-2">Classes</div>
-                        <label className="flex items-center gap-2 py-1.5 text-sm text-gray-700 border-b border-gray-200 pb-2 mb-1">
-                          <input
-                            type="checkbox"
-                            checked={announcementClassIds.length === classes.length && classes.length > 0}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setAnnouncementClassIds(classes.map((c) => c.id))
-                              } else {
-                                setAnnouncementClassIds([])
-                              }
-                            }}
-                          />
-                          <span className="font-medium">Select All</span>
-                        </label>
-                        {classes.length === 0 ? (
-                          <div className="text-xs text-gray-500 py-2">No classes available.</div>
-                        ) : (
-                          classes.map((cls) => (
-                            <label key={cls.id} className="flex items-center gap-2 py-1.5 text-sm text-gray-700">
-                              <input
-                                type="checkbox"
-                                checked={announcementClassIds.includes(cls.id)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    const newList = [...announcementClassIds, cls.id]
-                                    setAnnouncementClassIds(newList)
-                                  } else {
-                                    const newList = announcementClassIds.filter((id) => id !== cls.id)
-                                    setAnnouncementClassIds(newList)
-                                  }
-                                }}
-                              />
-                              <span>{cls.name}</span>
-                            </label>
-                          ))
-                        )}
-                      </div>
+                {/* 3. Announcements + Behavior Tool Row */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Class Announcements */}
+                  <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: '#22c55e', borderTopWidth: 3 }}>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Class Announcements</h3>
+                    <div className="grid grid-cols-2 gap-3 mb-4">
                       <button
                         type="button"
-                        onClick={() => postTeacherAnnouncement()}
-                        disabled={postingAnnouncement}
-                        className="w-full rounded-lg bg-green-600 text-white px-4 py-2.5 text-sm font-medium hover:bg-green-700 disabled:opacity-60"
+                        onClick={() => setShowTeacherAnnouncements(showTeacherAnnouncements === 'create' ? null : 'create')}
+                        className="py-2 px-4 rounded-lg text-white text-sm font-medium transition-colors"
+                        style={{ backgroundColor: 'rgb(31, 134, 199)' }}
                       >
-                        {postingAnnouncement ? 'Posting...' : 'Post Announcement'}
+                        Create new
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowTeacherAnnouncements(showTeacherAnnouncements === 'view' ? null : 'view')}
+                        className="py-2 px-4 rounded-lg bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition-colors"
+                      >
+                        View all
                       </button>
                     </div>
-                  )}
 
-                  {showTeacherAnnouncements === 'view' && (
-                    <div className="mt-2 pt-4 border-t border-gray-100 space-y-2 max-h-[20rem] overflow-y-auto">
-                      {teacherAnnouncements.length === 0 ? (
-                        <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
-                          No announcements posted yet.
+                    {showTeacherAnnouncements === 'create' && (
+                      <div className="flex flex-col gap-3 mt-2 pt-4 border-t border-gray-100">
+                        <div>
+                          <label htmlFor="dashboard-announcement-title" className="block text-xs font-medium text-gray-500 mb-1">
+                            Title
+                          </label>
+                          <input
+                            id="dashboard-announcement-title"
+                            type="text"
+                            value={announcementTitle}
+                            onChange={(e) => setAnnouncementTitle(e.target.value)}
+                            placeholder="Short headline"
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                          />
                         </div>
-                      ) : teacherAnnouncements.map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => setSelectedDashboardItem({
-                            title: item.title,
-                            event_date: item.created_at,
-                            label: 'Teacher Announcement',
-                            venue: item.targets.map((t) => t.class_name).join(', ') || '—',
-                            description: item.description,
-                            plan_url: null,
-                            link_url: item.link_url,
-                            attachment_url: item.attachment_url,
-                            attachment_name: item.attachment_name,
-                          })}
-                          className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 hover:bg-green-50 transition-colors"
-                        >
-                          <div className="text-sm font-medium text-gray-800">{item.title}</div>
-                          <div className="text-xs text-gray-500 mt-1">{formatDateWithDay(item.created_at)}</div>
-                          <div className="text-[10px] text-gray-400 mt-0.5">
-                            Sent to: {item.targets.map((t) => t.class_name).join(', ')}
+                        <div>
+                          <label htmlFor="dashboard-announcement-message" className="block text-xs font-medium text-gray-500 mb-1">
+                            Message
+                          </label>
+                          <textarea
+                            id="dashboard-announcement-message"
+                            value={announcementMessage}
+                            onChange={(e) => setAnnouncementMessage(e.target.value)}
+                            placeholder="Write your announcement..."
+                            className="w-full min-h-[8rem] max-h-[min(24rem,50vh)] rounded-lg border border-gray-300 px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-blue-200"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="dashboard-announcement-link" className="block text-xs font-medium text-gray-500 mb-1">
+                            Link (optional)
+                          </label>
+                          <input
+                            id="dashboard-announcement-link"
+                            type="text"
+                            inputMode="url"
+                            autoComplete="url"
+                            value={announcementLinkUrl}
+                            onChange={(e) => setAnnouncementLinkUrl(e.target.value)}
+                            placeholder="e.g. Google Drive or class resource"
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="dashboard-announcement-pdf" className="block text-xs font-medium text-gray-500 mb-1">
+                            PDF attachment (optional)
+                          </label>
+                          <input
+                            id="dashboard-announcement-pdf"
+                            ref={announcementPdfInputRef}
+                            type="file"
+                            accept="application/pdf"
+                            className="block w-full text-xs text-gray-600 file:mr-2 file:rounded file:border-0 file:bg-gray-100 file:px-2 file:py-1 file:text-sm"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0] || null
+                              setAnnouncementPdfFile(f)
+                            }}
+                          />
+                          {announcementPdfFile && (
+                            <div className="text-xs text-gray-500 mt-1 truncate" title={announcementPdfFile.name}>
+                              {announcementPdfFile.name}
+                            </div>
+                          )}
+                        </div>
+                        {announcementFeedback && (
+                          <div
+                            className={`text-xs px-2 py-1 rounded border ${
+                              announcementFeedback.type === 'success'
+                                ? 'bg-green-50 text-green-700 border-green-200'
+                                : 'bg-red-50 text-red-700 border-red-200'
+                            }`}
+                          >
+                            {announcementFeedback.text}
                           </div>
+                        )}
+                        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                          <div className="text-xs font-medium text-gray-600 mb-2">Classes</div>
+                          <label className="flex items-center gap-2 py-1.5 text-sm text-gray-700 border-b border-gray-200 pb-2 mb-1">
+                            <input
+                              type="checkbox"
+                              checked={announcementClassIds.length === classes.length && classes.length > 0}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setAnnouncementClassIds(classes.map((c) => c.id))
+                                } else {
+                                  setAnnouncementClassIds([])
+                                }
+                              }}
+                            />
+                            <span className="font-medium">Select All</span>
+                          </label>
+                          {classes.length === 0 ? (
+                            <div className="text-xs text-gray-500 py-2">No classes available.</div>
+                          ) : (
+                            classes.map((cls) => (
+                              <label key={cls.id} className="flex items-center gap-2 py-1.5 text-sm text-gray-700">
+                                <input
+                                  type="checkbox"
+                                  checked={announcementClassIds.includes(cls.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      const newList = [...announcementClassIds, cls.id]
+                                      setAnnouncementClassIds(newList)
+                                    } else {
+                                      const newList = announcementClassIds.filter((id) => id !== cls.id)
+                                      setAnnouncementClassIds(newList)
+                                    }
+                                  }}
+                                />
+                                <span>{cls.name}</span>
+                              </label>
+                            ))
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => postTeacherAnnouncement()}
+                          disabled={postingAnnouncement}
+                          className="w-full rounded-lg bg-green-600 text-white px-4 py-2.5 text-sm font-medium hover:bg-green-700 disabled:opacity-60"
+                        >
+                          {postingAnnouncement ? 'Posting...' : 'Post Announcement'}
                         </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                      </div>
+                    )}
 
-                {/* 4. Behavior Report Tool */}
-                <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: '#d1232a', borderTopWidth: 3 }}>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Behavior Report Tool</h3>
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <button
-                      type="button"
-                      onClick={() => setShowTeacherSubmissions(showTeacherSubmissions === 'create' ? null : 'create')}
-                      className="py-2 px-4 rounded-lg text-white text-sm font-medium transition-colors"
-                      style={{ backgroundColor: 'rgb(31, 134, 199)' }}
-                    >
-                      Create new
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowTeacherSubmissions(showTeacherSubmissions === 'view' ? null : 'view')}
-                      className="py-2 px-4 rounded-lg bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition-colors"
-                    >
-                      View all reports
-                    </button>
+                    {showTeacherAnnouncements === 'view' && (
+                      <div className="mt-2 pt-4 border-t border-gray-100 space-y-2 max-h-[20rem] overflow-y-auto">
+                        {teacherAnnouncements.length === 0 ? (
+                          <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                            No announcements posted yet.
+                          </div>
+                        ) : teacherAnnouncements.map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => setSelectedDashboardItem({
+                              title: item.title,
+                              event_date: item.created_at,
+                              label: 'Teacher Announcement',
+                              venue: item.targets.map((t) => t.class_name).join(', ') || '—',
+                              description: item.description,
+                              plan_url: null,
+                              link_url: item.link_url,
+                              attachment_url: item.attachment_url,
+                              attachment_name: item.attachment_name,
+                            })}
+                            className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 hover:bg-green-50 transition-colors"
+                          >
+                            <div className="text-sm font-medium text-gray-800">{item.title}</div>
+                            <div className="text-xs text-gray-500 mt-1">{formatDateWithDay(item.created_at)}</div>
+                            <div className="text-[10px] text-gray-400 mt-0.5">
+                              Sent to: {item.targets.map((t) => t.class_name).join(', ')}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  {showTeacherSubmissions === 'create' && (
-                    <form onSubmit={submitBehaviorReportInline} className="flex flex-col gap-3 mt-2 pt-4 border-t border-gray-100">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <select
-                          value={behaviorForm.class_id}
-                          onChange={async (e) => {
-                            const classId = e.target.value
-                            setBehaviorForm((prev) => ({ ...prev, class_id: classId, student_id: '' }))
-                            await fetchBehaviorStudents(classId)
-                          }}
-                          className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
-                        >
-                          <option value="">Select class</option>
-                          {classes.map((cls) => (
-                            <option key={cls.id} value={cls.id}>{cls.name}</option>
-                          ))}
-                        </select>
-                        <select
-                          value={behaviorForm.student_id}
-                          onChange={(e) => setBehaviorForm((prev) => ({ ...prev, student_id: e.target.value }))}
-                          disabled={!behaviorForm.class_id}
-                          className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white disabled:bg-gray-100 disabled:text-gray-400"
-                        >
-                          <option value="">{behaviorForm.class_id ? 'Select student' : 'Select class first'}</option>
-                          {behaviorStudents.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.name_eng}{s.name_vn ? ` - ${s.name_vn}` : ''} ({s.student_id})
-                            </option>
-                          ))}
-                        </select>
-                        <input
-                          type="date"
-                          value={behaviorForm.incident_date}
-                          onChange={(e) => setBehaviorForm((prev) => ({ ...prev, incident_date: e.target.value }))}
-                          className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                        />
-                        <select
-                          value={behaviorForm.severity}
-                          onChange={(e) => setBehaviorForm((prev) => ({ ...prev, severity: e.target.value }))}
-                          className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
-                        >
-                          {SEVERITY_LEVELS.map((level) => (
-                            <option key={level} value={level}>{level}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <select
-                        value={behaviorForm.incident_type}
-                        onChange={(e) => setBehaviorForm((prev) => ({ ...prev, incident_type: e.target.value }))}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
-                      >
-                        {INCIDENT_TYPES.map((type) => (
-                          <option key={type} value={type}>{type}</option>
-                        ))}
-                      </select>
-                      <textarea
-                        value={behaviorForm.description}
-                        onChange={(e) => setBehaviorForm((prev) => ({ ...prev, description: e.target.value }))}
-                        className="w-full min-h-[8rem] rounded-lg border border-gray-300 px-3 py-2 text-sm resize-y"
-                        placeholder="Describe what happened..."
-                      />
-                      <textarea
-                        rows={2}
-                        value={behaviorForm.action_taken}
-                        onChange={(e) => setBehaviorForm((prev) => ({ ...prev, action_taken: e.target.value }))}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                        placeholder="Action taken (optional)"
-                      />
-                      {behaviorMessage && (
-                        <div className={`text-xs px-2 py-1 rounded border ${
-                          behaviorMessage.type === 'success'
-                            ? 'bg-green-50 text-green-700 border-green-200'
-                            : 'bg-red-50 text-red-700 border-red-200'
-                        }`}>
-                          {behaviorMessage.text}
-                        </div>
-                      )}
+                  {/* Behavior Report Tool */}
+                  <div className="bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: '#d1232a', borderTopWidth: 3 }}>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Behavior Report Tool</h3>
+                    <div className="grid grid-cols-2 gap-3 mb-4">
                       <button
-                        type="submit"
-                        disabled={savingBehaviorReport}
-                        className="w-full rounded-lg bg-green-600 text-white px-4 py-2.5 text-sm font-medium hover:bg-green-700 disabled:opacity-60"
+                        type="button"
+                        onClick={() => setShowTeacherSubmissions(showTeacherSubmissions === 'create' ? null : 'create')}
+                        className="py-2 px-4 rounded-lg text-white text-sm font-medium transition-colors"
+                        style={{ backgroundColor: 'rgb(31, 134, 199)' }}
                       >
-                        {savingBehaviorReport ? 'Submitting...' : 'Submit Report'}
+                        Create new
                       </button>
-                    </form>
-                  )}
-
-                  {showTeacherSubmissions === 'view' && (
-                    <div className="mt-2 pt-4 border-t border-gray-100 space-y-2 max-h-[20rem] overflow-y-auto">
-                      {teacherSubmittedReports.length === 0 ? (
-                        <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
-                          No reports submitted yet.
-                        </div>
-                      ) : teacherSubmittedReports.map((report) => (
-                        <button
-                          key={report.id}
-                          type="button"
-                          onClick={() => setSelectedBehaviorSubmission(report)}
-                          className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 hover:bg-red-50 transition-colors"
-                        >
-                          <div className="text-sm font-medium text-gray-800">{report.students?.name_eng || 'Student'}</div>
-                          <div className="text-xs text-gray-500 mt-1">{report.incident_date} • {report.incident_type} / {report.severity}</div>
-                          <div className="text-[10px] text-gray-400 mt-0.5">
-                            Status: {report.status}
-                          </div>
-                        </button>
-                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setShowTeacherSubmissions(showTeacherSubmissions === 'view' ? null : 'view')}
+                        className="py-2 px-4 rounded-lg bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition-colors"
+                      >
+                        View all
+                      </button>
                     </div>
-                  )}
+
+                    {showTeacherSubmissions === 'create' && (
+                      <form onSubmit={submitBehaviorReportInline} className="flex flex-col gap-3 mt-2 pt-4 border-t border-gray-100">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <select
+                            value={behaviorForm.class_id}
+                            onChange={async (e) => {
+                              const classId = e.target.value
+                              setBehaviorForm((prev) => ({ ...prev, class_id: classId, student_id: '' }))
+                              await fetchBehaviorStudents(classId)
+                            }}
+                            className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
+                          >
+                            <option value="">Select class</option>
+                            {classes.map((cls) => (
+                              <option key={cls.id} value={cls.id}>{cls.name}</option>
+                            ))}
+                          </select>
+                          <select
+                            value={behaviorForm.student_id}
+                            onChange={(e) => setBehaviorForm((prev) => ({ ...prev, student_id: e.target.value }))}
+                            disabled={!behaviorForm.class_id}
+                            className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                          >
+                            <option value="">{behaviorForm.class_id ? 'Select student' : 'Select class first'}</option>
+                            {behaviorStudents.map((s) => (
+                              <option key={s.id} value={s.id}>
+                                {s.name_eng}{s.name_vn ? ` - ${s.name_vn}` : ''} ({s.student_id})
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            type="date"
+                            value={behaviorForm.incident_date}
+                            onChange={(e) => setBehaviorForm((prev) => ({ ...prev, incident_date: e.target.value }))}
+                            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                          />
+                          <select
+                            value={behaviorForm.severity}
+                            onChange={(e) => setBehaviorForm((prev) => ({ ...prev, severity: e.target.value }))}
+                            className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
+                          >
+                            {SEVERITY_LEVELS.map((level) => (
+                              <option key={level} value={level}>{level}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <select
+                          value={behaviorForm.incident_type}
+                          onChange={(e) => setBehaviorForm((prev) => ({ ...prev, incident_type: e.target.value }))}
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
+                        >
+                          {INCIDENT_TYPES.map((type) => (
+                            <option key={type} value={type}>{type}</option>
+                          ))}
+                        </select>
+                        <textarea
+                          value={behaviorForm.description}
+                          onChange={(e) => setBehaviorForm((prev) => ({ ...prev, description: e.target.value }))}
+                          className="w-full min-h-[8rem] rounded-lg border border-gray-300 px-3 py-2 text-sm resize-y"
+                          placeholder="Describe what happened..."
+                        />
+                        <textarea
+                          rows={2}
+                          value={behaviorForm.action_taken}
+                          onChange={(e) => setBehaviorForm((prev) => ({ ...prev, action_taken: e.target.value }))}
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                          placeholder="Action taken (optional)"
+                        />
+                        {behaviorMessage && (
+                          <div className={`text-xs px-2 py-1 rounded border ${
+                            behaviorMessage.type === 'success'
+                              ? 'bg-green-50 text-green-700 border-green-200'
+                              : 'bg-red-50 text-red-700 border-red-200'
+                          }`}>
+                            {behaviorMessage.text}
+                          </div>
+                        )}
+                        <button
+                          type="submit"
+                          disabled={savingBehaviorReport}
+                          className="w-full rounded-lg bg-green-600 text-white px-4 py-2.5 text-sm font-medium hover:bg-green-700 disabled:opacity-60"
+                        >
+                          {savingBehaviorReport ? 'Submitting...' : 'Submit Report'}
+                        </button>
+                      </form>
+                    )}
+
+                    {showTeacherSubmissions === 'view' && (
+                      <div className="mt-2 pt-4 border-t border-gray-100 space-y-2 max-h-[20rem] overflow-y-auto">
+                        {teacherSubmittedReports.length === 0 ? (
+                          <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                            No reports submitted yet.
+                          </div>
+                        ) : teacherSubmittedReports.map((report) => (
+                          <button
+                            key={report.id}
+                            type="button"
+                            onClick={() => setSelectedBehaviorSubmission(report)}
+                            className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 hover:bg-red-50 transition-colors"
+                          >
+                            <div className="text-sm font-medium text-gray-800">{report.students?.name_eng || 'Student'}</div>
+                            <div className="text-xs text-gray-500 mt-1">{report.incident_date} • {report.incident_type} / {report.severity}</div>
+                            <div className="text-[10px] text-gray-400 mt-0.5">
+                              Status: {report.status}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* 5. Events */}
