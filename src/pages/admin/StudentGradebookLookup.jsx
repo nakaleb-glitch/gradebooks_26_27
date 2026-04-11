@@ -319,34 +319,12 @@ export default function StudentGradebookLookup() {
                       Teacher: {classes.find(c => c.id === selectedSubject)?.users?.full_name || '—'}
                     </p>
                   </div>
-
-                  <div className="overflow-x-auto">
-                    <div className="min-w-max">
-                      <div className="flex bg-gray-50 border-b border-gray-200">
-                        <div style={{ width: '100px', minWidth: '100px', height: '44px', fontSize: '12px' }} className="text-center px-2 font-medium bg-gray-200 text-gray-700 flex items-center justify-center">
-                          Participation
-                        </div>
-                        <div style={{ width: '130px', minWidth: '130px', height: '44px', fontSize: '12px', lineHeight: '16px', whiteSpace: 'nowrap' }} className="text-center px-2 font-medium bg-gray-200 text-gray-700 flex items-center justify-center">
-                          Marked Assignments
-                        </div>
-                        <div style={{ width: '100px', minWidth: '100px', height: '44px', fontSize: '12px', lineHeight: '16px', whiteSpace: 'nowrap' }} className="text-center px-2 font-medium bg-green-100 text-green-800 flex items-center justify-center">
-                          Attainment
-                        </div>
-                        
-                        {classes.find(c => c.id === selectedSubject)?.subject === 'ESL' ? (
-                          <div>
-                            <div style={{ width: '100px', minWidth: '100px', height: '44px', fontSize: '12px', lineHeight: '16px', whiteSpace: 'nowrap' }} className="text-center px-2 font-medium bg-gray-200 text-gray-700 flex items-center justify-center">
-                              Progress (R/W)
-                            </div>
-                            <div style={{ width: '100px', minWidth: '100px', height: '44px', fontSize: '12px', lineHeight: '16px', whiteSpace: 'nowrap' }} className="text-center px-2 font-medium bg-gray-200 text-gray-700 flex items-center justify-center">
-                              Progress (L)
-                            </div>
-                            <div style={{ width: '100px', minWidth: '100px', height: '44px', fontSize: '12px', lineHeight: '16px', whiteSpace: 'nowrap' }} className="text-center px-2 font-medium bg-gray-200 text-gray-700 flex items-center justify-center">
-                              Progress (S)
-                            </div>
-                            <div style={{ width: '100px', minWidth: '100px', height: '44px', fontSize: '12px', lineHeight: '16px', whiteSpace: 'nowrap' }} className="text-center px-2 font-medium bg-green-100 text-green-800 flex items-center justify-center">
-                              Progress Test
-                            </div>
-                          </div>
-                        ) : (
-                          <div style={{ width: '100px', minWidth: '100px', height: '44px', fontSize: '12px', lineHeight: '1
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </Layout>
+  )
+}
