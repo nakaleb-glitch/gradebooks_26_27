@@ -923,7 +923,7 @@ export default function Dashboard() {
                   style={{ borderTopColor: '#ffc612', borderTopWidth: 3 }}
                 >
                   <div className="font-semibold text-gray-900">Library & ICT & Science Lab Booking Management</div>
-                  <div className="text-sm text-gray-500 mt-1">Review and accept booking requests.</div>
+                  <div className="text-sm text-gray-500 mt-1">Review and edit booking requests.</div>
                 </Link>
             </div>
           </div>
@@ -1621,8 +1621,7 @@ export default function Dashboard() {
                   className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-sm transition-all block"
                   style={{ borderTopColor: '#ffc612', borderTopWidth: 3 }}
                 >
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Library, ICT and Science Lab Bookings</h3>
-                  <p className="text-xs text-gray-500 mb-4">Book school facilities and resources</p>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Library, ICT and Science Lab Bookings</h3>
                   <div className="w-full rounded-lg text-white px-4 py-2 text-sm font-medium text-center" style={{ backgroundColor: '#ffc612' }}>
                     Open Booking System
                   </div>
