@@ -240,7 +240,7 @@ export default function WeeklyPlans() {
   const fetchClasses = async () => {
     const { data } = await supabase
       .from('classes')
-      .select('*, users(full_name)')
+      .select('*, users!classes_teacher_id_fkey(full_name)')
       .like('name', `${selectedHomeroom}%`)
       .order('name')
     
