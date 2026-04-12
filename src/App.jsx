@@ -18,6 +18,7 @@ import StudentClassDetail from './pages/StudentClassDetail'
 import StudentGradebookLookup from './pages/admin/StudentGradebookLookup'
 import ResourceBookings from './pages/admin/ResourceBookings'
 import TeacherSchedules from './pages/admin/TeacherSchedules'
+import TeacherScheduleView from './pages/admin/TeacherScheduleView'
 
 const ProtectedRoute = ({ children, adminOnly = false, allowedRoles = null }) => {
   const { user, profile, loading } = useAuth()
@@ -50,6 +51,7 @@ function AppRoutes() {
       <Route path="/admin/student-gradebook-lookup" element={<ProtectedRoute adminOnly><StudentGradebookLookup /></ProtectedRoute>} />
       <Route path="/admin/resource-bookings" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><ResourceBookings /></ProtectedRoute>} />
       <Route path="/admin/teacher-schedules" element={<ProtectedRoute adminOnly><TeacherSchedules /></ProtectedRoute>} />
+      <Route path="/admin/teacher-schedule-view" element={<ProtectedRoute adminOnly><TeacherScheduleView /></ProtectedRoute>} />
       <Route path="/weekly-plans" element={<ProtectedRoute><WeeklyPlans /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/login" />} />
     </Routes>

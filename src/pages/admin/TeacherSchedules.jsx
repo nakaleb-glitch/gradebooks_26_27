@@ -175,7 +175,19 @@ export default function TeacherSchedules() {
             ← Go Back
           </button>
 
-          <div className="flex flex-col items-end">
+          <div className="flex gap-3 items-end">
+            <div className="flex flex-col items-center">
+              <button
+                onClick={() => navigate('/admin/teacher-schedule-view')}
+                className={`w-44 px-4 py-2 rounded-lg text-sm font-medium transition-colors text-center`}
+                style={{ backgroundColor: '#16a34a', color: 'white' }}
+                onMouseOver={e => { e.currentTarget.style.backgroundColor = '#15803d' }}
+                onMouseOut={e => { e.currentTarget.style.backgroundColor = '#16a34a' }}
+              >
+                View Teacher Schedules
+              </button>
+            </div>
+            
             <div className="flex flex-col items-center">
               <label
                 className={`cursor-pointer w-44 px-4 py-2 rounded-lg text-sm font-medium transition-colors text-center`}
