@@ -178,7 +178,7 @@ export default function TeacherSchedule() {
 
       {selectedTeacher ? (
         <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-fixed">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
                 <th className="px-3 py-3 text-left font-medium text-gray-600 w-[180px]">Time / Period</th>
