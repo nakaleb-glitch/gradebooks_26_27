@@ -3,32 +3,38 @@ import Layout from '../../components/Layout'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 
-const TIMETABLE = [
-  { period: 1, primary: '08:10 - 08:45', secondary: '08:00 - 08:40', label: 'Period 1' },
-  { period: 2, primary: '08:45 - 09:20', secondary: '08:45 - 09:25', label: 'Period 2' },
-  { period: 3, primary: '09:45 - 10:20', secondary: '09:30 - 10:10', label: 'Period 3' },
-  { period: 4, primary: '10:20 - 10:55', secondary: '10:25 - 11:05', label: 'Period 4' },
-  { period: 5, primary: '10:55 - 11:30', secondary: '11:10 - 11:50', label: 'Period 5' },
-  { period: 6, primary: '13:35 - 14:10', secondary: '13:30 - 14:10', label: 'Period 6' },
-  { period: 7, primary: '14:10 - 14:45', secondary: '14:15 - 14:55', label: 'Period 7' },
-  { period: 8, primary: '15:20 - 15:55', secondary: '15:20 - 16:00', label: 'Period 8' },
-  { period: 9, primary: '15:55 - 16:30', secondary: '16:05 - 16:45', label: 'Period 9' },
+const FULL_TIMETABLE = [
+  { period: 1, time: '08:00 - 08:45', label: 'Period 1', type: 'class' },
+  { period: 2, time: '08:45 - 09:30', label: 'Period 2', type: 'class' },
+  { period: null, time: '09:30 - 09:45', label: 'Morning Recess', type: 'break' },
+  { period: 3, time: '09:45 - 10:30', label: 'Period 3', type: 'class' },
+  { period: 4, time: '10:30 - 11:15', label: 'Period 4', type: 'class' },
+  { period: 5, time: '11:15 - 12:00', label: 'Period 5', type: 'class' },
+  { period: null, time: '12:00 - 13:30', label: 'Lunch Break', type: 'break' },
+  { period: 6, time: '13:30 - 14:15', label: 'Period 6', type: 'class' },
+  { period: 7, time: '14:15 - 15:00', label: 'Period 7', type: 'class' },
+  { period: null, time: '15:00 - 15:15', label: 'Afternoon Break', type: 'break' },
+  { period: 8, time: '15:15 - 16:00', label: 'Period 8', type: 'class' },
+  { period: 9, time: '16:00 - 16:45', label: 'Period 9', type: 'class' },
 ]
 
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']
 
 export default function TeacherScheduleView() {
   const navigate = useNavigate()
-  const [selectedLevel, setSelectedLevel] = useState('primary')
   const [schedules, setSchedules] = useState({})
   const [teachers, setTeachers] = useState([])
-  const [classes, setClasses] = useState([])
+  const [selectedTeacher, setSelectedTeacher] = useState(null)
 
   useEffect(() => {
     fetchTeachers()
-    fetchClasses()
-    fetchSchedules()
-  }, [selectedLevel])
+  }, [])
+
+  useEffect(() => {
+    if (selectedTeacher) {
+      fetchTeacherSchedule()
+    }
+  }, [selectedTeacher])
 
   const fetchTeachers = async () => {
     const { data } = await supabase
@@ -39,40 +45,19 @@ export default function TeacherScheduleView() {
     setTeachers(data || [])
   }
 
-  const fetchClasses = async () => {
-    const { data } = await supabase
-      .from('classes')
-      .select('id, name, level, programme')
-      .eq('level', selectedLevel)
-      .order('name')
-    
-    // Get unique homerooms
-    const homerooms = new Set()
-    data?.forEach(c => {
-      const homeroom = c.name.split(' ')[0]
-      homerooms.add(homeroom)
-    })
-    
-    setClasses(Array.from(homerooms).sort())
-  }
-
-  const fetchSchedules = async () => {
+  const fetchTeacherSchedule = async () => {
     const { data } = await supabase
       .from('teacher_schedules')
       .select('*')
-      .eq('level', selectedLevel)
+      .eq('teacher_id', selectedTeacher)
+    
     if (data) {
       const mapped = {}
       data.forEach(s => {
-        mapped[`${s.class_name}-${s.day}-${s.period}`] = s
+        mapped[`${s.day}-${s.period}`] = s
       })
       setSchedules(mapped)
     }
-  }
-
-  const getTeacherName = (id) => {
-    const teacher = teachers.find(t => t.id === id)
-    return teacher?.full_name || ''
   }
 
   return (
@@ -96,86 +81,98 @@ export default function TeacherScheduleView() {
           </button>
         </div>
 
-        <h2 className="text-2xl font-bold text-gray-900">Teacher Schedule Overview</h2>
-        <p className="text-sm text-gray-500 mt-1">Read only schedule view. Periods are vertical, classes are horizontal.</p>
+        <h2 className="text-2xl font-bold text-gray-900">Teacher Schedule View</h2>
+        <p className="text-sm text-gray-500 mt-1">Select a teacher to view their full weekly timetable.</p>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 mb-4">
-        <div className="grid grid-cols-2 border-b border-gray-200">
-          <button
-            onClick={() => setSelectedLevel('primary')}
-            className={`py-3 text-sm font-medium transition-colors border-b-2 ${
-              selectedLevel === 'primary'
-                ? 'border-[#d1232a] bg-[#d1232a1a] text-[#d1232a] font-semibold'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            Primary
-          </button>
-          <button
-            onClick={() => setSelectedLevel('secondary')}
-            className={`py-3 text-sm font-medium transition-colors border-b-2 ${
-              selectedLevel === 'secondary'
-                ? 'border-[#d1232a] bg-[#d1232a1a] text-[#d1232a] font-semibold'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            Secondary
-          </button>
-        </div>
+      {/* Teacher Selector */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Select Teacher</label>
+        <select
+          value={selectedTeacher || ''}
+          onChange={(e) => setSelectedTeacher(e.target.value || null)}
+          className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">-- Choose a teacher --</option>
+          {teachers.map(teacher => (
+            <option key={teacher.id} value={teacher.id}>{teacher.full_name}</option>
+          ))}
+        </select>
       </div>
 
-      {DAYS.map((day, dayIdx) => (
-        <div key={day} className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-2 bg-gray-100 px-3 py-1 rounded">{day}</h3>
-
-          <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-            <table className="w-full text-sm table-fixed">
-              <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="px-3 py-2 text-left font-medium text-gray-600 w-[150px]">Period</th>
-                  {classes.map(cls => (
-                    <th key={cls} className="px-3 py-2 text-center font-medium text-gray-600">
-                      {cls}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {TIMETABLE.map((row, pidx) => {
+      {selectedTeacher ? (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 bg-gray-50">
+                <th className="px-3 py-3 text-left font-medium text-gray-600 w-[180px]">Time / Period</th>
+                {DAYS.map(day => (
+                  <th key={day} className="px-3 py-3 text-center font-medium text-gray-600">
+                    {day}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {FULL_TIMETABLE.map((row, idx) => {
+                if (row.type === 'break') {
                   return (
-                    <tr key={pidx} className="border-b border-gray-100">
-                      <td className="px-3 py-2 border-r border-gray-100 bg-gray-50">
-                        <div className="font-medium">{row.label}</div>
-                        <div className="text-xs text-gray-500">{selectedLevel === 'primary' ? row.primary : row.secondary}</div>
+                    <tr key={idx} className="border-b border-gray-100 bg-gray-100">
+                      <td className="px-3 py-2 border-r border-gray-200 font-medium text-gray-500">
+                        <div className="font-semibold">{row.label}</div>
+                        <div className="text-xs text-gray-400">{row.time}</div>
                       </td>
-
-                      {classes.map(cls => {
-                        const schedule = schedules[`${cls}-${dayIdx}-${row.period}`]
-                        return (
-                          <td
-                            key={cls}
-                            className="px-1 py-1 border-r border-gray-100 align-top"
-                          >
-                            <div className="w-full min-h-[50px] p-1 rounded border border-transparent text-xs text-left">
-                              {schedule ? (
-                                <div>
-                                  <div className="font-medium text-gray-800 truncate">{getTeacherName(schedule.teacher_id)}</div>
-                                  <div className="text-gray-600 truncate">{schedule.subject}</div>
-                                </div>
-                              ) : null}
-                            </div>
-                          </td>
-                        )
-                      })}
+                      {DAYS.map((_, dayIdx) => (
+                        <td key={dayIdx} className="px-1 py-2 border-r border-gray-200 text-center text-gray-400 text-xs">
+                          --
+                        </td>
+                      ))}
                     </tr>
                   )
-                })}
-              </tbody>
-            </table>
+                }
+
+                return (
+                  <tr key={idx} className="border-b border-gray-100">
+                    <td className="px-3 py-3 border-r border-gray-100 bg-gray-50">
+                      <div className="font-medium">{row.label}</div>
+                      <div className="text-xs text-gray-500">{row.time}</div>
+                    </td>
+
+                    {DAYS.map((_, dayIdx) => {
+                      const schedule = schedules[`${dayIdx}-${row.period}`]
+                      return (
+                        <td
+                          key={dayIdx}
+                          className="px-2 py-2 border-r border-gray-100 align-top"
+                        >
+                          <div className="w-full min-h-[60px] p-2 rounded">
+                            {schedule ? (
+                              <div>
+                                <div className="font-medium text-gray-800">{schedule.subject}</div>
+                                <div className="text-xs text-gray-600">{schedule.class_name}</div>
+                                <div className="text-xs text-gray-400">{schedule.level}</div>
+                              </div>
+                            ) : (
+                              <div className="text-gray-400 text-sm italic">Free Period</div>
+                            )}
+                          </div>
+                        </td>
+                      )
+                    })}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="bg-gray-50 rounded-xl border border-gray-200 p-12 text-center">
+          <div className="text-gray-500">
+            <div className="text-lg font-medium mb-1">No teacher selected</div>
+            <div className="text-sm">Select a teacher from the dropdown above to view their weekly schedule.</div>
           </div>
         </div>
-      ))}
+      )}
 
     </Layout>
   )
