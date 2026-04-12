@@ -54,7 +54,7 @@ export default function TeacherSchedules() {
   const fetchClasses = async () => {
     const { data } = await supabase
       .from('classes')
-      .select('id, name, level, programme')
+      .select('id, name, level, programme, teacher_id')
       .eq('level', selectedLevel)
       .order('name')
     
@@ -95,7 +95,18 @@ export default function TeacherSchedules() {
   const getFilteredTeachers = () => {
     if (!editingCell) return teachers
     
-    // For now show all teachers, homeroom filtering will be implemented once classes have teacher assignments
+    // Find class teacher for this homeroom
+    const matchingClass = classes.find(c => c.name && c.name.startsWith(editingCell.className))
+    
+    if (matchingClass && matchingClass.teacher_id) {
+      const assignedTeacher = teachers.find(t => t.id === matchingClass.teacher_id)
+      if (assignedTeacher) {
+        // Put assigned teacher first, then all others
+        const otherTeachers = teachers.filter(t => t.id !== matchingClass.teacher_id)
+        return [assignedTeacher, ...otherTeachers]
+      }
+    }
+    
     return teachers
   }
 
