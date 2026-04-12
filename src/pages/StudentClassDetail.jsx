@@ -296,7 +296,10 @@ export default function StudentClassDetail() {
         </button>
         <h2 className="text-2xl font-bold text-gray-900">{cls?.name}</h2>
         <p className="text-gray-500 text-sm mt-1">
-          {cls?.level === 'primary' ? 'Primary' : 'Secondary'} · {cls?.programme === 'bilingual' ? 'Bilingual' : 'Integrated'} · Teacher: {cls?.users?.full_name || 'TBA'}
+          {cls?.level === 'primary' ? 'Primary' : 'Secondary'} - {cls?.programme === 'bilingual' ? 'Bilingual' : 'Integrated'}
+        </p>
+        <p className="text-gray-500 text-sm mt-1">
+          Teacher: {cls?.users?.full_name || 'TBA'}
         </p>
       </div>
 
