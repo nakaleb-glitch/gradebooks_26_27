@@ -175,7 +175,7 @@ export default function TeacherSchedules() {
             ← Go Back
           </button>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 items-end">
             <button
               onClick={() => setSelectedLevel('primary')}
               className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-opacity ${
@@ -199,23 +199,31 @@ export default function TeacherSchedules() {
               Secondary
             </button>
 
-            <button
-              onClick={exportTemplate}
-              className="px-4 py-1.5 rounded-lg text-sm font-medium bg-green-600 text-white hover:bg-green-700 transition-opacity"
-            >
-              Download Template
-            </button>
-
-            <label className="px-4 py-1.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-opacity cursor-pointer">
-              Import CSV
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv"
-                className="hidden"
-                onChange={handleFileUpload}
-              />
-            </label>
+            <div className="flex flex-col items-center">
+              <label
+                className={`cursor-pointer w-44 px-4 py-2 rounded-lg text-sm font-medium transition-colors text-center`}
+                style={{ backgroundColor: '#ffc612', color: '#1a1a1a' }}
+                onMouseOver={e => { e.currentTarget.style.backgroundColor = '#e6b10f' }}
+                onMouseOut={e => { e.currentTarget.style.backgroundColor = '#ffc612' }}
+              >
+                + Import CSV
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                />
+              </label>
+              <a
+                href="#"
+                onClick={e => { e.preventDefault(); exportTemplate(); }}
+                className="mt-1 text-xs hover:underline"
+                style={{ color: '#1f86c7' }}
+              >
+                Download CSV Template
+              </a>
+            </div>
           </div>
         </div>
 
