@@ -170,15 +170,13 @@ export default function TeacherSchedules() {
 
   const exportTemplate = () => {
     // Generate CSV template
-    const headers = ['Day', 'Period', ...classes]
+    const headers = ['Day', 'Period', 'ClassName', 'TeacherEmail', 'Subject']
     const rows = []
     
-    DAYS.forEach((day, dayIdx) => {
-      TIMETABLE.forEach(t => {
-        if (t.isBreak) return
-        rows.push([day, t.period, ...classes.map(() => '')])
-      })
-    })
+    // Empty template rows as example
+    rows.push(['0', '1', '', '', ''])
+    rows.push(['0', '2', '', '', ''])
+    rows.push(['1', '1', '', '', ''])
 
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
