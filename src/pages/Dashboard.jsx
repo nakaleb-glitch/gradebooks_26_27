@@ -216,7 +216,7 @@ export default function Dashboard() {
         if (studentClasses.length > 0) {
           const { data: teacherRows } = await supabase
             .from('classes')
-            .select('id, users(id, full_name)')
+            .select('id, users!classes_teacher_id_fkey(id, full_name)')
             .in('id', studentClasses.map(c => c.id))
 
           const teacherNameByClassId = {}
