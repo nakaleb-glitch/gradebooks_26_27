@@ -329,7 +329,7 @@ export default function TeacherSchedules() {
           <div className="flex flex-col items-center gap-0">
             <div className="flex gap-3">
               <button
-                onClick={() => navigate('/admin/teacher-schedule-view')}
+                onClick={() => navigate('/teacher-schedule')}
                 className={`w-44 h-[38px] px-4 py-2 rounded-lg text-xs font-medium transition-colors text-center`}
                 style={{ backgroundColor: '#16a34a', color: 'white' }}
                 onMouseOver={e => { e.currentTarget.style.backgroundColor = '#15803d' }}
