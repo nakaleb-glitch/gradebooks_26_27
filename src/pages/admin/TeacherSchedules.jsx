@@ -290,45 +290,41 @@ export default function TeacherSchedules() {
           </button>
 
           <div className="flex gap-3 items-end">
-            <div className="flex flex-col items-center">
-              <button
-                onClick={() => navigate('/admin/teacher-schedule-view')}
-                className={`w-44 px-4 py-2 rounded-lg text-sm font-medium transition-colors text-center`}
-                style={{ backgroundColor: '#16a34a', color: 'white' }}
-                onMouseOver={e => { e.currentTarget.style.backgroundColor = '#15803d' }}
-                onMouseOut={e => { e.currentTarget.style.backgroundColor = '#16a34a' }}
-              >
-                View Teacher Schedules
-              </button>
-            </div>
+            <button
+              onClick={() => navigate('/admin/teacher-schedule-view')}
+              className={`w-44 h-[38px] px-4 py-2 rounded-lg text-sm font-medium transition-colors text-center`}
+              style={{ backgroundColor: '#16a34a', color: 'white' }}
+              onMouseOver={e => { e.currentTarget.style.backgroundColor = '#15803d' }}
+              onMouseOut={e => { e.currentTarget.style.backgroundColor = '#16a34a' }}
+            >
+              View Teacher Schedules
+            </button>
             
-            <div className="flex flex-col items-center">
-              <label
-                className={`cursor-pointer w-44 px-4 py-2 rounded-lg text-sm font-medium transition-colors text-center`}
-                style={{ backgroundColor: '#ffc612', color: '#1a1a1a' }}
-                onMouseOver={e => { e.currentTarget.style.backgroundColor = '#e6b10f' }}
-                onMouseOut={e => { e.currentTarget.style.backgroundColor = '#ffc612' }}
-              >
-                + Import CSV
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".csv"
-                  className="hidden"
-                  onChange={handleFileUpload}
-                />
-              </label>
-              <div className="mt-1">
-                <a
-                  href="#"
-                  onClick={e => { e.preventDefault(); exportTemplate(); }}
-                  className="text-xs hover:underline"
-                  style={{ color: '#1f86c7' }}
-                >
-                  Download CSV Template
-                </a>
-              </div>
-            </div>
+            <label
+              className={`cursor-pointer w-44 h-[38px] px-4 py-2 rounded-lg text-sm font-medium transition-colors text-center flex items-center justify-center`}
+              style={{ backgroundColor: '#ffc612', color: '#1a1a1a' }}
+              onMouseOver={e => { e.currentTarget.style.backgroundColor = '#e6b10f' }}
+              onMouseOut={e => { e.currentTarget.style.backgroundColor = '#ffc612' }}
+            >
+              + Import CSV
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+            </label>
+
+            <button
+              onClick={() => setConfirmClear(true)}
+              className={`w-44 h-[38px] px-4 py-2 rounded-lg text-sm font-medium transition-colors text-center`}
+              style={{ backgroundColor: '#dc2626', color: 'white' }}
+              onMouseOver={e => { e.currentTarget.style.backgroundColor = '#b91c1c' }}
+              onMouseOut={e => { e.currentTarget.style.backgroundColor = '#dc2626' }}
+            >
+              Clear All
+            </button>
           </div>
         </div>
 
