@@ -169,7 +169,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (profile) fetchDashboardData()
-  }, [profile])
+  }, [profile, debugDateOverride, debugDayOverride])
 
   const fetchDashboardData = async () => {
     setLoading(true)
