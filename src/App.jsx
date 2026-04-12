@@ -51,7 +51,6 @@ function AppRoutes() {
       <Route path="/admin/student-gradebook-lookup" element={<ProtectedRoute adminOnly><StudentGradebookLookup /></ProtectedRoute>} />
       <Route path="/admin/resource-bookings" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><ResourceBookings /></ProtectedRoute>} />
       <Route path="/admin/teacher-schedules" element={<ProtectedRoute adminOnly><TeacherSchedules /></ProtectedRoute>} />
-      <Route path="/admin/teacher-schedule-view" element={<ProtectedRoute adminOnly><TeacherScheduleView /></ProtectedRoute>} />
       <Route path="/teacher-schedule" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><TeacherSchedule /></ProtectedRoute>} />
       <Route path="/weekly-plans" element={<ProtectedRoute><WeeklyPlans /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/login" />} />

@@ -36,7 +36,7 @@ const SECONDARY_TIMETABLE = [
 
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']
 
-export default function TeacherScheduleView() {
+export default function TeacherSchedule() {
   const navigate = useNavigate()
   const { profile } = useAuth()
   const [schedules, setSchedules] = useState({})
