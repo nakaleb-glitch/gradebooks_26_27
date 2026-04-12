@@ -79,6 +79,28 @@ export default function TeacherScheduleView() {
     }
   }
 
+  // Generate consistent color for each class
+  const getClassColor = (className) => {
+    const colors = [
+      'bg-blue-50 border-blue-200 text-blue-800',
+      'bg-green-50 border-green-200 text-green-800',
+      'bg-purple-50 border-purple-200 text-purple-800',
+      'bg-amber-50 border-amber-200 text-amber-800',
+      'bg-rose-50 border-rose-200 text-rose-800',
+      'bg-teal-50 border-teal-200 text-teal-800',
+      'bg-indigo-50 border-indigo-200 text-indigo-800',
+      'bg-pink-50 border-pink-200 text-pink-800',
+    ]
+    
+    let hash = 0
+    for (let i = 0; i < className.length; i++) {
+      hash = ((hash << 5) - hash) + className.charCodeAt(i)
+      hash = hash & hash
+    }
+    
+    return colors[Math.abs(hash) % colors.length]
+  }
+
   const getTimetable = () => {
     return teacherLevel === 'secondary' ? SECONDARY_TIMETABLE : PRIMARY_TIMETABLE
   }
@@ -185,13 +207,12 @@ export default function TeacherScheduleView() {
                           className="px-2 py-2 border-r border-gray-100 align-top"
                         >
                           <div className="w-full min-h-[60px] p-2 rounded">
-                            {schedule ? (
-                              <div>
-                                <div className="font-medium text-gray-800">{schedule.subject}</div>
-                                <div className="text-xs text-gray-600">{schedule.class_name}</div>
-                                <div className="text-xs text-gray-400">{schedule.level}</div>
-                              </div>
-                            ) : (
+                             {schedule ? (
+                               <div className={`rounded p-2 border ${getClassColor(schedule.class_name)}`}>
+                                 <div className="font-medium">{schedule.subject}</div>
+                                 <div className="text-xs opacity-90">{schedule.class_name}</div>
+                               </div>
+                             ) : (
                               <div className="text-gray-400 text-sm italic">Free Period</div>
                             )}
                           </div>
