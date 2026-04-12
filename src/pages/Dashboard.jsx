@@ -162,6 +162,7 @@ export default function Dashboard() {
   const [gradeFilter, setGradeFilter] = useState('all')
   const [debugWeekOverride, setDebugWeekOverride] = useState(getCurrentWeekIndex())
   const [debugDayOverride, setDebugDayOverride] = useState(new Date().getDay() === 0 ? 6 : new Date().getDay() - 1)
+  const [debugDateOverride, setDebugDateOverride] = useState(new Date().toISOString().slice(0, 10))
   const [showDebugControls, setShowDebugControls] = useState(false)
   const [teacherSchedule, setTeacherSchedule] = useState({})
   const [teacherLevel, setTeacherLevel] = useState('primary')
@@ -1086,7 +1087,39 @@ export default function Dashboard() {
                   <div className="flex items-center gap-4 mt-4">
                     <div className="flex-1">
                       <label className="text-xs font-medium text-gray-500 block mb-1">
-                        Day of Week Override
+                        Date Override
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="date"
+                          value={debugDateOverride}
+                          onChange={e => {
+                            const selectedDate = new Date(e.target.value)
+                            setDebugDateOverride(e.target.value)
+                            
+                            // Auto calculate day of week (0=Sunday -> 6=Saturday)
+                            const dayIdx = selectedDate.getDay() === 0 ? 6 : selectedDate.getDay() - 1
+                            setDebugDayOverride(dayIdx)
+
+                            // Auto calculate week number for this date
+                            const firstDay = new Date('2026-08-17')
+                            const diffTime = selectedDate.getTime() - firstDay.getTime()
+                            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+                            const weekIndex = Math.max(0, Math.floor(diffDays / 7))
+                            if (weekIndex >= 0 && weekIndex < ALL_WEEKS.length) {
+                              setDebugWeekOverride(weekIndex)
+                            }
+                          }}
+                          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 mt-4">
+                    <div className="flex-1">
+                      <label className="text-xs font-medium text-gray-500 block mb-1">
+                        Day of Week Override (auto calculated)
                       </label>
                       <div className="flex gap-2">
                         <select
