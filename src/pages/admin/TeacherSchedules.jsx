@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Layout from '../../components/Layout'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
@@ -19,9 +19,6 @@ const TIMETABLE = [
 
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']
 
-const PRIMARY_CLASSES = ['1A', '1B', '1C', '2A', '2B', '2C', '3A', '3B', '3C', '4A', '4B', '4C', '5A', '5B', '5C', '6A', '6B', '6C']
-const SECONDARY_CLASSES = ['7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B', '11A', '11B', '12A', '12B']
-
 const SUBJECTS = [
   'ESL', 'Mathematics', 'Science', 'Global Perspectives', 'English', 'Vietnamese',
   'Physical Education', 'Art', 'Music', 'Computer Science', 'Chemistry', 'Physics',
@@ -34,14 +31,15 @@ export default function TeacherSchedules() {
   const [selectedLevel, setSelectedLevel] = useState('primary')
   const [schedules, setSchedules] = useState({})
   const [teachers, setTeachers] = useState([])
+  const [classes, setClasses] = useState([])
   const [editingCell, setEditingCell] = useState(null)
   const [editForm, setEditForm] = useState({ teacher_id: '', subject: '' })
   const [saving, setSaving] = useState(false)
-
-  const classes = selectedLevel === 'primary' ? PRIMARY_CLASSES : SECONDARY_CLASSES
+  const fileInputRef = useRef(null)
 
   useEffect(() => {
     fetchTeachers()
+    fetchClasses()
     fetchSchedules()
   }, [selectedLevel])
 
@@ -52,6 +50,23 @@ export default function TeacherSchedules() {
       .eq('role', 'teacher')
       .order('full_name')
     setTeachers(data || [])
+  }
+
+  const fetchClasses = async () => {
+    const { data } = await supabase
+      .from('classes')
+      .select('id, name, level, programme')
+      .eq('level', selectedLevel)
+      .order('name')
+    
+    // Get unique homerooms
+    const homerooms = new Set()
+    data?.forEach(c => {
+      const homeroom = c.name.split(' ')[0]
+      homerooms.add(homeroom)
+    })
+    
+    setClasses(Array.from(homerooms).sort())
   }
 
   const fetchSchedules = async () => {
@@ -118,6 +133,37 @@ export default function TeacherSchedules() {
     return teacher?.full_name || 'Unknown'
   }
 
+  const exportTemplate = () => {
+    // Generate CSV template
+    const headers = ['Day', 'Period', ...classes]
+    const rows = []
+    
+    DAYS.forEach((day, dayIdx) => {
+      TIMETABLE.forEach(t => {
+        if (t.isBreak) return
+        rows.push([day, t.period, ...classes.map(() => '')])
+      })
+    })
+
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `master_schedule_${selectedLevel}_template.csv`
+    a.click()
+  }
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Simple CSV import handler
+    // Full excel parser can be added later
+    alert('CSV import placeholder - will process: ' + file.name)
+    fileInputRef.current.value = ''
+  }
+
   return (
     <Layout>
       <div className="mb-8">
@@ -153,67 +199,97 @@ export default function TeacherSchedules() {
             >
               Secondary
             </button>
+
+            <button
+              onClick={exportTemplate}
+              className="px-4 py-1.5 rounded-lg text-sm font-medium bg-green-600 text-white hover:bg-green-700 transition-opacity"
+            >
+              Download Template
+            </button>
+
+            <label className="px-4 py-1.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-opacity cursor-pointer">
+              Import CSV
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+            </label>
           </div>
         </div>
 
         <h2 className="text-2xl font-bold text-gray-900">Teacher Schedule Management</h2>
-        <p className="text-sm text-gray-500 mt-1">Click any cell to assign teacher and subject</p>
+        <p className="text-sm text-gray-500 mt-1">Click any cell to assign teacher and subject. Periods are vertical, classes are horizontal.</p>
       </div>
 
-      {/* Schedule Grid */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-        <table className="w-full text-sm table-fixed min-w-[1400px]">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="px-3 py-2 text-left font-medium text-gray-600 w-[180px]">Class</th>
-              {DAYS.map(day => (
-                <th key={day} className="px-3 py-2 text-center font-medium text-gray-600">
-                  {day}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {classes.map(cls => (
-              <tr key={cls} className="border-b border-gray-100">
-                <td className="px-3 py-2 border-r border-gray-100 font-medium text-gray-800 bg-gray-50">
-                  {cls}
-                </td>
-                {[0,1,2,3,4].map(day => {
-                  const cells = []
-                  TIMETABLE.forEach((row, pidx) => {
-                    if (row.isBreak) return
+      {DAYS.map((day, dayIdx) => (
+        <div key={day} className="mb-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-2 bg-gray-100 px-3 py-1 rounded">{day}</h3>
 
-                    const schedule = schedules[`${cls}-${day}-${row.period}`]
-                    cells.push(
-                      <td
-                        key={`${day}-${row.period}`}
-                        className={`px-1 py-1 border-r border-gray-100 align-top ${pidx === 5 ? 'border-t border-gray-300' : ''}`}
-                      >
-                        <button
-                          onClick={() => openEditModal(cls, day, row.period)}
-                          className="w-full min-h-[45px] p-1 rounded border border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-colors text-xs text-left"
-                        >
-                          {schedule ? (
-                            <div>
-                              <div className="font-medium text-gray-800 truncate">{getTeacherName(schedule.teacher_id)}</div>
-                              <div className="text-gray-600 truncate">{schedule.subject}</div>
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">+</span>
-                          )}
-                        </button>
-                      </td>
+          <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+            <table className="w-full text-sm table-fixed">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50">
+                  <th className="px-3 py-2 text-left font-medium text-gray-600 w-[150px]">Period</th>
+                  {classes.map(cls => (
+                    <th key={cls} className="px-3 py-2 text-center font-medium text-gray-600">
+                      {cls}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {TIMETABLE.map((row, pidx) => {
+                  if (row.isBreak) {
+                    return (
+                      <tr key={pidx} className="bg-gray-50">
+                        <td colSpan={classes.length + 1} className="px-3 py-2 text-center font-medium text-red-600">
+                          {row.label}
+                        </td>
+                      </tr>
                     )
-                  })
+                  }
 
-                  return cells
+                  return (
+                    <tr key={pidx} className="border-b border-gray-100">
+                      <td className="px-3 py-2 border-r border-gray-100 bg-gray-50">
+                        <div className="font-medium">{row.label}</div>
+                        <div className="text-xs text-gray-500">{selectedLevel === 'primary' ? row.primary : row.secondary}</div>
+                      </td>
+
+                      {classes.map(cls => {
+                        const schedule = schedules[`${cls}-${dayIdx}-${row.period}`]
+                        return (
+                          <td
+                            key={cls}
+                            className="px-1 py-1 border-r border-gray-100 align-top"
+                          >
+                            <button
+                              onClick={() => openEditModal(cls, dayIdx, row.period)}
+                              className="w-full min-h-[50px] p-1 rounded border border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-colors text-xs text-left"
+                            >
+                              {schedule ? (
+                                <div>
+                                  <div className="font-medium text-gray-800 truncate">{getTeacherName(schedule.teacher_id)}</div>
+                                  <div className="text-gray-600 truncate">{schedule.subject}</div>
+                                </div>
+                              ) : (
+                                <span className="text-gray-400">+</span>
+                              )}
+                            </button>
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  )
                 })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
 
       {/* Edit Modal */}
       {editingCell && (
