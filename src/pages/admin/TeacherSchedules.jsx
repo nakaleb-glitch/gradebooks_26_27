@@ -199,9 +199,79 @@ export default function TeacherSchedules() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Simple CSV import handler
-    // Full excel parser can be added later
-    alert('CSV import placeholder - will process: ' + file.name)
+    try {
+      const text = await file.text()
+      const lines = text.split('\n').filter(l => l.trim())
+      
+      // Skip header
+      const dataLines = lines.slice(1)
+      
+      const dayMap = { 'MON': 0, 'TUE': 1, 'WED': 2, 'THU': 3, 'FRI': 4 }
+      
+      // Get all teachers with staff_id
+      const { data: teachers } = await supabase
+        .from('users')
+        .select('id, staff_id')
+        .eq('role', 'teacher')
+      
+      const staffIdMap = {}
+      teachers.forEach(t => staffIdMap[t.staff_id?.toString()] = t.id)
+      
+      const schedulesToInsert = []
+      let success = 0
+      let failed = 0
+      
+      for (const line of dataLines) {
+        const parts = line.split(',').map(p => p.trim())
+        
+        // Skip empty, comment, separator lines
+        if (parts[0] === '//' || !parts[0]) continue
+        if (!parts[3]) continue // skip if no staff id
+        
+        const day = dayMap[parts[0].toUpperCase()]
+        const period = parseInt(parts[1])
+        const className = parts[2]
+        const staffId = parts[3].toString()
+        const subject = parts[4]
+        
+        const teacherId = staffIdMap[staffId]
+        
+        if (day !== undefined && period && className && teacherId && subject) {
+          schedulesToInsert.push({
+            level: selectedLevel,
+            class_name: className,
+            day: day,
+            period: period,
+            teacher_id: teacherId,
+            subject: subject
+          })
+          success++
+        } else {
+          failed++
+        }
+      }
+      
+      if (schedulesToInsert.length > 0) {
+        // Batch upsert
+        const { error } = await supabase
+          .from('teacher_schedules')
+          .upsert(schedulesToInsert, {
+            onConflict: 'level, class_name, day, period'
+          })
+        
+        if (error) throw error
+        
+        // Reload schedules
+        await fetchSchedules()
+      }
+      
+      alert(`Import completed: ${success} schedules imported, ${failed} rows skipped`)
+      
+    } catch (err) {
+      console.error('Import error:', err)
+      alert('Import failed: ' + err.message)
+    }
+    
     fileInputRef.current.value = ''
   }
 
@@ -246,7 +316,7 @@ export default function TeacherSchedules() {
                   onChange={handleFileUpload}
                 />
               </label>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="mt-1">
                 <a
                   href="#"
                   onClick={e => { e.preventDefault(); exportTemplate(); }}
@@ -255,13 +325,6 @@ export default function TeacherSchedules() {
                 >
                   Download CSV Template
                 </a>
-                <button
-                  onClick={() => setShowCsvHelp(true)}
-                  className="w-5 h-5 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 text-xs flex items-center justify-center"
-                  title="CSV Instructions"
-                >
-                  ?
-                </button>
               </div>
             </div>
           </div>
