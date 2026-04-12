@@ -175,13 +175,15 @@ export default function TeacherSchedules() {
     const dayLabels = ['MON', 'TUE', 'WED', 'THU', 'FRI']
     const homerooms = Array.from(new Set(classes.map(c => c.name.split(' ')[0]))).sort()
     
-    // Pre-fill EVERY possible schedule combination
-    DAYS.forEach((_, dayIdx) => {
-      TIMETABLE.forEach(t => {
-        homerooms.forEach(homeroom => {
+    // Logical ordering: ONE CLASS AT A TIME, full week
+    homerooms.forEach(homeroom => {
+      rows.push(['//', '//', homeroom, '', '']) // Class separator header
+      DAYS.forEach((_, dayIdx) => {
+        TIMETABLE.forEach(t => {
           rows.push([dayLabels[dayIdx], t.period, homeroom, '', ''])
         })
       })
+      rows.push(['', '', '', '', '']) // empty separator line
     })
 
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
