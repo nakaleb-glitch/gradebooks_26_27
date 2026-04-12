@@ -172,7 +172,7 @@ export default function StudentClassDetail() {
     }
 
     const [{ data: classData }, { data: partData }, { data: ptData }, { data: assignData }, { data: assignGrades }, { data: announcementTargetRows }] = await Promise.all([
-      supabase.from('classes').select('*, users(full_name)').eq('id', classId).single(),
+      supabase.from('classes').select('*, teacher:users!classes_teacher_id_fkey(full_name)').eq('id', classId).single(),
       supabase.from('participation_grades').select('term, week, score, comment').eq('class_id', classId).eq('student_id', resolvedStudentId),
       supabase.from('progress_test_grades').select('*').eq('class_id', classId).eq('student_id', resolvedStudentId),
       supabase.from('assignments').select('*').eq('class_id', classId).order('created_at'),
@@ -299,7 +299,7 @@ export default function StudentClassDetail() {
           {cls?.level === 'primary' ? 'Primary' : 'Secondary'} - {cls?.programme === 'bilingual' ? 'Bilingual' : 'Integrated'}
         </p>
         <p className="text-gray-500 text-sm mt-1">
-          Teacher: {cls?.users?.full_name || 'TBA'}
+          Teacher: {cls?.teacher?.full_name || 'TBA'}
         </p>
       </div>
 
