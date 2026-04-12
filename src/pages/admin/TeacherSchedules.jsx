@@ -136,9 +136,10 @@ export default function TeacherSchedules() {
 
     if (error) {
       console.error('Save error:', error)
-      alert('Save failed: ' + error.message)
+      setStatusMessage({ type: 'error', text: 'Save failed: ' + error.message })
       // Rollback local state on database error
       fetchSchedules()
+      setTimeout(() => setStatusMessage(null), 5000)
     }
 
     setSaving(false)
@@ -163,6 +164,25 @@ export default function TeacherSchedules() {
       
     setSaving(false)
     setEditingCell(null)
+  }
+
+  const clearAllSchedules = async () => {
+    try {
+      await supabase
+        .from('teacher_schedules')
+        .delete()
+        .eq('level', selectedLevel)
+      
+      await fetchSchedules()
+      
+      setStatusMessage({ type: 'success', text: `All ${selectedLevel} schedules have been cleared` })
+      setConfirmClear(false)
+      
+    } catch (err) {
+      setStatusMessage({ type: 'error', text: 'Clear failed: ' + err.message })
+    }
+    
+    setTimeout(() => setStatusMessage(null), 5000)
   }
 
   const getTeacherName = (id) => {
@@ -267,14 +287,16 @@ export default function TeacherSchedules() {
         await fetchSchedules()
       }
       
-      alert(`Import completed: ${success} schedules imported, ${failed} rows skipped`)
+      setStatusMessage({ type: 'success', text: `Import completed: ${success} schedules imported, ${failed} rows skipped` })
       
     } catch (err) {
       console.error('Import error:', err)
-      alert('Import failed: ' + err.message)
+      setStatusMessage({ type: 'error', text: 'Import failed: ' + err.message })
     }
     
     fileInputRef.current.value = ''
+    
+    setTimeout(() => setStatusMessage(null), 5000)
   }
 
   return (
@@ -292,7 +314,7 @@ export default function TeacherSchedules() {
           <div className="flex gap-3 items-end">
             <button
               onClick={() => navigate('/admin/teacher-schedule-view')}
-              className={`w-44 h-[38px] px-4 py-2 rounded-lg text-sm font-medium transition-colors text-center`}
+              className={`w-44 h-[38px] px-4 py-2 rounded-lg text-xs font-medium transition-colors text-center`}
               style={{ backgroundColor: '#16a34a', color: 'white' }}
               onMouseOver={e => { e.currentTarget.style.backgroundColor = '#15803d' }}
               onMouseOut={e => { e.currentTarget.style.backgroundColor = '#16a34a' }}
@@ -503,57 +525,32 @@ export default function TeacherSchedules() {
           </div>
         </div>
       )}
-      {/* CSV Help Modal */}
-      {showCsvHelp && (
+
+      {/* Clear All Confirmation Modal */}
+      {confirmClear && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
-          <div className="w-full max-w-lg bg-white rounded-xl border border-gray-200 p-5">
-            <div className="flex items-start justify-between gap-4 mb-4">
-              <h4 className="text-base font-semibold text-gray-900">CSV Import Instructions</h4>
+          <div className="w-full max-w-md bg-white rounded-xl border border-gray-200 p-5">
+            <h4 className="text-base font-semibold text-gray-900 mb-4">Clear All Schedules</h4>
+            <p className="text-sm text-gray-600 mb-6">
+              Are you absolutely sure you want to delete all {selectedLevel} schedules?
+              <br /><br />
+              <strong>This action cannot be undone.</strong>
+            </p>
+            <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => setShowCsvHelp(false)}
-                className="text-gray-400 hover:text-gray-600"
+                onClick={() => setConfirmClear(false)}
+                className="flex-1 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50"
               >
-                ✕
+                Cancel
               </button>
-            </div>
-
-            <div className="text-sm space-y-4 text-gray-700">
-              <p>The CSV file must follow this format exactly:</p>
-              
-                <div className="bg-gray-50 rounded border border-gray-200 p-3 font-mono text-xs">
-                  Day,Period,ClassName,StaffID,Subject
-                </div>
-
-              <div className="space-y-2">
-                <p><strong>Column descriptions:</strong></p>
-                <ul className="list-disc pl-5 space-y-1 text-xs">
-                  <li><strong>Day</strong>: MON, TUE, WED, THU, FRI</li>
-                  <li><strong>Period</strong>: 1 through 9 matching the timetable rows</li>
-                  <li><strong>ClassName</strong>: Exact homeroom code (2B4, 7A1 etc.)</li>
-                  <li><strong>StaffID</strong>: Teacher's staff ID number</li>
-                  <li><strong>Subject</strong>: Subject name (ESL, Mathematics, Science etc.)</li>
-                </ul>
-              </div>
-
-              <div className="bg-blue-50 rounded border border-blue-200 p-3 text-xs">
-                <p className="font-medium text-blue-800 mb-1">Important notes:</p>
-                <ul className="list-disc pl-5 space-y-1 text-blue-700">
-                  <li>Header row is required</li>
-                  <li>Teacher must already exist in the system</li>
-                  <li>Empty rows are automatically skipped</li>
-                  <li>Existing entries will be overwritten</li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="pt-4 mt-4 border-t border-gray-200">
               <button
-                onClick={() => setShowCsvHelp(false)}
-                className="w-full px-4 py-2 rounded-lg text-white text-sm font-medium"
-                style={{ backgroundColor: '#1f86c7' }}
+                type="button"
+                onClick={clearAllSchedules}
+                className="flex-1 px-4 py-2 rounded-lg text-white text-sm font-medium"
+                style={{ backgroundColor: '#dc2626' }}
               >
-                Got it
+                Clear All
               </button>
             </div>
           </div>
