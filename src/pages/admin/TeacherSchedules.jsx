@@ -170,7 +170,7 @@ export default function TeacherSchedules() {
 
   const exportTemplate = () => {
     // Generate dynamic CSV template
-    const headers = ['Day', 'Period', 'ClassName', 'TeacherName', 'Subject']
+    const headers = ['Day', 'Period', 'ClassName', 'StaffID', 'Subject']
     const rows = []
     const dayLabels = ['MON', 'TUE', 'WED', 'THU', 'FRI']
     const homerooms = Array.from(new Set(classes.map(c => c.name.split(' ')[0]))).sort()
@@ -451,7 +451,7 @@ export default function TeacherSchedules() {
               <p>The CSV file must follow this format exactly:</p>
               
                 <div className="bg-gray-50 rounded border border-gray-200 p-3 font-mono text-xs">
-                  Day,Period,ClassName,TeacherName,Subject
+                  Day,Period,ClassName,StaffID,Subject
                 </div>
 
               <div className="space-y-2">
@@ -460,7 +460,7 @@ export default function TeacherSchedules() {
                   <li><strong>Day</strong>: MON, TUE, WED, THU, FRI</li>
                   <li><strong>Period</strong>: 1 through 9 matching the timetable rows</li>
                   <li><strong>ClassName</strong>: Exact homeroom code (2B4, 7A1 etc.)</li>
-                  <li><strong>TeacherName</strong>: Exact teacher full name as it appears in the system</li>
+                  <li><strong>StaffID</strong>: Teacher's staff ID number</li>
                   <li><strong>Subject</strong>: Subject name (ESL, Mathematics, Science etc.)</li>
                 </ul>
               </div>
