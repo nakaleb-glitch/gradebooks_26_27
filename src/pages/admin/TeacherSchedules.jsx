@@ -169,14 +169,20 @@ export default function TeacherSchedules() {
   }
 
   const exportTemplate = () => {
-    // Generate CSV template
-    const headers = ['Day', 'Period', 'ClassName', 'TeacherEmail', 'Subject']
+    // Generate dynamic CSV template
+    const headers = ['Day', 'Period', 'ClassName', 'TeacherName', 'Subject']
     const rows = []
+    const dayLabels = ['MON', 'TUE', 'WED', 'THU', 'FRI']
+    const homerooms = Array.from(new Set(classes.map(c => c.name.split(' ')[0]))).sort()
     
-    // Empty template rows as example
-    rows.push(['0', '1', '', '', ''])
-    rows.push(['0', '2', '', '', ''])
-    rows.push(['1', '1', '', '', ''])
+    // Pre-fill EVERY possible schedule combination
+    DAYS.forEach((_, dayIdx) => {
+      TIMETABLE.forEach(t => {
+        homerooms.forEach(homeroom => {
+          rows.push([dayLabels[dayIdx], t.period, homeroom, '', ''])
+        })
+      })
+    })
 
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
@@ -442,17 +448,17 @@ export default function TeacherSchedules() {
             <div className="text-sm space-y-4 text-gray-700">
               <p>The CSV file must follow this format exactly:</p>
               
-              <div className="bg-gray-50 rounded border border-gray-200 p-3 font-mono text-xs">
-                Day,Period,ClassName,TeacherEmail,Subject
-              </div>
+                <div className="bg-gray-50 rounded border border-gray-200 p-3 font-mono text-xs">
+                  Day,Period,ClassName,TeacherName,Subject
+                </div>
 
               <div className="space-y-2">
                 <p><strong>Column descriptions:</strong></p>
                 <ul className="list-disc pl-5 space-y-1 text-xs">
-                  <li><strong>Day</strong>: 0 = Monday, 1 = Tuesday, 2 = Wednesday, 3 = Thursday, 4 = Friday</li>
+                  <li><strong>Day</strong>: MON, TUE, WED, THU, FRI</li>
                   <li><strong>Period</strong>: 1 through 9 matching the timetable rows</li>
                   <li><strong>ClassName</strong>: Exact homeroom code (2B4, 7A1 etc.)</li>
-                  <li><strong>TeacherEmail</strong>: Teacher's email address</li>
+                  <li><strong>TeacherName</strong>: Exact teacher full name as it appears in the system</li>
                   <li><strong>Subject</strong>: Subject name (ESL, Mathematics, Science etc.)</li>
                 </ul>
               </div>
