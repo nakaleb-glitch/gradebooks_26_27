@@ -91,28 +91,46 @@ export default function TeacherSchedules() {
     setEditingCell({ className, day, period })
   }
 
+  // Get teachers filtered for current homeroom
+  const getFilteredTeachers = () => {
+    if (!editingCell) return teachers
+    
+    // For now show all teachers, homeroom filtering will be implemented once classes have teacher assignments
+    return teachers
+  }
+
   const saveSchedule = async () => {
     if (!editForm.teacher_id || !editForm.subject) return
     setSaving(true)
 
-    const { error } = await supabase
+    const scheduleData = {
+      level: selectedLevel,
+      class_name: editingCell.className,
+      day: editingCell.day,
+      period: editingCell.period,
+      teacher_id: editForm.teacher_id,
+      subject: editForm.subject
+    }
+
+    // Update local state immediately for instant UI feedback
+    const newSchedules = {
+      ...schedules,
+      [`${editingCell.className}-${editingCell.day}-${editingCell.period}`]: scheduleData
+    }
+    setSchedules(newSchedules)
+
+    // Save to database
+    await supabase
       .from('teacher_schedules')
-      .upsert({
-        level: selectedLevel,
-        class_name: editingCell.className,
-        day: editingCell.day,
-        period: editingCell.period,
-        teacher_id: editForm.teacher_id,
-        subject: editForm.subject
-      }, {
+      .upsert(scheduleData, {
         onConflict: 'level, class_name, day, period'
       })
 
     setSaving(false)
     setEditingCell(null)
     
-    // Force immediate refresh of schedules with a clean new fetch
-    await fetchSchedules()
+    // Final refresh to confirm database state
+    fetchSchedules()
   }
 
   const clearSchedule = async () => {
@@ -333,7 +351,7 @@ export default function TeacherSchedules() {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
                 >
                   <option value="">Select teacher</option>
-                  {teachers.map(t => (
+                  {getFilteredTeachers().map(t => (
                     <option key={t.id} value={t.id}>{t.full_name}</option>
                   ))}
                 </select>
