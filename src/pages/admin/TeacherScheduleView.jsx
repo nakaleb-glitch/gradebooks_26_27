@@ -121,16 +121,19 @@ export default function TeacherScheduleView() {
               <option value="">-- Choose a teacher --</option>
               {teachers.map(teacher => (
                 <option key={teacher.id} value={teacher.id}>
-                  {teacher.full_name} {teacher.level ? `(${teacher.level.charAt(0).toUpperCase() + teacher.level.slice(1)})` : ''}
+                  {teacher.full_name}
                 </option>
               ))}
             </select>
           </div>
 
           {selectedTeacher && teacherLevel && (
-            <div className="bg-gray-100 px-4 py-2 rounded-lg">
-              <div className="text-xs text-gray-500">Timetable</div>
-              <div className="font-semibold text-gray-800">{teacherLevel.charAt(0).toUpperCase() + teacherLevel.slice(1)}</div>
+            <div className={`px-4 py-2 rounded-full font-semibold text-sm text-white ${
+              teacherLevel === 'primary' 
+                ? 'bg-green-600' 
+                : 'bg-blue-600'
+            }`}>
+              {teacherLevel.charAt(0).toUpperCase() + teacherLevel.slice(1)}
             </div>
           )}
         </div>
