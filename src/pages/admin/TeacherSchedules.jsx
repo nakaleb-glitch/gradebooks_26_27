@@ -322,21 +322,33 @@ export default function TeacherSchedules() {
               View Teacher Schedules
             </button>
             
-            <label
-              className={`cursor-pointer w-44 h-[38px] px-4 py-2 rounded-lg text-sm font-medium transition-colors text-center flex items-center justify-center`}
-              style={{ backgroundColor: '#ffc612', color: '#1a1a1a' }}
-              onMouseOver={e => { e.currentTarget.style.backgroundColor = '#e6b10f' }}
-              onMouseOut={e => { e.currentTarget.style.backgroundColor = '#ffc612' }}
-            >
-              + Import CSV
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv"
-                className="hidden"
-                onChange={handleFileUpload}
-              />
-            </label>
+            <div className="flex flex-col items-center">
+              <label
+                className={`cursor-pointer w-44 h-[38px] px-4 py-2 rounded-lg text-sm font-medium transition-colors text-center flex items-center justify-center`}
+                style={{ backgroundColor: '#ffc612', color: '#1a1a1a' }}
+                onMouseOver={e => { e.currentTarget.style.backgroundColor = '#e6b10f' }}
+                onMouseOut={e => { e.currentTarget.style.backgroundColor = '#ffc612' }}
+              >
+                + Import CSV
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                />
+              </label>
+              <div className="text-center mt-1">
+                <a
+                  href="#"
+                  onClick={e => { e.preventDefault(); exportTemplate(); }}
+                  className="text-xs hover:underline"
+                  style={{ color: '#1f86c7' }}
+                >
+                  Download CSV Template
+                </a>
+              </div>
+            </div>
 
             <button
               onClick={() => setConfirmClear(true)}
