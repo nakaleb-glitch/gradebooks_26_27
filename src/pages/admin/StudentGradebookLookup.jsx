@@ -483,5 +483,30 @@ export default function StudentGradebookLookup() {
         </div>
       )}
     </Layout>
+
+    {selectedComment && (
+      <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
+        <div className="w-full max-w-md bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h4 className="text-base font-semibold text-gray-900">Teacher Comment</h4>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedComment(null)}
+              className="text-gray-400 hover:text-gray-600"
+              aria-label="Close comment"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="mt-4 text-sm text-gray-800 whitespace-pre-wrap">
+            {selectedComment}
+          </div>
+        </div>
+      </div>
+    )}
+
   )
 }
