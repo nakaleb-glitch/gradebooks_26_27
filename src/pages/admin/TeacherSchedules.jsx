@@ -95,7 +95,7 @@ export default function TeacherSchedules() {
     if (!editForm.teacher_id || !editForm.subject) return
     setSaving(true)
 
-    await supabase
+    const { error } = await supabase
       .from('teacher_schedules')
       .upsert({
         level: selectedLevel,
@@ -110,7 +110,9 @@ export default function TeacherSchedules() {
 
     setSaving(false)
     setEditingCell(null)
-    fetchSchedules()
+    
+    // Force immediate refresh of schedules with a clean new fetch
+    await fetchSchedules()
   }
 
   const clearSchedule = async () => {
