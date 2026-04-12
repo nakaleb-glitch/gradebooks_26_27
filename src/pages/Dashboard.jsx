@@ -39,7 +39,7 @@ const SECONDARY_TIMETABLE = [
   { period: 9, time: '16:05 - 16:45', label: 'Period 9', type: 'class' },
 ]
 
-const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']
+const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
 
 // School official week calendar
 const PARTICIPATION_WEEK_SCHEDULE = {
@@ -161,7 +161,7 @@ export default function Dashboard() {
   const [levelFilter, setLevelFilter] = useState('')
   const [gradeFilter, setGradeFilter] = useState('all')
   const [debugWeekOverride, setDebugWeekOverride] = useState(getCurrentWeekIndex())
-  const [debugDayOverride, setDebugDayOverride] = useState(new Date().getDay() === 0 || new Date().getDay() === 6 ? 0 : new Date().getDay() - 1)
+  const [debugDayOverride, setDebugDayOverride] = useState(new Date().getDay() === 0 ? 6 : new Date().getDay() - 1)
   const [showDebugControls, setShowDebugControls] = useState(false)
   const [teacherSchedule, setTeacherSchedule] = useState({})
   const [teacherLevel, setTeacherLevel] = useState('primary')
@@ -1258,12 +1258,16 @@ export default function Dashboard() {
                       className="text-xs px-3 py-1.5 rounded-lg text-white hover:opacity-90 transition-opacity"
                       style={{ backgroundColor: '#16a34a' }}
                     >
-                      Full
+                      View All
                     </Link>
                   </div>
 
                   <div className="space-y-1">
-                    {
+                    {debugDayOverride >= 5 ? (
+                      <div className="py-12 text-center">
+                        <div className="text-base font-medium text-gray-500">Weekend - No Classes</div>
+                      </div>
+                    ) : (
                       (teacherLevel === 'secondary' ? SECONDARY_TIMETABLE : PRIMARY_TIMETABLE)
                         .filter(row => row.type !== 'break')
                         .map((row, idx) => {
@@ -1284,7 +1288,7 @@ export default function Dashboard() {
                             </div>
                           )
                         })
-                    }
+                    )}
                   </div>
                 </div>
               </div>
