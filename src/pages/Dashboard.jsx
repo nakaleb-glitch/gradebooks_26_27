@@ -1059,112 +1059,78 @@ export default function Dashboard() {
 
                 {showDebugControls && (
                   <div className="mt-4 pt-4 border-t border-gray-100">
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1">
-                      <label className="text-xs font-medium text-gray-500 block mb-1">
-                        System Week Override
-                        {sessionStorage.getItem('debug_week_override') !== null && (
-                          <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">
-                            ACTIVE
-                          </span>
-                        )}
-                      </label>
-                      <div className="flex gap-2">
-                        <select
-                          value={debugWeekOverride}
-                          onChange={e => {
-                            const newWeekIdx = Number(e.target.value)
-                            setDebugWeekOverride(newWeekIdx)
-                            sessionStorage.setItem('debug_week_override', String(newWeekIdx))
-                            fetchDashboardData()
-                          }}
-                          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          {ALL_WEEKS.map((weekItem, idx) => (
-                            <option key={weekItem.week} value={idx}>
-                              {weekItem.label} — {weekItem.range}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={() => {
-                            // Clear all storage overrides
-                            sessionStorage.removeItem('debug_week_override')
-                            sessionStorage.removeItem('debug_day_override')
-                            sessionStorage.removeItem('debug_date_override')
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1">
+                        <label className="text-xs font-medium text-gray-500 block mb-1">
+                          System Date Override
+                          {sessionStorage.getItem('debug_date_override') !== null && (
+                            <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">
+                              ACTIVE OVERRIDE
+                            </span>
+                          )}
+                        </label>
+                        <div className="flex gap-2 items-center">
+                          <input
+                            type="date"
+                            value={debugDateOverride}
+                            onChange={e => {
+                              const selectedDate = new Date(e.target.value)
+                              setDebugDateOverride(e.target.value)
+                              sessionStorage.setItem('debug_date_override', e.target.value)
+                              
+                              // Auto calculate day of week (0=Sunday -> 6=Saturday)
+                              const dayIdx = selectedDate.getDay() === 0 ? 6 : selectedDate.getDay() - 1
+                              setDebugDayOverride(dayIdx)
+                              sessionStorage.setItem('debug_day_override', String(dayIdx))
 
-                            // Reset all state variables to current defaults
-                            setDebugWeekOverride(getCurrentWeekIndex())
-                            setDebugDayOverride(new Date().getDay() === 0 ? 6 : new Date().getDay() - 1)
-                            setDebugDateOverride(new Date().toISOString().slice(0, 10))
-                            
-                            fetchDashboardData()
-                          }}
-                          className="px-3 py-2 rounded-lg bg-gray-200 text-gray-700 text-sm hover:bg-gray-300"
-                        >
-                          Reset
-                        </button>
+                              // Auto calculate week number for this date
+                              const firstDay = new Date('2026-08-17')
+                              const diffTime = selectedDate.getTime() - firstDay.getTime()
+                              const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+                              const weekIndex = Math.max(0, Math.floor(diffDays / 7))
+                              if (weekIndex >= 0 && weekIndex < ALL_WEEKS.length) {
+                                setDebugWeekOverride(weekIndex)
+                                sessionStorage.setItem('debug_week_override', String(weekIndex))
+                              }
+                              
+                              fetchDashboardData()
+                            }}
+                            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <button
+                            onClick={() => {
+                              // Clear all storage overrides
+                              sessionStorage.removeItem('debug_week_override')
+                              sessionStorage.removeItem('debug_day_override')
+                              sessionStorage.removeItem('debug_date_override')
+
+                              // Reset all state variables to current defaults
+                              setDebugWeekOverride(getCurrentWeekIndex())
+                              setDebugDayOverride(new Date().getDay() === 0 ? 6 : new Date().getDay() - 1)
+                              setDebugDateOverride(new Date().toISOString().slice(0, 10))
+                              
+                              fetchDashboardData()
+                            }}
+                            className="px-3 py-2 rounded-lg bg-gray-200 text-gray-700 text-sm hover:bg-gray-300"
+                          >
+                            Reset
+                          </button>
+                        </div>
+                        
+                        {/* Auto calculated values display */}
+                        <div className="mt-3 pl-1 space-y-1">
+                          <div className="text-xs text-blue-600 font-medium">
+                            ▸ {ALL_WEEKS[debugWeekOverride]?.label || 'Week'} — {ALL_WEEKS[debugWeekOverride]?.range || ''}
+                          </div>
+                          <div className="text-xs text-blue-600 font-medium">
+                            ▸ {DAYS[debugDayOverride]}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-4 mt-4">
-                    <div className="flex-1">
-                      <label className="text-xs font-medium text-gray-500 block mb-1">
-                        Date Override
-                      </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="date"
-                          value={debugDateOverride}
-                          onChange={e => {
-                            const selectedDate = new Date(e.target.value)
-                            setDebugDateOverride(e.target.value)
-                            sessionStorage.setItem('debug_date_override', e.target.value)
-                            
-                            // Auto calculate day of week (0=Sunday -> 6=Saturday)
-                            const dayIdx = selectedDate.getDay() === 0 ? 6 : selectedDate.getDay() - 1
-                            setDebugDayOverride(dayIdx)
-                            sessionStorage.setItem('debug_day_override', String(dayIdx))
-
-                            // Auto calculate week number for this date
-                            const firstDay = new Date('2026-08-17')
-                            const diffTime = selectedDate.getTime() - firstDay.getTime()
-                            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-                            const weekIndex = Math.max(0, Math.floor(diffDays / 7))
-                            if (weekIndex >= 0 && weekIndex < ALL_WEEKS.length) {
-                              setDebugWeekOverride(weekIndex)
-                              sessionStorage.setItem('debug_week_override', String(weekIndex))
-                            }
-                          }}
-                          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4 mt-4">
-                    <div className="flex-1">
-                      <label className="text-xs font-medium text-gray-500 block mb-1">
-                        Day of Week Override (auto calculated)
-                      </label>
-                      <div className="flex gap-2">
-                        <select
-                          value={debugDayOverride}
-                          disabled
-                          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-600"
-                        >
-                          {DAYS.map((dayName, idx) => (
-                            <option key={idx} value={idx}>
-                              {dayName}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                    <p className="text-[10px] text-gray-400 mt-2">
-                      Select a week to override the entire system. All pages and features will react as if it is this week.
+                    
+                    <p className="text-[10px] text-gray-400 mt-3">
+                      Select any date. Week and Day are automatically calculated. Entire system will react as if this is the current date.
                     </p>
                   </div>
                 )}
