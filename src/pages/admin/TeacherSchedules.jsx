@@ -175,32 +175,7 @@ export default function TeacherSchedules() {
             ← Go Back
           </button>
 
-          <div className="flex gap-6 items-end">
-            <div className="bg-white rounded-xl border border-gray-200 w-full max-w-xs">
-              <div className="grid grid-cols-2 border-b border-gray-200">
-                <button
-                  onClick={() => setSelectedLevel('primary')}
-                  className={`py-3 text-sm font-medium transition-colors border-b-2 ${
-                    selectedLevel === 'primary'
-                      ? 'border-[#d1232a] bg-[#d1232a1a] text-[#d1232a] font-semibold'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  Primary
-                </button>
-                <button
-                  onClick={() => setSelectedLevel('secondary')}
-                  className={`py-3 text-sm font-medium transition-colors border-b-2 ${
-                    selectedLevel === 'secondary'
-                      ? 'border-[#d1232a] bg-[#d1232a1a] text-[#d1232a] font-semibold'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  Secondary
-                </button>
-              </div>
-            </div>
-
+          <div className="flex flex-col items-end">
             <div className="flex flex-col items-center">
               <label
                 className={`cursor-pointer w-44 px-4 py-2 rounded-lg text-sm font-medium transition-colors text-center`}
@@ -231,6 +206,31 @@ export default function TeacherSchedules() {
 
         <h2 className="text-2xl font-bold text-gray-900">Teacher Schedule Management</h2>
         <p className="text-sm text-gray-500 mt-1">Click any cell to assign teacher and subject. Periods are vertical, classes are horizontal.</p>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 mb-4">
+        <div className="grid grid-cols-2 border-b border-gray-200">
+          <button
+            onClick={() => setSelectedLevel('primary')}
+            className={`py-3 text-sm font-medium transition-colors border-b-2 ${
+              selectedLevel === 'primary'
+                ? 'border-[#d1232a] bg-[#d1232a1a] text-[#d1232a] font-semibold'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            Primary
+          </button>
+          <button
+            onClick={() => setSelectedLevel('secondary')}
+            className={`py-3 text-sm font-medium transition-colors border-b-2 ${
+              selectedLevel === 'secondary'
+                ? 'border-[#d1232a] bg-[#d1232a1a] text-[#d1232a] font-semibold'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            Secondary
+          </button>
+        </div>
       </div>
 
       {DAYS.map((day, dayIdx) => (
