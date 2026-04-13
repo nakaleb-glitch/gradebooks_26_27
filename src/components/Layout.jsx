@@ -249,7 +249,7 @@ export default function Layout({ children }) {
             />
             <div className="flex flex-col">
               <div className="text-xl font-bold text-white tracking-tight">Cambridge Programme Portal</div>
-              <div className="text-xs text-gray-400">Royal School International • Academic Year 2026-2027</div>
+              <div className="text-xs text-gray-400">Royal School • Phu Lam Campus</div>
             </div>
             {/* Nav menu */}
             <div className="flex gap-6 items-center">
