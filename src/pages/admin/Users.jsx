@@ -388,7 +388,7 @@ export default function Users() {
           const staff_id = capitalizeFirstAlpha(row['Staff ID'] || row['staff_id'] || '')
           const email = (row['Email'] || row['email'] || '').trim().toLowerCase()
           const roleRaw = (row['Role'] || row['role'] || '').trim().toLowerCase()
-          const role = roleRaw === 'admin' ? 'admin' : 'teacher'
+          const role = roleRaw === 'admin' ? 'admin' : roleRaw === 'admin_teacher' ? 'admin_teacher' : 'teacher'
           const level = normalizeLevel(row['Level'] || row['level'] || '')
           const subject = normalizeSubject(row['Subject'] || row['subject'] || '')
 
