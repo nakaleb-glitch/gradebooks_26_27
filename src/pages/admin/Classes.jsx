@@ -66,6 +66,7 @@ export default function Classes() {
     level: 'all',
     programme: 'all',
     subject: 'all',
+    teacher_id: 'all',
   })
   const classCsvTemplate = [
     'Class Name,Level,Programme,Subject,Teacher Email',
@@ -392,6 +393,13 @@ export default function Classes() {
     new Set(classScoped.map(c => c.subject).filter(Boolean))
   ).sort((a, b) => a.localeCompare(b))
 
+  const teacherOptions = Array.from(
+    new Set(classes.filter(c => c.teacher_id).map(c => ({ 
+      id: c.teacher_id, 
+      name: c.users?.full_name || c.users?.email 
+    })))
+  ).sort((a, b) => a.name.localeCompare(b.name))
+
   const filteredClasses = classes.filter(cls => {
     const homeroom = getHomeroom(cls.name)
     const grade = getGrade(cls.name)
@@ -400,7 +408,8 @@ export default function Classes() {
       (filters.grade === 'all' || grade === filters.grade) &&
       (filters.level === 'all' || cls.level === filters.level) &&
       (filters.programme === 'all' || cls.programme === filters.programme) &&
-      (filters.subject === 'all' || cls.subject === filters.subject)
+      (filters.subject === 'all' || cls.subject === filters.subject) &&
+      (filters.teacher_id === 'all' || cls.teacher_id === filters.teacher_id)
     )
   })
 
@@ -467,7 +476,7 @@ export default function Classes() {
           >
             {showForm ? 'Cancel' : '+ New Class'}
           </button>
-          <div className="flex flex-col items-end">
+          <div className="flex flex-col items-center">
             <label
               className={`cursor-pointer px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 importing ? 'bg-gray-300 text-gray-600' : ''
@@ -717,8 +726,21 @@ export default function Classes() {
               ))}
             </select>
           </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Teacher</label>
+            <select
+              value={filters.teacher_id}
+              onChange={e => setFilters(prev => ({ ...prev, teacher_id: e.target.value }))}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Teachers</option>
+              {teacherOptions.map(t => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
           <button
-            onClick={() => setFilters({ homeroom: 'all', grade: 'all', level: 'all', programme: 'all', subject: 'all' })}
+            onClick={() => setFilters({ homeroom: 'all', grade: 'all', level: 'all', programme: 'all', subject: 'all', teacher_id: 'all' })}
             className="px-3 py-2 rounded-lg text-sm font-medium text-white"
             style={{ backgroundColor: '#d1232a' }}
           >
