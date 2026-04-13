@@ -83,7 +83,8 @@ export default function TeacherSchedules() {
     const existing = schedules[`${className}-${day}-${period}`]
     setEditForm({
       teacher_id: existing?.teacher_id || '',
-      subject: existing?.subject || ''
+      subject: existing?.subject || '',
+      teacher_name: existing?.teacher_id ? getTeacherName(existing.teacher_id) : ''
     })
     setEditingCell({ className, day, period })
   }
@@ -538,7 +539,7 @@ export default function TeacherSchedules() {
 
               {editForm.teacher_id && editForm.teacher_name && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Teacher</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Assigned Teacher</label>
                   <div className="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium border border-blue-200">
                     {editForm.teacher_name}
                   </div>
