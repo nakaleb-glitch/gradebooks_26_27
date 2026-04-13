@@ -136,7 +136,7 @@ serve(async (req) => {
             email,
             full_name,
             staff_id,
-            role: role === 'admin' ? 'admin' : 'teacher',
+            role: role === 'admin' ? 'admin' : role === 'admin_teacher' ? 'admin_teacher' : 'teacher',
             level,
             subject,
             must_change_password: true

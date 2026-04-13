@@ -46,6 +46,9 @@ export default function Users() {
     level: '',
     subject: '',
   })
+  const [filterLevel, setFilterLevel] = useState('')
+  const [filterSubject, setFilterSubject] = useState('')
+  const [filterRole, setFilterRole] = useState('')
   const usersCsvTemplate = [
     'Full Name,Staff ID,Email,Role,Level,Subject',
     'Teacher One,T001,teacher1@royal.edu.vn,teacher,primary,ESL/GP',
@@ -240,7 +243,7 @@ export default function Users() {
     const full_name = capitalizeFirstAlpha(createTeacherForm.full_name)
     const staff_id = capitalizeFirstAlpha(createTeacherForm.staff_id)
     const email = String(createTeacherForm.email || '').trim().toLowerCase()
-    const role = createTeacherForm.role === 'admin' ? 'admin' : 'teacher'
+    const role = createTeacherForm.role === 'admin' ? 'admin' : createTeacherForm.role === 'admin_teacher' ? 'admin_teacher' : 'teacher'
     const level = normalizeLevel(createTeacherForm.level)
     const subject = normalizeSubject(createTeacherForm.subject)
 
@@ -640,6 +643,57 @@ export default function Users() {
         </div>
       )}
 
+      {/* Filters */}
+      {!editing && (
+        <div className="mb-4 flex flex-wrap gap-3 items-center">
+          <select
+            value={filterRole}
+            onChange={(e) => setFilterRole(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+          >
+            <option value="">All Roles</option>
+            <option value="teacher">Teacher</option>
+            <option value="admin">Admin</option>
+            <option value="admin_teacher">Admin + Teacher</option>
+          </select>
+          
+          <select
+            value={filterLevel}
+            onChange={(e) => setFilterLevel(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+          >
+            <option value="">All Levels</option>
+            {LEVELS.map((l) => (
+              <option key={l} value={l}>{levelLabel(l)}</option>
+            ))}
+          </select>
+          
+          <select
+            value={filterSubject}
+            onChange={(e) => setFilterSubject(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+          >
+            <option value="">All Subjects</option>
+            {SUBJECTS.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+          
+          {(filterRole || filterLevel || filterSubject) && (
+            <button
+              onClick={() => {
+                setFilterRole('')
+                setFilterLevel('')
+                setFilterSubject('')
+              }}
+              className="text-sm text-gray-500 hover:text-gray-700 underline"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Table */}
       <div className={`bg-white rounded-xl border border-gray-200 overflow-x-auto overflow-y-visible ${editing ? 'mb-24' : ''}`}>
         {loading ? (
@@ -663,7 +717,11 @@ export default function Users() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {users.map(user => {
+              {users
+                .filter(user => !filterRole || user.role === filterRole)
+                .filter(user => !filterLevel || user.level === filterLevel)
+                .filter(user => !filterSubject || user.subject === filterSubject)
+                .map(user => {
                 const isRowEditing = !editing && rowEditingId === user.id
                 const resetRequestCount = resetRequestsByStaffId[String(user.staff_id || '').trim().toLowerCase()] || 0
                 return (
