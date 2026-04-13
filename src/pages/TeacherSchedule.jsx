@@ -202,12 +202,12 @@ export default function TeacherSchedule() {
           <table className="w-full text-sm table-fixed">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-3 py-3 text-left font-medium text-gray-600 w-[180px]">Time / Period</th>
-                {DAYS.map(day => (
-                  <th key={day} className="px-3 py-3 text-center font-medium text-gray-600">
-                    {day}
-                  </th>
-                ))}
+                 <th className="px-3 py-3 text-left font-medium text-gray-600 w-[120px] min-w-[120px] sticky left-0 bg-gray-50 z-10">Time / Period</th>
+                 {DAYS.map(day => (
+                   <th key={day} className="px-3 py-3 text-center font-medium text-gray-600 w-[112px] min-w-[112px]">
+                     {day}
+                   </th>
+                 ))}
               </tr>
             </thead>
             <tbody>
@@ -215,7 +215,7 @@ export default function TeacherSchedule() {
                 if (row.type === 'break') {
                   return (
                     <tr key={idx} className="border-b border-gray-100 bg-gray-100">
-                      <td className="px-3 py-2 border-r border-gray-200 font-medium text-gray-500">
+                      <td className="px-3 py-2 border-r border-gray-200 font-medium text-gray-500 sticky left-0 bg-gray-100 z-10">
                         <div className="font-semibold">{row.label}</div>
                         <div className="text-xs text-gray-400">{row.time}</div>
                       </td>
@@ -230,7 +230,7 @@ export default function TeacherSchedule() {
 
                 return (
                   <tr key={idx} className="border-b border-gray-100">
-                    <td className="px-3 py-3 border-r border-gray-100 bg-gray-50">
+                    <td className="px-3 py-3 border-r border-gray-100 bg-gray-50 sticky left-0 z-10">
                       <div className="font-medium">{row.label}</div>
                       <div className="text-xs text-gray-500">{row.time}</div>
                     </td>
