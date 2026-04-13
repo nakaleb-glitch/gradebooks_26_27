@@ -329,17 +329,19 @@ export default function Layout({ children }) {
                   2026 - 2027
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-300">Current Week:</span>
-                <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: '#ffc612', color: '#1a1a1a' }}>
-                  {ALL_WEEKS[getCurrentWeekIndex()]?.label || 'Week 0'}
-                </span>
-                {sessionStorage.getItem('debug_week_override') !== null && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500 text-amber-900 font-medium">
-                    OVERRIDE
-                  </span>
-                )}
-              </div>
+               <div className="flex flex-col items-center gap-1">
+                 {sessionStorage.getItem('debug_week_override') !== null && (
+                   <span className="text-[9px] px-1 py-0.5 rounded bg-amber-500 text-amber-900 font-medium">
+                     OVERRIDE
+                   </span>
+                 )}
+                 <div className="flex items-center gap-2">
+                   <span className="text-xs text-gray-300">Current Week:</span>
+                   <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: '#ffc612', color: '#1a1a1a' }}>
+                     {ALL_WEEKS[getCurrentWeekIndex()]?.label || 'Week 0'}
+                   </span>
+                 </div>
+               </div>
             </div>
           </div>
 
