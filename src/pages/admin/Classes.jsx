@@ -96,7 +96,7 @@ export default function Classes() {
     const { data } = await supabase
       .from('users')
       .select('id, full_name, email, level, subject')
-      .eq('role', 'teacher')
+      .in('role', ['teacher', 'admin_teacher'])
       .order('full_name')
     setTeachers(data || [])
   }
@@ -254,7 +254,7 @@ export default function Classes() {
 
           const [{ data: studentsData }, { data: teachersData }, { data: existingClassesData }] = await Promise.all([
             supabase.from('students').select('id, class'),
-            supabase.from('users').select('id, email').eq('role', 'teacher'),
+            supabase.from('users').select('id, email').in('role', ['teacher', 'admin_teacher']),
             supabase.from('classes').select('id, name, subject, academic_year').eq('academic_year', '2026-2027'),
           ])
 

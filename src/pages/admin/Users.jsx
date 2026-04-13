@@ -764,13 +764,24 @@ export default function Users() {
                         <option value="admin">Admin</option>
                         <option value="admin_teacher">Admin + Teacher</option>
                       </select>
-                    ) : (
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                        user.role === 'admin' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        {formatDisplayText(user.role)}
-                      </span>
-                    )}
+                     ) : (
+                       user.role === 'admin_teacher' ? (
+                         <div className="flex items-center gap-1">
+                           <span className="text-xs px-2 py-1 rounded-full font-medium bg-red-100 text-red-700">
+                             Admin
+                           </span>
+                           <span className="text-xs px-2 py-1 rounded-full font-medium bg-blue-100 text-blue-700">
+                             Teacher
+                           </span>
+                         </div>
+                       ) : (
+                         <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                           user.role === 'admin' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+                         }`}>
+                           {formatDisplayText(user.role)}
+                         </span>
+                       )
+                     )}
                   </td>
                   <td className="px-6 py-3">
                     {editing ? (
