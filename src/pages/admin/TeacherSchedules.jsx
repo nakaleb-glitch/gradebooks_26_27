@@ -19,9 +19,7 @@ const TIMETABLE = [
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']
 
 const SUBJECTS = [
-  'ESL', 'Mathematics', 'Science', 'Global Perspectives', 'English', 'Vietnamese',
-  'Physical Education', 'Art', 'Music', 'Computer Science', 'Chemistry', 'Physics',
-  'Biology', 'History', 'Geography', 'Economics', 'Business'
+  'ESL', 'Mathematics', 'Science', 'Global Perspectives'
 ]
 
 export default function TeacherSchedules() {
