@@ -378,7 +378,7 @@ export default function TeacherSchedules() {
         </div>
 
         <h2 className="text-2xl font-bold text-gray-900">Teacher Schedule Management</h2>
-        <p className="text-sm text-gray-500 mt-1">Click any cell to assign teacher and subject. Periods are vertical, classes are horizontal.</p>
+        <p className="text-sm text-gray-500 mt-1">Master Schedule - Click any cell. Choose a subject. Teacher will auto-assign.</p>
         
         {lastUpdated && lastUpdated.last_updated_at && (
           <p className="text-xs text-gray-400 mt-1">
