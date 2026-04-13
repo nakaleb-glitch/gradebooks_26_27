@@ -57,7 +57,7 @@ export default function TeacherSchedules() {
   const fetchClasses = async () => {
     const { data } = await supabase
       .from('classes')
-      .select('id, name, level, programme, teacher_id')
+      .select('id, name, level, programme, teacher_id, subject')
       .eq('level', selectedLevel)
       .order('name')
     
