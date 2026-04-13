@@ -510,14 +510,24 @@ export default function TeacherSchedules() {
                      let autoTeacherName = ''
 
                      if (selectedSubject && editingCell) {
+                       console.log('Looking up teacher for:', editingCell.className, selectedSubject)
+                       console.log('Total classes loaded:', classes.length)
+
                        // Find the one matching class for this homeroom + subject
-                       const matchingClass = classes.find(c =>
-                         c.name && c.name.startsWith(editingCell.className + ' ') && c.subject === selectedSubject
-                       )
+                       const matchingClass = classes.find(c => {
+                         console.log('Checking class:', c.name, c.subject)
+                         return c.name &&
+                           c.name.trim().startsWith(editingCell.className.trim() + ' ') &&
+                           c.subject &&
+                           c.subject.trim().toLowerCase() === selectedSubject.trim().toLowerCase()
+                       })
+
+                       console.log('Found matching class:', matchingClass)
 
                        if (matchingClass && matchingClass.teacher_id) {
                          autoTeacherId = matchingClass.teacher_id
                          autoTeacherName = getTeacherName(matchingClass.teacher_id)
+                         console.log('Found teacher:', autoTeacherName)
                        }
                      }
 
