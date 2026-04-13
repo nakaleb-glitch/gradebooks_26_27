@@ -348,18 +348,6 @@ export default function Layout({ children }) {
           {/* Right — Cambridge Logo + user info */}
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-4">
-              {profile?.role === 'admin_teacher' && (
-                <button
-                  onClick={toggleRoleMode}
-                  className="px-2 py-1 rounded-md text-[10px] font-semibold transition-colors"
-                  style={{
-                    backgroundColor: activeMode === 'admin' ? '#d1232a' : '#1f86c7',
-                    color: '#ffffff'
-                  }}
-                >
-                  Toggle to {activeMode === 'admin' ? 'Teacher Mode' : 'Admin Mode'}
-                </button>
-              )}
 
               {avatarUrl ? (
                 <img
@@ -384,13 +372,30 @@ export default function Layout({ children }) {
                 </div>
                 <div className="text-xs text-gray-400">{idLabel}: {profile?.staff_id || '—'}</div>
               </div>
-              <span className="text-xs px-2 py-1 rounded-full font-medium"
-                style={{
-                  background: profile?.role === 'admin' ? '#d1232a' : '#1f86c7',
-                  color: '#fff'
-                }}>
-                {displayRole || 'User'}
-              </span>
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-xs px-2 py-1 rounded-full font-medium"
+                  style={{
+                    background: profile?.role === 'admin' || profile?.role === 'admin_teacher' ? '#d1232a' : '#1f86c7',
+                    color: '#fff'
+                  }}>
+                  {displayRole || 'User'}
+                </span>
+                {profile?.role === 'admin_teacher' && (
+                  <button
+                    onClick={() => {
+                      toggleRoleMode()
+                      window.location.reload()
+                    }}
+                    className="px-2 py-0.5 rounded-md text-[9px] font-semibold transition-colors"
+                    style={{
+                      backgroundColor: '#6b7280',
+                      color: '#ffffff'
+                    }}
+                  >
+                    Switch
+                  </button>
+                )}
+              </div>
               <div className="flex flex-col items-start gap-1">
                 <button
                   type="button"
