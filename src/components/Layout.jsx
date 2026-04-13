@@ -336,33 +336,15 @@ export default function Layout({ children }) {
             </div>
 
             {/* Global Current Week Indicator */}
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-300">Current Week:</span>
-                <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: '#ffc612', color: '#1a1a1a' }}>
-                  {ALL_WEEKS[getCurrentWeekIndex()]?.label || 'Week 0'}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-300">Current Week:</span>
+              <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: '#ffc612', color: '#1a1a1a' }}>
+                {ALL_WEEKS[getCurrentWeekIndex()]?.label || 'Week 0'}
+              </span>
+              {sessionStorage.getItem('debug_week_override') !== null && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500 text-amber-900 font-medium">
+                  OVERRIDE
                 </span>
-                {sessionStorage.getItem('debug_week_override') !== null && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500 text-amber-900 font-medium">
-                    OVERRIDE
-                  </span>
-                )}
-              </div>
-              
-              {profile?.role === 'admin' && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-300">Academic Year:</span>
-                  <select
-                    value={academicYear}
-                    onChange={e => setAcademicYear(e.target.value)}
-                    className="text-xs font-bold px-3 py-1 rounded-full border-0 focus:outline-none focus:ring-0"
-                    style={{ backgroundColor: '#1f86c7', color: '#ffffff' }}
-                  >
-                    {ACADEMIC_YEARS.map(year => (
-                      <option key={year} value={year}>{year}</option>
-                    ))}
-                  </select>
-                </div>
               )}
             </div>
           </div>

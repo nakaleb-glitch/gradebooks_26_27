@@ -186,6 +186,10 @@ export default function Dashboard() {
   const [showDebugControls, setShowDebugControls] = useState(false)
   const [teacherSchedule, setTeacherSchedule] = useState({})
   const [teacherLevel, setTeacherLevel] = useState('primary')
+  const [localAcademicYear, setLocalAcademicYear] = useState(() => {
+    const saved = localStorage.getItem('academic_year')
+    return saved || '2026 - 2027'
+  })
 
   useEffect(() => {
     if (profile) fetchDashboardData()
@@ -1019,6 +1023,18 @@ export default function Dashboard() {
               <div className="bg-white rounded-xl border border-gray-200 p-4">
                 <div className="flex flex-wrap items-end gap-4">
                   <div>
+                    <label className="text-xs font-medium text-gray-500 block mb-1">Academic Year</label>
+                    <select
+                      value={localAcademicYear}
+                      onChange={e => setLocalAcademicYear(e.target.value)}
+                      className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="2026 - 2027">2026 - 2027</option>
+                      <option value="2027 - 2028">2027 - 2028</option>
+                      <option value="2028 - 2029">2028 - 2029</option>
+                    </select>
+                  </div>
+                  <div>
                     <label className="text-xs font-medium text-gray-500 block mb-1">Level</label>
                     <select
                       value={levelFilter}
@@ -1046,6 +1062,17 @@ export default function Dashboard() {
                         <option key={g} value={g}>Grade {g}</option>
                       ))}
                     </select>
+                  </div>
+                  <div>
+                    <button
+                      onClick={() => {
+                        localStorage.setItem('academic_year', localAcademicYear)
+                        window.location.reload()
+                      }}
+                      className="border border-gray-300 rounded-lg px-4 py-2 text-sm bg-green-600 text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    >
+                      Apply
+                    </button>
                   </div>
                   <div>
                     <button
