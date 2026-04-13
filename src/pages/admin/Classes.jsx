@@ -106,8 +106,17 @@ export default function Classes() {
   // Also tolerate subject naming differences between `classes.subject`
   // and `users.subject` (e.g. some teacher profiles use "ESL/GP").
   const acceptableTeacherSubjects = (classSubject) => {
-    if (classSubject === 'ESL' || classSubject === 'Global Perspectives') {
-      return ['ESL/GP', 'ESL', 'Global Perspectives']
+    if (classSubject === 'ESL') {
+      return ['ESL/GP', 'VN ESL', 'ESL']
+    }
+    if (classSubject === 'Mathematics') {
+      return ['Mathematics', 'Science']
+    }
+    if (classSubject === 'Science') {
+      return ['Science', 'Mathematics']
+    }
+    if (classSubject === 'Global Perspectives') {
+      return ['ESL/GP']
     }
     return [classSubject]
   }
