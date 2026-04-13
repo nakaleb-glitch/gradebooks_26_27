@@ -49,7 +49,7 @@ export default function TeacherSchedules() {
     const { data } = await supabase
       .from('users')
       .select('id, full_name')
-      .eq('role', 'teacher')
+      .in('role', ['teacher', 'admin_teacher'])
       .order('full_name')
     setTeachers(data || [])
   }
@@ -513,19 +513,40 @@ export default function TeacherSchedules() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Subject</label>
-                <select
-                  value={editForm.subject}
-                  onChange={(e) => setEditForm({ ...editForm, subject: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
-                >
-                  <option value="">Select subject</option>
-                  {SUBJECTS.map(sub => (
-                    <option key={sub} value={sub}>{sub}</option>
-                  ))}
-                </select>
-              </div>
+               <div>
+                 <label className="block text-xs font-medium text-gray-500 mb-1">Subject</label>
+                 <select
+                   value={editForm.subject}
+                   onChange={(e) => {
+                     const selectedSubject = e.target.value
+                     let autoTeacherId = ''
+
+                     if (selectedSubject && editingCell) {
+                       // Find all classes for this homeroom
+                       const matchingClasses = classes.filter(c =>
+                         c.name && c.name.startsWith(editingCell.className + ' ') && c.subject === selectedSubject
+                       )
+
+                       // If we have exactly one matching class, auto-select that teacher
+                       if (matchingClasses.length === 1 && matchingClasses[0].teacher_id) {
+                         autoTeacherId = matchingClasses[0].teacher_id
+                       }
+                     }
+
+                     setEditForm({
+                       ...editForm,
+                       subject: selectedSubject,
+                       teacher_id: autoTeacherId
+                     })
+                   }}
+                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+                 >
+                   <option value="">Select subject</option>
+                   {SUBJECTS.map(sub => (
+                     <option key={sub} value={sub}>{sub}</option>
+                   ))}
+                 </select>
+               </div>
 
               <div className="flex gap-3 pt-2">
                 <button
