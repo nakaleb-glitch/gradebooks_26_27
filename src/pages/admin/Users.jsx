@@ -109,7 +109,7 @@ export default function Users() {
   const fetchUsers = async () => {
     setLoading(true)
     const [{ data: usersData }, { data: classesData }, { data: resetRequestsData }] = await Promise.all([
-      supabase.from('users').select('*').in('role', ['teacher', 'admin']).order('full_name'),
+      supabase.from('users').select('*').in('role', ['teacher', 'admin', 'admin_teacher']).order('full_name'),
       supabase.from('classes').select('id, name, subject, teacher_id').order('name'),
       supabase
         .from('password_reset_requests')
