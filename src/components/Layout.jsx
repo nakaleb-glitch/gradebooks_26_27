@@ -321,17 +321,25 @@ export default function Layout({ children }) {
               )}
             </div>
 
-            {/* Global Current Week Indicator */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-300">Current Week:</span>
-              <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: '#ffc612', color: '#1a1a1a' }}>
-                {ALL_WEEKS[getCurrentWeekIndex()]?.label || 'Week 0'}
-              </span>
-              {sessionStorage.getItem('debug_week_override') !== null && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500 text-amber-900 font-medium">
-                  OVERRIDE
+            {/* Global Academic Status Indicator */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-300">Academic Year:</span>
+                <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: '#1f86c7', color: '#ffffff' }}>
+                  2026 - 2027
                 </span>
-              )}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-300">Current Week:</span>
+                <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: '#ffc612', color: '#1a1a1a' }}>
+                  {ALL_WEEKS[getCurrentWeekIndex()]?.label || 'Week 0'}
+                </span>
+                {sessionStorage.getItem('debug_week_override') !== null && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500 text-amber-900 font-medium">
+                    OVERRIDE
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
