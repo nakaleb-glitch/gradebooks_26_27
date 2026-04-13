@@ -323,25 +323,28 @@ export default function Layout({ children }) {
 
             {/* Global Academic Status Indicator */}
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-300">Academic Year:</span>
-                <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: '#1f86c7', color: '#ffffff' }}>
-                  2026 - 2027
-                </span>
-              </div>
-               <div className="flex flex-col items-center gap-1">
-                 {sessionStorage.getItem('debug_week_override') !== null && (
-                   <span className="text-[9px] px-1 py-0.5 rounded bg-amber-500 text-amber-900 font-medium">
-                     OVERRIDE
-                   </span>
-                 )}
-                 <div className="flex items-center gap-2">
-                   <span className="text-xs text-gray-300">Current Week:</span>
-                   <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: '#ffc612', color: '#1a1a1a' }}>
-                     {ALL_WEEKS[getCurrentWeekIndex()]?.label || 'Week 0'}
-                   </span>
-                 </div>
-               </div>
+              {sessionStorage.getItem('debug_week_override') === null ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-300">Academic Year:</span>
+                    <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: '#1f86c7', color: '#ffffff' }}>
+                      2026 - 2027
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-300">Current Week:</span>
+                    <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: '#ffc612', color: '#1a1a1a' }}>
+                      {ALL_WEEKS[getCurrentWeekIndex()]?.label || 'Week 0'}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center">
+                  <span className="text-xs font-semibold text-amber-400 px-3 py-1">
+                    Admin override in progress. System set to SY26-27 and {ALL_WEEKS[getCurrentWeekIndex()]?.label || 'Week 0'}.
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
