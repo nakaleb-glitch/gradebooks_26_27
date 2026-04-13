@@ -92,6 +92,16 @@ export default function Layout({ children }) {
   const [theme, setTheme] = useState('light')
   const [navNameEng, setNavNameEng] = useState('')
   const [navNameVn, setNavNameVn] = useState('')
+  const [academicYear, setAcademicYear] = useState(() => {
+    const saved = localStorage.getItem('academic_year')
+    return saved || '2026 - 2027'
+  })
+  
+  const ACADEMIC_YEARS = [
+    '2026 - 2027',
+    '2027 - 2028',
+    '2028 - 2029',
+  ]
 
   const confirmUnsavedGradebookNavigation = () => {
     const hasUnsaved = sessionStorage.getItem('gradebook_unsaved_changes') === '1'
@@ -148,6 +158,10 @@ export default function Layout({ children }) {
     document.documentElement.classList.toggle('dark', theme === 'dark')
     localStorage.setItem('theme_preference', theme)
   }, [theme])
+  
+  useEffect(() => {
+    localStorage.setItem('academic_year', academicYear)
+  }, [academicYear])
 
   useEffect(() => {
     const resolveNavbarName = async () => {
@@ -249,7 +263,7 @@ export default function Layout({ children }) {
             />
             <div className="flex flex-col">
               <div className="text-xl font-bold text-white tracking-tight">Cambridge Programme Portal</div>
-              <div className="text-xs text-gray-400">Royal School International • Academic Year 2026-2027</div>
+              <div className="text-xs text-gray-400">Royal School - Academic Year: {academicYear}</div>
             </div>
             {/* Nav menu */}
             <div className="flex gap-6 items-center">
@@ -322,15 +336,33 @@ export default function Layout({ children }) {
             </div>
 
             {/* Global Current Week Indicator */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-300">Current Week:</span>
-              <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: '#ffc612', color: '#1a1a1a' }}>
-                {ALL_WEEKS[getCurrentWeekIndex()]?.label || 'Week 0'}
-              </span>
-              {sessionStorage.getItem('debug_week_override') !== null && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500 text-amber-900 font-medium">
-                  OVERRIDE
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-300">Current Week:</span>
+                <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: '#ffc612', color: '#1a1a1a' }}>
+                  {ALL_WEEKS[getCurrentWeekIndex()]?.label || 'Week 0'}
                 </span>
+                {sessionStorage.getItem('debug_week_override') !== null && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500 text-amber-900 font-medium">
+                    OVERRIDE
+                  </span>
+                )}
+              </div>
+              
+              {profile?.role === 'admin' && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-300">Academic Year:</span>
+                  <select
+                    value={academicYear}
+                    onChange={e => setAcademicYear(e.target.value)}
+                    className="text-xs font-bold px-3 py-1 rounded-full border-0 focus:outline-none focus:ring-0"
+                    style={{ backgroundColor: '#1f86c7', color: '#ffffff' }}
+                  >
+                    {ACADEMIC_YEARS.map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
               )}
             </div>
           </div>
