@@ -322,28 +322,25 @@ export default function Layout({ children }) {
             </div>
 
             {/* Global Academic Status Indicator */}
-            <div className="flex items-center gap-4">
-              {sessionStorage.getItem('debug_week_override') === null ? (
-                <>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-300">Academic Year:</span>
-                    <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: '#1f86c7', color: '#ffffff' }}>
-                      2026 - 2027
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-300">Current Week:</span>
-                    <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: '#ffc612', color: '#1a1a1a' }}>
-                      {ALL_WEEKS[getCurrentWeekIndex()]?.label || 'Week 0'}
-                    </span>
-                  </div>
-                </>
-              ) : (
-                <div className="flex items-center">
-                  <span className="text-xs font-semibold italic text-amber-400 px-3 py-1">
-                    Admin date override in progress.
+            <div className="flex flex-col items-center gap-1">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-300">Academic Year:</span>
+                  <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: '#1f86c7', color: '#ffffff' }}>
+                    2026 - 2027
                   </span>
                 </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-300">Current Week:</span>
+                  <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: '#ffc612', color: '#1a1a1a' }}>
+                    {ALL_WEEKS[getCurrentWeekIndex()]?.label || 'Week 0'}
+                  </span>
+                </div>
+              </div>
+              {sessionStorage.getItem('debug_week_override') !== null && (
+                <span className="text-xs font-semibold italic text-amber-400">
+                  Admin date override in progress.
+                </span>
               )}
             </div>
           </div>
