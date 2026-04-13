@@ -43,9 +43,6 @@ ALTER TABLE events_deadlines ADD COLUMN IF NOT EXISTS school_year TEXT DEFAULT '
 -- Add school_year column to resource_bookings table
 ALTER TABLE resource_bookings ADD COLUMN IF NOT EXISTS school_year TEXT DEFAULT '2026 - 2027';
 
--- Add school_year column to resources table
-ALTER TABLE resources ADD COLUMN IF NOT EXISTS school_year TEXT DEFAULT '2026 - 2027';
-
 -- Update all existing NULL values to default academic year
 UPDATE users SET school_year = '2026 - 2027' WHERE school_year IS NULL;
 UPDATE students SET school_year = '2026 - 2027' WHERE school_year IS NULL;
@@ -61,7 +58,6 @@ UPDATE teacher_announcement_targets SET school_year = '2026 - 2027' WHERE school
 UPDATE behavior_reports SET school_year = '2026 - 2027' WHERE school_year IS NULL;
 UPDATE events_deadlines SET school_year = '2026 - 2027' WHERE school_year IS NULL;
 UPDATE resource_bookings SET school_year = '2026 - 2027' WHERE school_year IS NULL;
-UPDATE resources SET school_year = '2026 - 2027' WHERE school_year IS NULL;
 
 -- Create index on school_year for all tables
 CREATE INDEX IF NOT EXISTS idx_users_school_year ON users(school_year);
@@ -77,4 +73,3 @@ CREATE INDEX IF NOT EXISTS idx_teacher_announcements_school_year ON teacher_anno
 CREATE INDEX IF NOT EXISTS idx_behavior_reports_school_year ON behavior_reports(school_year);
 CREATE INDEX IF NOT EXISTS idx_events_deadlines_school_year ON events_deadlines(school_year);
 CREATE INDEX IF NOT EXISTS idx_resource_bookings_school_year ON resource_bookings(school_year);
-CREATE INDEX IF NOT EXISTS idx_resources_school_year ON resources(school_year);
