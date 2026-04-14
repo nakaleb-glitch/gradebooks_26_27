@@ -3,16 +3,43 @@
 
 create or replace function public.get_email_by_staff_id(p_staff_id text)
 returns text
-language sql
+language plpgsql
 security definer
 set search_path = public
 stable
 as $$
-  select u.email
-  from public.users u
-  where lower(u.staff_id) = lower(trim(p_staff_id))
-     or lower(u.student_id) = lower(trim(p_staff_id))
-  limit 1;
+DECLARE
+  user_email text;
+BEGIN
+  -- First try staff_id lookup
+  SELECT email INTO user_email
+  FROM public.users u
+  WHERE lower(u.staff_id) = lower(trim(p_staff_id))
+  LIMIT 1;
+
+  IF user_email IS NOT NULL THEN
+    RETURN user_email;
+  END IF;
+
+  -- Try student_id lookup
+  SELECT email INTO user_email
+  FROM public.users u
+  WHERE lower(u.student_id) = lower(trim(p_staff_id))
+  LIMIT 1;
+
+  IF user_email IS NOT NULL THEN
+    RETURN user_email;
+  END IF;
+
+  -- Try direct students table lookup
+  SELECT u.email INTO user_email
+  FROM public.students s
+  JOIN public.users u ON u.student_id_ref = s.id
+  WHERE lower(s.student_id) = lower(trim(p_staff_id))
+  LIMIT 1;
+
+  RETURN user_email;
+END;
 $$;
 
 revoke all on function public.get_email_by_staff_id(text) from public;
