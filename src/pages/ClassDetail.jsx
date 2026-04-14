@@ -835,6 +835,18 @@ const letterGradeFromPercentage = (score) => {
   return 'E'
 }
 
+const STUDENT_AVATAR_COL_CLASS = 'text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-[72px] min-w-[72px]'
+const STUDENT_INFO_COL_CLASS = 'text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 w-[300px] min-w-[300px]'
+const STUDENT_AVATAR_CELL_CLASS = 'px-3 py-3 sticky left-0 bg-white'
+const STUDENT_INFO_CELL_CLASS = 'px-4 py-3 bg-white'
+
+const weightedNormalized = (items) => {
+  const present = items.filter((item) => item.value != null)
+  const totalWeight = present.reduce((sum, item) => sum + item.weight, 0)
+  if (!totalWeight) return null
+  return present.reduce((sum, item) => sum + item.value * (item.weight / totalWeight), 0)
+}
+
 // ── Gradebook Shell ───────────────────────────────────────────────────────────
 function Gradebook({ cls, term, termLabel, onBack, onUnsavedChange }) {
   const [activeTab, setActiveTab] = useState('participation')
@@ -916,7 +928,14 @@ function Gradebook({ cls, term, termLabel, onBack, onUnsavedChange }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
+        <h3 className="text-lg font-semibold text-gray-900">{termLabel}</h3>
         <div className="flex items-center gap-3">
+          {hasAnyUnsaved && (
+            <span className="text-xs px-2 py-1 rounded-full font-medium bg-amber-100 text-amber-700 border border-amber-200">
+              Unsaved Changes
+            </span>
+          )}
+          <span className="text-sm text-gray-500">{students.length} students</span>
           <button
             type="button"
             onClick={handleBackToTerms}
@@ -927,15 +946,6 @@ function Gradebook({ cls, term, termLabel, onBack, onUnsavedChange }) {
           >
             ← Go Back
           </button>
-          <h3 className="text-lg font-semibold text-gray-900">{termLabel}</h3>
-        </div>
-        <div className="flex items-center gap-3">
-          {hasAnyUnsaved && (
-            <span className="text-xs px-2 py-1 rounded-full font-medium bg-amber-100 text-amber-700 border border-amber-200">
-              Unsaved Changes
-            </span>
-          )}
-          <span className="text-sm text-gray-500">{students.length} students</span>
         </div>
       </div>
 
@@ -1054,10 +1064,18 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
     range: 'Date TBD',
   }))
 
+  const scoredCount = students.filter((student) =>
+    weekSchedule.some((w) => {
+      if (w.isNoScore) return false
+      const score = grades[`${student.id}_${w.week}`]?.score
+      return score !== undefined && score !== '' && score != null
+    })
+  ).length
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-gray-500">Weekly participation scores out of 10.</p>
+        <p className="text-sm text-gray-500">Weekly participation scores out of 10. Scored: {scoredCount}/{students.length} students.</p>
         <button onClick={saveAll} disabled={saving}
           className="px-4 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300">
           {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save'}
@@ -1067,8 +1085,8 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-[80px]"></th>
-              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 w-[280px]">Student Information</th>
+              <th className={STUDENT_AVATAR_COL_CLASS}></th>
+              <th className={STUDENT_INFO_COL_CLASS}>Student Information</th>
               {weekSchedule.map((weekItem) => (
                 <th key={weekItem.week} className="text-center px-2 py-3 font-medium min-w-28 bg-gray-200 text-gray-700 border-l border-gray-200">
                   <div>{weekItem.label}</div>
@@ -1083,15 +1101,15 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {students.map(student => (
-              <tr key={student.id} className="hover:bg-gray-50">
-                <td className="px-3 py-3 sticky left-0 bg-white">
+              <tr key={student.id} className="hover:bg-gray-50 min-h-[56px]">
+                <td className={STUDENT_AVATAR_CELL_CLASS}>
                   <ProfileAvatar 
                     avatarUrl={student.avatar_url} 
                     name={student.name_eng} 
                     size={28} 
                   />
                 </td>
-                <td className="px-4 py-3 bg-white">
+                <td className={STUDENT_INFO_CELL_CLASS}>
                   <div className="font-medium">
                     <span className="text-gray-900">{student.name_eng || '—'}</span>
                     <span className="text-gray-400 px-1">-</span>
@@ -1204,11 +1222,19 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
   const fetchAssignments = async () => {
     const { data: aData } = await supabase.from('assignments').select('*').eq('class_id', classId).eq('term', term).order('created_at')
     setAssignments(aData || [])
-    if (aData?.length) {
-      const { data: gData } = await supabase.from('assignment_grades').select('*').in('assignment_id', aData.map(a => a.id))
+    if (aData?.length && students.length) {
+      const assignmentIds = aData.map(a => a.id)
+      const studentIds = students.map((s) => s.id)
+      const { data: gData } = await supabase
+        .from('assignment_grades')
+        .select('*')
+        .in('assignment_id', assignmentIds)
+        .in('student_id', studentIds)
       const map = {}
       gData?.forEach(g => { map[`${g.assignment_id}_${g.student_id}`] = { score: g.score, is_absent: g.is_absent, comment: g.comment } })
       setGrades(map)
+    } else {
+      setGrades({})
     }
   }
 
@@ -1287,10 +1313,18 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
     setTimeout(() => setSaved(false), 2000)
   }
 
+  const markedCount = students.filter((student) =>
+    assignments.some((assignment) => {
+      const g = grades[`${assignment.id}_${student.id}`]
+      if (!g) return false
+      return g.is_absent || (g.score !== '' && g.score != null)
+    })
+  ).length
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-gray-500">Create assignments and enter student scores. Absent students are excluded from averages.</p>
+        <p className="text-sm text-gray-500">Create assignments and enter student scores. Absent students are excluded from averages. Marked: {markedCount}/{students.length} students.</p>
         <div className="flex gap-2">
           <button onClick={() => setShowForm(!showForm)} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
             + New Assignment
@@ -1353,8 +1387,8 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-[80px]"></th>
-              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 w-[280px]">Student Information</th>
+                <th className={STUDENT_AVATAR_COL_CLASS}></th>
+              <th className={STUDENT_INFO_COL_CLASS}>Student Information</th>
                 {assignments.map(a => (
                   <th key={a.id} className="text-center px-3 py-3 font-medium min-w-32 bg-gray-200 text-gray-700 border-l border-gray-200">
                     <div className="flex items-center justify-center gap-2">
@@ -1378,15 +1412,15 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {students.map(student => (
-                <tr key={student.id} className="hover:bg-gray-50">
-                  <td className="px-3 py-3 sticky left-0 bg-white">
+                <tr key={student.id} className="hover:bg-gray-50 min-h-[56px]">
+                  <td className={STUDENT_AVATAR_CELL_CLASS}>
                     <ProfileAvatar 
                       avatarUrl={student.avatar_url} 
                       name={student.name_eng} 
                       size={28} 
                     />
                   </td>
-                  <td className="px-4 py-3 bg-white">
+                  <td className={STUDENT_INFO_CELL_CLASS}>
                     <div className="font-medium">
                       <span className="text-gray-900">{student.name_eng || '—'}</span>
                       <span className="text-gray-400 px-1">-</span>
@@ -1534,15 +1568,19 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
   const fetchGrades = async () => {
     const { data } = await supabase.from('progress_test_grades').select('*').eq('class_id', classId).eq('term', term)
     const map = {}
+    if (isESL && data?.[0]) {
+      setTotals({
+        rw_total: data[0].reading_writing_total || '',
+        l_total: data[0].listening_total || '',
+        s_total: data[0].speaking_total || '',
+      })
+    } else if (!isESL && data?.[0]) {
+      setTotals({ total_points: data[0].total_points || '' })
+    }
     data?.forEach(g => {
       map[g.student_id] = isESL
-        ? { rw: g.reading_writing_score, l: g.listening_score, s: g.speaking_score, comment: g.comment }
-        : { score: g.score, comment: g.comment }
-      if (isESL && data[0]) {
-        setTotals({ rw_total: data[0].reading_writing_total || '', l_total: data[0].listening_total || '', s_total: data[0].speaking_total || '' })
-      } else if (!isESL && data[0]) {
-        setTotals({ total_points: data[0].total_points || '' })
-      }
+        ? { rw: g.reading_writing_score, l: g.listening_score, s: g.speaking_score, comment: g.test_comment }
+        : { score: g.score, comment: g.test_comment }
     })
     setGrades(map)
   }
@@ -1592,7 +1630,7 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
           speaking_score: g.s != null && g.s !== '' ? parseFloat(g.s) : null,
           speaking_total: totals.s_total ? parseFloat(totals.s_total) : null,
           overall_percentage: overall,
-          comment: g.comment ? g.comment.trim() : null,
+          test_comment: g.comment ? g.comment.trim() : null,
         }
       } else {
         return {
@@ -1600,7 +1638,7 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
           score: g.score != null && g.score !== '' ? parseFloat(g.score) : null,
           total_points: totals.total_points ? parseFloat(totals.total_points) : null,
           overall_percentage: overall,
-          comment: g.comment ? g.comment.trim() : null,
+          test_comment: g.comment ? g.comment.trim() : null,
         }
       }
     })
@@ -1611,11 +1649,13 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
     setTimeout(() => setSaved(false), 2000)
   }
 
+  const scoredCount = students.filter((student) => getOverall(student.id) != null).length
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <p className="text-sm text-gray-500">
-          {isESL ? 'Enter total points for each component, then student scores.' : 'Enter total points for the test, then student scores.'}
+          {isESL ? 'Enter total points for each component, then student scores.' : 'Enter total points for the test, then student scores.'} Scored: {scoredCount}/{students.length} students.
         </p>
         <button onClick={saveAll} disabled={saving} className="px-4 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300">
           {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save'}
@@ -1684,8 +1724,8 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
               )}
             </tr>
             <tr>
-              <th className="text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-[80px]"></th>
-              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 w-[280px]"></th>
+              <th className={STUDENT_AVATAR_COL_CLASS}></th>
+              <th className={STUDENT_INFO_COL_CLASS}></th>
               {isESL ? (
                 <>
               <th className="text-center px-3 py-3 font-medium min-w-36 bg-gray-200 text-gray-700 border-l border-gray-200">Reading & Writing</th>
@@ -1706,15 +1746,15 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
               const g = grades[student.id] || {}
               const overall = getOverall(student.id)
               return (
-                <tr key={student.id} className="hover:bg-gray-50">
-                  <td className="px-3 py-3 sticky left-0 bg-white">
+                <tr key={student.id} className="hover:bg-gray-50 min-h-[56px]">
+                  <td className={STUDENT_AVATAR_CELL_CLASS}>
                     <ProfileAvatar 
                       avatarUrl={student.avatar_url} 
                       name={student.name_eng} 
                       size={28} 
                     />
                   </td>
-                  <td className="px-4 py-3 bg-white">
+                  <td className={STUDENT_INFO_CELL_CLASS}>
                     <div className="font-medium">
                       <span className="text-gray-900">{student.name_eng || '—'}</span>
                       <span className="text-gray-400 px-1">-</span>
@@ -1973,13 +2013,6 @@ function StudentAttributesTab({ classId, term, students, onDirtyChange }) {
     { key: 'engaged', label: 'Engaged' },
   ]
 
-  const OPTIONS = [
-    { value: '', label: '—' },
-    { value: 'G', label: 'G - Good' },
-    { value: 'S', label: 'S - Satisfactory' },
-    { value: 'N', label: 'N - Needs Improvement' },
-  ]
-
   useEffect(() => { fetchAttributes() }, [classId, term])
   useEffect(() => { onDirtyChange?.(false) }, [classId, term])
 
@@ -2037,10 +2070,15 @@ function StudentAttributesTab({ classId, term, students, onDirtyChange }) {
     setTimeout(() => setSaved(false), 2000)
   }
 
+  const ratedCount = students.filter((student) => {
+    const row = attributes[student.id] || {}
+    return ATTRIBUTE_FIELDS.every((field) => !!row[field.key])
+  }).length
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-gray-500">Set G/S/N for each student attribute criterion.</p>
+        <p className="text-sm text-gray-500">Set G/S/N for each student attribute criterion. Rated: {ratedCount}/{students.length} students.</p>
         <button
           onClick={saveAll}
           disabled={saving}
@@ -2054,8 +2092,8 @@ function StudentAttributesTab({ classId, term, students, onDirtyChange }) {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-[80px]"></th>
-              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 w-[280px]">Student Information</th>
+              <th className={STUDENT_AVATAR_COL_CLASS}></th>
+              <th className={STUDENT_INFO_COL_CLASS}>Student Information</th>
               {ATTRIBUTE_FIELDS.map(field => (
                 <th key={field.key} className="text-center px-3 py-3 font-medium min-w-44 border-l border-gray-300 bg-blue-100 text-blue-800" style={{ backgroundClip: 'padding-box' }}>
                   {field.label}
@@ -2067,15 +2105,15 @@ function StudentAttributesTab({ classId, term, students, onDirtyChange }) {
             {students.map((student) => {
               const row = attributes[student.id] || {}
               return (
-                <tr key={student.id} className="hover:bg-gray-50">
-                  <td className="px-3 py-3 sticky left-0 bg-white">
+                <tr key={student.id} className="hover:bg-gray-50 min-h-[56px]">
+                  <td className={STUDENT_AVATAR_CELL_CLASS}>
                     <ProfileAvatar 
                       avatarUrl={student.avatar_url} 
                       name={student.name_eng} 
                       size={28} 
                     />
                   </td>
-                  <td className="px-4 py-3 bg-white">
+                  <td className={STUDENT_INFO_CELL_CLASS}>
                     <div className="font-medium">
                       <span className="text-gray-900">{student.name_eng || '—'}</span>
                       <span className="text-gray-400 px-1">-</span>
@@ -2164,19 +2202,26 @@ function SummaryTab({ classId, term, students, isESL }) {
     const [
       { data: partData }, 
       { data: assignData }, 
-      { data: assignGrades }, 
       { data: ptData },
       { data: attributesData }
     ] = await Promise.all([
       supabase.from('participation_grades').select('*').eq('class_id', classId).eq('term', term),
       supabase.from('assignments').select('*').eq('class_id', classId).eq('term', term),
-      supabase.from('assignment_grades').select('*'),
       supabase.from('progress_test_grades').select('*').eq('class_id', classId).eq('term', term),
       supabase.from('student_attributes').select('*').eq('class_id', classId).eq('term', term),
     ])
 
+    const assignmentIds = (assignData || []).map((a) => a.id)
+    const studentIds = students.map((s) => s.id)
+    const { data: assignGrades } = assignmentIds.length
+      ? await supabase.from('assignment_grades').select('*').in('assignment_id', assignmentIds).in('student_id', studentIds)
+      : { data: [] }
+
     const summary = {}
     const attributesMap = {}
+    const ptByStudent = {}
+    const assignmentGradeByKey = {}
+    const participationByStudent = {}
 
     attributesData?.forEach(row => {
       attributesMap[row.student_id] = {
@@ -2188,30 +2233,48 @@ function SummaryTab({ classId, term, students, isESL }) {
       }
     })
 
+    partData?.forEach((row) => {
+      if (row.score == null) return
+      if (!participationByStudent[row.student_id]) participationByStudent[row.student_id] = []
+      participationByStudent[row.student_id].push(row.score)
+    })
+
+    assignGrades?.forEach((row) => {
+      assignmentGradeByKey[`${row.assignment_id}_${row.student_id}`] = row
+    })
+
+    ptData?.forEach((row) => {
+      ptByStudent[row.student_id] = row
+    })
+
     students.forEach(student => {
-      const partScores = partData?.filter(g => g.student_id === student.id && g.score != null).map(g => g.score) || []
+      const partScores = participationByStudent[student.id] || []
       const partAvg = avg(partScores)
       const partPct = partAvg != null ? (partAvg / 10) * 100 : null
 
-      const assignPcts = assignData?.map(a => {
-        const g = assignGrades?.find(g => g.assignment_id === a.id && g.student_id === student.id)
+      const assignPcts = (assignData || []).map(a => {
+        const g = assignmentGradeByKey[`${a.id}_${student.id}`]
         if (!g || g.is_absent || g.score == null) return null
         return pct(g.score, a.max_points)
       }).filter(p => p !== null) || []
       const assignAvg = avg(assignPcts)
 
-      const attainment = partPct != null && assignAvg != null
-        ? (partPct * 0.20) + (assignAvg * 0.80)
-        : partPct != null ? partPct * 0.20
-        : assignAvg != null ? assignAvg * 0.80
-        : null
+      const attainment = weightedNormalized([
+        { value: partPct, weight: 20 },
+        { value: assignAvg, weight: 80 },
+      ])
 
-      const pt = ptData?.find(g => g.student_id === student.id)
+      const pt = ptByStudent[student.id]
       const ptOverall = pt?.overall_percentage ?? null
 
-      const total = attainment != null && ptOverall != null
-        ? (attainment * 0.75) + (ptOverall * 0.25)
-        : null
+      const total = weightedNormalized([
+        { value: attainment, weight: 75 },
+        { value: ptOverall, weight: 25 },
+      ])
+
+      const calcStatus = total != null
+        ? (attainment != null && ptOverall != null ? 'Complete' : 'Partial')
+        : 'Missing'
 
       summary[student.id] = { 
         partPct, 
@@ -2219,6 +2282,7 @@ function SummaryTab({ classId, term, students, isESL }) {
         attainment, 
         ptOverall, 
         total,
+        calcStatus,
         ptRW: pt?.reading_writing_total && pt?.reading_writing_score != null ? pct(parseFloat(pt.reading_writing_score), parseFloat(pt.reading_writing_total)) : null,
         ptListening: pt?.listening_total && pt?.listening_score != null ? pct(parseFloat(pt.listening_score), parseFloat(pt.listening_total)) : null,
         ptSpeaking: pt?.speaking_total && pt?.speaking_score != null ? pct(parseFloat(pt.speaking_score), parseFloat(pt.speaking_total)) : null,
@@ -2238,11 +2302,13 @@ function SummaryTab({ classId, term, students, isESL }) {
     return 'text-red-600'
   }
 
+  const completeCount = students.filter((student) => data[student.id]?.calcStatus === 'Complete').length
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <p className="text-sm text-gray-500">
-          Auto-calculated. Attainment = Participation (20%) + Assignments (80%). Total = Attainment (75%) + Progress Test (25%).
+          Auto-calculated with renormalized weighting for missing components. Attainment = Participation (20%) + Assignments (80%). Total = Attainment (75%) + Progress Test (25%). Complete: {completeCount}/{students.length}.
         </p>
         <button onClick={fetchAll} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
           ↻ Refresh
@@ -2255,8 +2321,8 @@ function SummaryTab({ classId, term, students, isESL }) {
           <table className="w-full text-sm border-collapse">
             <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-[80px]"></th>
-              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 w-[280px]">Student Information</th>
+              <th className={STUDENT_AVATAR_COL_CLASS}></th>
+              <th className={STUDENT_INFO_COL_CLASS}>Student Information</th>
                 <th className="text-center px-4 py-3 font-medium bg-gray-200 text-gray-700">Participation</th>
                 <th className="text-center px-4 py-3 font-medium bg-gray-200 text-gray-700 border-l border-gray-200">Marked Assignments</th>
                 <th className="text-center px-4 py-3 font-medium bg-green-100 text-green-800 border-l border-gray-200">Attainment</th>
@@ -2272,6 +2338,7 @@ function SummaryTab({ classId, term, students, isESL }) {
                 <th className="text-center px-4 py-3 font-medium bg-green-100 text-green-800 border-l border-gray-200">Progress Test</th>
                 <th className="text-center px-4 py-3 font-medium bg-gray-200 text-gray-700 border-l border-gray-200">Overall</th>
                 <th className="text-center px-4 py-3 font-medium bg-gray-200 text-gray-700 border-l border-gray-200">Grade</th>
+                <th className="text-center px-4 py-3 font-medium bg-gray-200 text-gray-700 border-l border-gray-200">Status</th>
                 
                 {ATTRIBUTE_FIELDS.map(attr => (
                   <th key={attr.key} className="text-center px-3 py-3 font-medium bg-blue-100 text-blue-800 text-xs">
@@ -2285,15 +2352,15 @@ function SummaryTab({ classId, term, students, isESL }) {
                 const d = data[student.id] || {}
                 const attrs = attributes[student.id] || {}
                 return (
-                  <tr key={student.id} className="hover:bg-gray-50 border-b border-gray-200">
-                    <td className="px-3 py-3 sticky left-0 bg-white">
+                  <tr key={student.id} className="hover:bg-gray-50 border-b border-gray-200 min-h-[56px]">
+                    <td className={STUDENT_AVATAR_CELL_CLASS}>
                     <ProfileAvatar 
                       avatarUrl={student.avatar_url} 
                       name={student.name_eng} 
                       size={28} 
                     />
                   </td>
-                  <td className="px-4 py-3 bg-white">
+                  <td className={STUDENT_INFO_CELL_CLASS}>
                       <div className="font-medium">
                         <span className="text-gray-900">{student.name_eng || '—'}</span>
                         <span className="text-gray-400 px-1">-</span>
@@ -2317,6 +2384,17 @@ function SummaryTab({ classId, term, students, isESL }) {
                     <td className={`px-4 py-3 text-center font-bold bg-gray-50 ${scoreColor(d.total)}`}>{fmt(d.total)}</td>
                     <td className="px-4 py-3 text-center bg-gray-50">
                       <span className="font-semibold text-gray-800">{letterGradeFromPercentage(d.total)}</span>
+                    </td>
+                    <td className="px-4 py-3 text-center bg-gray-50 border-l border-gray-200">
+                      <span className={`text-xs font-medium ${
+                        d.calcStatus === 'Complete'
+                          ? 'text-green-700'
+                          : d.calcStatus === 'Partial'
+                            ? 'text-amber-700'
+                            : 'text-gray-400'
+                      }`}>
+                        {d.calcStatus || 'Missing'}
+                      </span>
                     </td>
                     
                     {ATTRIBUTE_FIELDS.map(attr => (
@@ -2350,7 +2428,7 @@ function CommentsTab({ classId, term, students, onDirtyChange }) {
   }, [comments, originalComments])
 
   const fetchComments = async () => {
-    const { data } = await supabase.from('progress_test_grades').select('*').eq('class_id', classId).eq('term', term)
+    const { data } = await supabase.from('term_comments').select('*').eq('class_id', classId).eq('term', term)
     const map = {}
     const original = {}
     data?.forEach(c => { 
@@ -2364,7 +2442,7 @@ function CommentsTab({ classId, term, students, onDirtyChange }) {
   const saveComment = async (studentId) => {
     setSaving(true)
     
-    await supabase.from('progress_test_grades').upsert({
+    await supabase.from('term_comments').upsert({
       class_id: classId,
       student_id: studentId,
       term,
@@ -2388,33 +2466,38 @@ function CommentsTab({ classId, term, students, onDirtyChange }) {
     return comments[studentId] !== originalComments[studentId]
   }
 
+  const commentedCount = students.filter((student) => {
+    const value = comments[student.id]
+    return typeof value === 'string' && value.trim().length > 0
+  }).length
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-gray-500">Write end of term comments for each student. Click box to expand.</p>
+        <p className="text-sm text-gray-500">Write end of term comments for each student. Click box to expand. Commented: {commentedCount}/{students.length} students.</p>
         {saved && <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 font-medium">✓ Saved</span>}
       </div>
       <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-[80px]"></th>
-              <th className="text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 w-64 w-[280px]">Student Information</th>
+              <th className={STUDENT_AVATAR_COL_CLASS}></th>
+              <th className={STUDENT_INFO_COL_CLASS}>Student Information</th>
               <th className="text-left px-4 py-3 text-gray-500 font-medium">Comment</th>
               <th className="text-center px-4 py-3 text-gray-500 font-medium w-28 min-w-28">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {students.map(student => (
-              <tr key={student.id} className="hover:bg-gray-50">
-                <td className="px-3 py-3 sticky left-0 bg-white">
+              <tr key={student.id} className="hover:bg-gray-50 min-h-[56px]">
+                <td className={STUDENT_AVATAR_CELL_CLASS}>
                   <ProfileAvatar 
                     avatarUrl={student.avatar_url} 
                     name={student.name_eng} 
                     size={28} 
                   />
                 </td>
-                <td className="px-4 py-3 bg-white">
+                <td className={STUDENT_INFO_CELL_CLASS}>
                   <div className="font-medium">
                     <span className="text-gray-900">{student.name_eng || '—'}</span>
                     <span className="text-gray-400 px-1">-</span>
