@@ -1064,18 +1064,10 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
     range: 'Date TBD',
   }))
 
-  const scoredCount = students.filter((student) =>
-    weekSchedule.some((w) => {
-      if (w.isNoScore) return false
-      const score = grades[`${student.id}_${w.week}`]?.score
-      return score !== undefined && score !== '' && score != null
-    })
-  ).length
-
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-gray-500">Weekly participation scores out of 10. Scored: {scoredCount}/{students.length} students.</p>
+        <p className="text-sm text-gray-500">Weekly participation scores out of 10.</p>
         <button onClick={saveAll} disabled={saving}
           className="px-4 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300">
           {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save'}
@@ -1313,18 +1305,10 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
     setTimeout(() => setSaved(false), 2000)
   }
 
-  const markedCount = students.filter((student) =>
-    assignments.some((assignment) => {
-      const g = grades[`${assignment.id}_${student.id}`]
-      if (!g) return false
-      return g.is_absent || (g.score !== '' && g.score != null)
-    })
-  ).length
-
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-gray-500">Create assignments and enter student scores. Absent students are excluded from averages. Marked: {markedCount}/{students.length} students.</p>
+        <p className="text-sm text-gray-500">Create assignments and enter student scores. Absent students are excluded from averages.</p>
         <div className="flex gap-2">
           <button onClick={() => setShowForm(!showForm)} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
             + New Assignment
@@ -1579,8 +1563,8 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
     }
     data?.forEach(g => {
       map[g.student_id] = isESL
-        ? { rw: g.reading_writing_score, l: g.listening_score, s: g.speaking_score, comment: g.test_comment }
-        : { score: g.score, comment: g.test_comment }
+        ? { rw: g.reading_writing_score, l: g.listening_score, s: g.speaking_score, comment: g.test_comment ?? g.comment ?? null }
+        : { score: g.score, comment: g.test_comment ?? g.comment ?? null }
     })
     setGrades(map)
   }
@@ -1642,20 +1626,45 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
         }
       }
     })
-    await supabase.from('progress_test_grades').upsert(rows, { onConflict: 'class_id,student_id,term' })
+    let saveError = null
+    const { error: firstError } = await supabase
+      .from('progress_test_grades')
+      .upsert(rows, { onConflict: 'class_id,student_id,term' })
+
+    if (firstError) {
+      const msg = String(firstError.message || '')
+      const missingTestCommentColumn = msg.includes('test_comment') && msg.toLowerCase().includes('column')
+
+      if (missingTestCommentColumn) {
+        const fallbackRows = rows.map((row) => {
+          const { test_comment, ...rest } = row
+          return { ...rest, comment: test_comment ?? null }
+        })
+        const { error: fallbackError } = await supabase
+          .from('progress_test_grades')
+          .upsert(fallbackRows, { onConflict: 'class_id,student_id,term' })
+        saveError = fallbackError
+      } else {
+        saveError = firstError
+      }
+    }
+
+    if (saveError) {
+      setSaving(false)
+      return
+    }
+
     setSaving(false)
     setSaved(true)
     onDirtyChange?.(false)
     setTimeout(() => setSaved(false), 2000)
   }
 
-  const scoredCount = students.filter((student) => getOverall(student.id) != null).length
-
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <p className="text-sm text-gray-500">
-          {isESL ? 'Enter total points for each component, then student scores.' : 'Enter total points for the test, then student scores.'} Scored: {scoredCount}/{students.length} students.
+          {isESL ? 'Enter total points for each component, then student scores.' : 'Enter total points for the test, then student scores.'}
         </p>
         <button onClick={saveAll} disabled={saving} className="px-4 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300">
           {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save'}
@@ -2070,15 +2079,10 @@ function StudentAttributesTab({ classId, term, students, onDirtyChange }) {
     setTimeout(() => setSaved(false), 2000)
   }
 
-  const ratedCount = students.filter((student) => {
-    const row = attributes[student.id] || {}
-    return ATTRIBUTE_FIELDS.every((field) => !!row[field.key])
-  }).length
-
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-gray-500">Set G/S/N for each student attribute criterion. Rated: {ratedCount}/{students.length} students.</p>
+        <p className="text-sm text-gray-500">Set G/S/N for each student attribute criterion.</p>
         <button
           onClick={saveAll}
           disabled={saving}
@@ -2302,13 +2306,11 @@ function SummaryTab({ classId, term, students, isESL }) {
     return 'text-red-600'
   }
 
-  const completeCount = students.filter((student) => data[student.id]?.calcStatus === 'Complete').length
-
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <p className="text-sm text-gray-500">
-          Auto-calculated with renormalized weighting for missing components. Attainment = Participation (20%) + Assignments (80%). Total = Attainment (75%) + Progress Test (25%). Complete: {completeCount}/{students.length}.
+          Auto-calculated with renormalized weighting for missing components. Attainment = Participation (20%) + Assignments (80%). Total = Attainment (75%) + Progress Test (25%).
         </p>
         <button onClick={fetchAll} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
           ↻ Refresh
@@ -2466,15 +2468,10 @@ function CommentsTab({ classId, term, students, onDirtyChange }) {
     return comments[studentId] !== originalComments[studentId]
   }
 
-  const commentedCount = students.filter((student) => {
-    const value = comments[student.id]
-    return typeof value === 'string' && value.trim().length > 0
-  }).length
-
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-gray-500">Write end of term comments for each student. Click box to expand. Commented: {commentedCount}/{students.length} students.</p>
+        <p className="text-sm text-gray-500">Write end of term comments for each student. Click box to expand.</p>
         {saved && <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 font-medium">✓ Saved</span>}
       </div>
       <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
