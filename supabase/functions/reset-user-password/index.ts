@@ -6,13 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const generateTemporaryPassword = () => {
-  const bytes = new Uint8Array(12)
-  crypto.getRandomValues(bytes)
-  const token = btoa(String.fromCharCode(...bytes)).replace(/[^A-Za-z0-9]/g, '').slice(0, 12)
-  return `Royal!${token}`
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -69,10 +62,9 @@ serve(async (req) => {
       })
     }
 
-    const temporaryPassword = generateTemporaryPassword()
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-      password: temporaryPassword,
-      user_metadata: { force_password_change: true, temporary_password_issued_at: new Date().toISOString() },
+      password: 'royal@123',
+      user_metadata: { force_password_change: true },
     })
 
     if (updateError) {
@@ -94,7 +86,7 @@ serve(async (req) => {
       })
     }
 
-    return new Response(JSON.stringify({ success: true, temporary_password: temporaryPassword }), {
+    return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (err) {

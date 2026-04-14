@@ -28,7 +28,6 @@ export default function Users() {
   const [confirmReset, setConfirmReset] = useState(null)
   const [resetRequestsByStaffId, setResetRequestsByStaffId] = useState({})
   const [importing, setImporting] = useState(false)
-  const [importCredentials, setImportCredentials] = useState([])
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [creatingTeacher, setCreatingTeacher] = useState(false)
   const [createTeacherForm, setCreateTeacherForm] = useState({
@@ -106,32 +105,6 @@ export default function Users() {
     if (normalized === 'science') return 'Science'
     if (normalized === 'vn esl' || normalized === 'vnesl') return 'VN ESL'
     return formatDisplayText(value)
-  }
-
-  const downloadCredentialsCsv = () => {
-    if (importCredentials.length === 0) return
-    const rows = [
-      ['Staff ID', 'Full Name', 'Email', 'Temporary Password'],
-      ...importCredentials.map((entry) => [
-        entry.staff_id || '',
-        entry.full_name || '',
-        entry.email || '',
-        entry.temporary_password || '',
-      ]),
-    ]
-    const csvContent = rows
-      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\n')
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', 'teacher_admin_temporary_credentials.csv')
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-    setImportCredentials([])
   }
 
   useEffect(() => { fetchUsers() }, [])
@@ -315,13 +288,7 @@ export default function Users() {
       return
     }
 
-    const tempPassword = data?.results?.[0]?.temporary_password
-    setMessage({
-      type: 'success',
-      text: tempPassword
-        ? `User created successfully. Temporary password: ${tempPassword}`
-        : 'User created successfully. Ask the user to request a password reset if needed.',
-    })
+    setMessage({ type: 'success', text: 'User created successfully. Default password is royal@123.' })
     setCreateTeacherForm({
       full_name: '',
       staff_id: '',
@@ -399,13 +366,7 @@ export default function Users() {
         .ilike('staff_id', targetUser.staff_id)
     }
 
-    const tempPassword = data?.temporary_password
-    setMessage({
-      type: 'success',
-      text: tempPassword
-        ? `Password reset for ${targetUser.email}. Temporary password: ${tempPassword}`
-        : `Password reset for ${targetUser.email}.`,
-    })
+    setMessage({ type: 'success', text: `Password reset for ${targetUser.email}. Default password is royal@123.` })
     setConfirmReset(null)
     fetchUsers()
   }
@@ -414,7 +375,6 @@ export default function Users() {
     const file = e.target.files[0]
     if (!file) return
     setImporting(true)
-    setImportCredentials([])
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
@@ -466,27 +426,12 @@ export default function Users() {
         } else {
           const successCount = data.results?.length || 0
           const remoteErrors = data.errors || []
-          const credentialRows = (data.results || [])
-            .filter((r) => r.temporary_password)
-            .map((r) => ({
-              staff_id: r.staff_id,
-              full_name: teachers.find((t) => String(t.staff_id || '').toLowerCase() === String(r.staff_id || '').toLowerCase())?.full_name || '',
-              email: r.email,
-              temporary_password: r.temporary_password,
-            }))
-          setImportCredentials(credentialRows)
           const allErrors = [...localErrors, ...remoteErrors.map(e => `row ${e.row || '?'}: ${e.error}`)]
           const errorCount = allErrors.length
           if (errorCount > 0) {
             setMessage({ type: 'error', text: `${successCount} imported, ${errorCount} failed: ${allErrors.join(' | ')}` })
           } else {
-            const tempPasswords = (data.results || [])
-              .map((r) => r.temporary_password)
-              .filter(Boolean)
-            const passwordHint = tempPasswords.length > 0
-              ? ` Temporary passwords issued for ${tempPasswords.length} new account(s).`
-              : ''
-            setMessage({ type: 'success', text: `${successCount} users imported successfully.${passwordHint}` })
+            setMessage({ type: 'success', text: `${successCount} users imported successfully with default password royal@123` })
           }
           fetchUsers()
         }
@@ -651,34 +596,6 @@ export default function Users() {
         }`}>
           {message.text}
           <button onClick={() => setMessage(null)} className="ml-4 opacity-50 hover:opacity-100">✕</button>
-        </div>
-      )}
-
-      {importCredentials.length > 0 && (
-        <div className="mb-6 px-4 py-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 text-sm">
-          <div className="flex items-center justify-between gap-2">
-            <p className="font-medium">
-              Temporary credentials are shown once for newly created users. Download and share securely.
-            </p>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border border-amber-300 bg-white">
-              {importCredentials.length} credentials ready
-            </span>
-          </div>
-          <div className="mt-2 flex gap-2">
-            <button
-              onClick={downloadCredentialsCsv}
-              className="px-3 py-1.5 rounded-lg text-white text-xs font-medium"
-              style={{ backgroundColor: '#1f86c7' }}
-            >
-              Download Credentials CSV
-            </button>
-            <button
-              onClick={() => setImportCredentials([])}
-              className="px-3 py-1.5 rounded-lg border border-amber-300 text-amber-800 text-xs font-medium"
-            >
-              Clear
-            </button>
-          </div>
         </div>
       )}
 

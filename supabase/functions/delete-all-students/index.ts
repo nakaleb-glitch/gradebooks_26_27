@@ -11,6 +11,32 @@ const isMissingRelationError = (message: string) => {
   return m.includes('does not exist') || m.includes('could not find the table')
 }
 
+const chunkArray = <T>(items: T[], chunkSize: number): T[][] => {
+  const chunks: T[][] = []
+  for (let i = 0; i < items.length; i += chunkSize) {
+    chunks.push(items.slice(i, i + chunkSize))
+  }
+  return chunks
+}
+
+const isStudentAuthUserByMarker = (authUser: any) => {
+  const metadata = authUser?.user_metadata || {}
+  const appMetadata = authUser?.app_metadata || {}
+  const email = String(authUser?.email || '').toLowerCase()
+  const localPart = email.split('@')[0] || ''
+
+  const hasStudentMetadata =
+    typeof metadata.student_id === 'string' && metadata.student_id.trim() !== ''
+  const metadataRoleStudent =
+    String(metadata.role || '').toLowerCase() === 'student' ||
+    String(appMetadata.role || '').toLowerCase() === 'student'
+
+  // Student IDs in this project are commonly alphanumeric codes like s0001.
+  const localLooksLikeStudentId = /^[a-z]\d{3,}$/.test(localPart)
+
+  return hasStudentMetadata || metadataRoleStudent || localLooksLikeStudentId
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -111,30 +137,67 @@ serve(async (req) => {
       }
     }
 
-    // Capture linked student profiles before deleting users.
-    const { data: studentProfiles, error: profileQueryError } = await supabaseAdmin
-      .from('users')
-      .select('id, student_id_ref, role')
-      .or(`role.eq.student,student_id_ref.in.(${studentIds.join(',') || '00000000-0000-0000-0000-000000000000'})`)
-
-    if (profileQueryError && !isMissingRelationError(profileQueryError.message)) {
-      errors.push(`users lookup: ${profileQueryError.message}`)
+    // Capture student-linked user IDs in chunks to avoid huge query strings.
+    const authUserIds = new Set<string>()
+    const studentIdChunks = chunkArray(studentIds, 100)
+    for (const studentChunk of studentIdChunks) {
+      const { data: chunkProfiles, error: chunkLookupError } = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .in('student_id_ref', studentChunk)
+      if (chunkLookupError) {
+        if (!isMissingRelationError(chunkLookupError.message)) {
+          errors.push(`users lookup: ${chunkLookupError.message}`)
+        }
+        continue
+      }
+      ;(chunkProfiles || []).forEach((u) => {
+        if (u?.id) authUserIds.add(String(u.id))
+      })
     }
 
-    const authUserIds = (studentProfiles || []).map((u) => u.id).filter(Boolean)
+    // Include any profile rows marked as student even if student_id_ref is null.
+    const { data: roleStudents, error: roleStudentsError } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('role', 'student')
+    if (roleStudentsError) {
+      if (!isMissingRelationError(roleStudentsError.message)) {
+        errors.push(`users lookup by role: ${roleStudentsError.message}`)
+      }
+    } else {
+      ;(roleStudents || []).forEach((u) => {
+        if (u?.id) authUserIds.add(String(u.id))
+      })
+    }
 
-    // Delete profile rows tied to students.
-    if (studentIds.length > 0) {
-      const { error: usersDeleteError, count: usersDeleteCount } = await supabaseAdmin
+    // Delete profile rows tied to students (chunked).
+    let usersDeleteTotal = 0
+    for (const studentChunk of studentIdChunks) {
+      const { error: usersDeleteError, count } = await supabaseAdmin
         .from('users')
         .delete({ count: 'exact' })
-        .or(`role.eq.student,student_id_ref.in.(${studentIds.join(',')})`)
-      if (usersDeleteError && !isMissingRelationError(usersDeleteError.message)) {
-        errors.push(`users delete: ${usersDeleteError.message}`)
+        .in('student_id_ref', studentChunk)
+      if (usersDeleteError) {
+        if (!isMissingRelationError(usersDeleteError.message)) {
+          errors.push(`users delete by ref: ${usersDeleteError.message}`)
+        }
       } else {
-        summary.users = usersDeleteCount || 0
+        usersDeleteTotal += count || 0
       }
     }
+    const { error: usersDeleteByRoleError, count: usersDeleteByRoleCount } = await supabaseAdmin
+      .from('users')
+      .delete({ count: 'exact' })
+      .eq('role', 'student')
+    if (usersDeleteByRoleError) {
+      if (!isMissingRelationError(usersDeleteByRoleError.message)) {
+        errors.push(`users delete by role: ${usersDeleteByRoleError.message}`)
+      }
+    } else {
+      usersDeleteTotal += usersDeleteByRoleCount || 0
+    }
+    summary.users = usersDeleteTotal
 
     // Delete students rows.
     const { error: studentsDeleteError, count: studentsDeleteCount } = await supabaseAdmin
@@ -149,17 +212,49 @@ serve(async (req) => {
 
     // Delete auth accounts last (best effort and reported).
     let authDeleted = 0
+    let authDeletedByFallbackScan = 0
+    let authFallbackMatches = 0
     const authErrors: string[] = []
-    for (const authUserId of authUserIds) {
+    for (const authUserId of Array.from(authUserIds)) {
       const { error } = await supabaseAdmin.auth.admin.deleteUser(authUserId)
       if (error) authErrors.push(`${authUserId}: ${error.message}`)
       else authDeleted += 1
+    }
+
+    // Fallback for orphaned auth users when linked profile rows are already gone.
+    if (authUserIds.size === 0) {
+      let page = 1
+      const perPage = 200
+      while (true) {
+        const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage })
+        if (error) {
+          authErrors.push(`auth listUsers page ${page}: ${error.message}`)
+          break
+        }
+        const users = data?.users || []
+        if (users.length === 0) break
+
+        const candidates = users.filter(isStudentAuthUserByMarker)
+        authFallbackMatches += candidates.length
+
+        for (const candidate of candidates) {
+          const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(candidate.id)
+          if (deleteError) authErrors.push(`${candidate.id}: ${deleteError.message}`)
+          else authDeletedByFallbackScan += 1
+        }
+
+        if (users.length < perPage) break
+        page += 1
+      }
+      authDeleted += authDeletedByFallbackScan
     }
 
     return new Response(JSON.stringify({
       success: errors.length === 0 && authErrors.length === 0,
       deleted_counts: summary,
       auth_deleted: authDeleted,
+      auth_deleted_by_fallback_scan: authDeletedByFallbackScan,
+      auth_fallback_matches: authFallbackMatches,
       auth_errors: authErrors,
       errors,
     }), {

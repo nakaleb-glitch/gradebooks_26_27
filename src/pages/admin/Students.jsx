@@ -19,7 +19,6 @@ export default function Students() {
   const [search, setSearch] = useState('')
   const [message, setMessage] = useState(null)
   const [messageDetailOpen, setMessageDetailOpen] = useState(false)
-  const [importCredentials, setImportCredentials] = useState([])
   const [confirmReset, setConfirmReset] = useState(null)
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
@@ -79,32 +78,6 @@ export default function Students() {
 
   const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
-  const downloadCredentialsCsv = () => {
-    if (importCredentials.length === 0) return
-    const rows = [
-      ['Student ID', 'English Name', 'Class', 'Temporary Password'],
-      ...importCredentials.map((entry) => [
-        entry.student_id || '',
-        entry.name_eng || '',
-        entry.class || '',
-        entry.temporary_password || '',
-      ]),
-    ]
-    const csvContent = rows
-      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\n')
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', 'student_temporary_credentials.csv')
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-    setImportCredentials([])
-  }
-
   const invokeCreateStudentsWithRetry = async (payloadChunk, token, attempt = 1) => {
     const { data, error } = await supabase.functions.invoke('create-students', {
       body: { students: payloadChunk },
@@ -142,7 +115,6 @@ export default function Students() {
     let synced = 0
     let failed = 0
     const errors = []
-    const credentialRows = []
     let offset = 0
 
     for (const chunk of chunks) {
@@ -158,23 +130,11 @@ export default function Students() {
           const absoluteRow = localRow > 0 ? offset + localRow : '?'
           errors.push(`row ${absoluteRow}: ${e.error}`)
         })
-        ;(data?.results || [])
-          .filter((r) => r.temporary_password)
-          .forEach((r) => {
-            const localRow = Number(r.row || 0)
-            const source = localRow > 0 ? chunk[localRow - 1] : null
-            credentialRows.push({
-              student_id: r.student_id,
-              name_eng: source?.full_name || '',
-              class: '',
-              temporary_password: r.temporary_password,
-            })
-          })
       }
       offset += chunk.length
     }
 
-    return { synced, failed, errors, credentialRows }
+    return { synced, failed, errors }
   }
 
   const getHomeroom = (classValue) => String(classValue || '').trim().split(/\s+/)[0] || ''
@@ -321,7 +281,6 @@ export default function Students() {
     const file = e.target.files[0]
     if (!file) return
     setImporting(true)
-    setImportCredentials([])
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
@@ -345,15 +304,6 @@ export default function Students() {
         } else {
           const enrollmentResult = await syncStudentEnrollments(upsertedRows || [])
           const syncResult = await syncStudentLogins(upsertedRows || [])
-          const credentialRows = (syncResult.credentialRows || []).map((entry) => {
-            const student = (upsertedRows || []).find((s) => String(s.student_id || '').toLowerCase() === String(entry.student_id || '').toLowerCase())
-            return {
-              ...entry,
-              class: student?.class || entry.class || '',
-              name_eng: student?.name_eng || entry.name_eng || '',
-            }
-          })
-          setImportCredentials(credentialRows)
           const summary = `${rows.length} students imported. Enrolled: ${enrollmentResult.enrolled}, Missing class match: ${enrollmentResult.missing}. Student logins: ${syncResult.synced} synced, ${syncResult.failed} failed.`
           const detailParts = []
           if (enrollmentResult.missingStudents.length > 0) {
@@ -418,13 +368,7 @@ export default function Students() {
         detail: `No class match for: ${enrollmentResult.missingStudents.join(', ')}`,
       })
     } else {
-      const tempPassword = syncResult?.credentialRows?.[0]?.temporary_password
-      setMessage({
-        type: 'success',
-        text: tempPassword
-          ? `Student saved successfully. Temporary password: ${tempPassword}`
-          : 'Student saved successfully and login account is ready.',
-      })
+      setMessage({ type: 'success', text: 'Student saved successfully and login account is ready (default password: royal@123).' })
     }
     setNewStudent({
       student_id: '',
@@ -478,13 +422,7 @@ export default function Students() {
       .eq('status', 'new')
       .ilike('staff_id', student.student_id)
 
-    const tempPassword = data?.temporary_password
-    setMessage({
-      type: 'success',
-      text: tempPassword
-        ? `Password reset for ${student.student_id}. Temporary password: ${tempPassword}`
-        : `Password reset for ${student.student_id}.`,
-    })
+    setMessage({ type: 'success', text: `Password reset for ${student.student_id}. Default password is royal@123.` })
     setConfirmReset(null)
     fetchStudents()
   }
@@ -764,40 +702,11 @@ export default function Students() {
           <button
             onClick={() => {
               setMessage(null)
-              setImportCredentials([])
             }}
             className="ml-4 opacity-50 hover:opacity-100"
           >
             ✕
           </button>
-        </div>
-      )}
-
-      {importCredentials.length > 0 && (
-        <div className="mb-6 px-4 py-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 text-sm">
-          <div className="flex items-center justify-between gap-2">
-            <p className="font-medium">
-              Temporary credentials are shown once for newly created students. Download and share securely.
-            </p>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border border-amber-300 bg-white">
-              {importCredentials.length} credentials ready
-            </span>
-          </div>
-          <div className="mt-2 flex gap-2">
-            <button
-              onClick={downloadCredentialsCsv}
-              className="px-3 py-1.5 rounded-lg text-white text-xs font-medium"
-              style={{ backgroundColor: '#1f86c7' }}
-            >
-              Download Credentials CSV
-            </button>
-            <button
-              onClick={() => setImportCredentials([])}
-              className="px-3 py-1.5 rounded-lg border border-amber-300 text-amber-800 text-xs font-medium"
-            >
-              Clear
-            </button>
-          </div>
         </div>
       )}
 

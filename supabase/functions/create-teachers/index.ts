@@ -6,13 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const generateTemporaryPassword = () => {
-  const bytes = new Uint8Array(12)
-  crypto.getRandomValues(bytes)
-  const token = btoa(String.fromCharCode(...bytes)).replace(/[^A-Za-z0-9]/g, '').slice(0, 12)
-  return `Royal!${token}`
-}
-
 const capitalizeFirst = (value: string) => {
   const v = (value || '').trim()
   if (!v) return ''
@@ -119,16 +112,14 @@ serve(async (req) => {
         continue
       }
 
-      const temporaryPassword = generateTemporaryPassword()
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email,
-        password: temporaryPassword,
+        password: 'royal@123',
         email_confirm: true,
         user_metadata: {
           full_name,
           staff_id,
           force_password_change: true,
-          temporary_password_issued_at: new Date().toISOString(),
         }
       })
 
@@ -152,7 +143,7 @@ serve(async (req) => {
         if (upsertError) {
           errors.push({ row: i + 1, email, staff_id, error: 'Auth created but profile failed: ' + upsertError.message })
         } else {
-          results.push({ row: i + 1, email, staff_id, success: true, temporary_password: temporaryPassword })
+          results.push({ row: i + 1, email, staff_id, success: true })
         }
       }
     }
