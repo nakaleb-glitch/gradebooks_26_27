@@ -1102,6 +1102,17 @@ function Gradebook({ cls, term, onUnsavedChange }) {
               ))}
             </div>
             <div className="relative flex items-center gap-2">
+              {activeTab === 'assignments' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    document.dispatchEvent(new CustomEvent('gradebook-assignment-toggle-form'))
+                  }}
+                  className="px-3 py-2 text-sm font-semibold border border-slate-300 text-slate-700 rounded-xl bg-white hover:bg-slate-50"
+                >
+                  + New Assignment
+                </button>
+              )}
               {isSaveTab && (
                 <button
                   type="button"
@@ -1111,6 +1122,17 @@ function Gradebook({ cls, term, onUnsavedChange }) {
                   className={V2_PRIMARY_BTN}
                 >
                   Save
+                </button>
+              )}
+              {activeTab === 'summary' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    document.dispatchEvent(new CustomEvent('gradebook-summary-refresh'))
+                  }}
+                  className="px-3 py-2 text-sm font-semibold border border-slate-300 text-slate-700 rounded-xl bg-white hover:bg-slate-50"
+                >
+                  ↻ Refresh
                 </button>
               )}
               <button
@@ -1508,16 +1530,14 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
     return () => document.removeEventListener('gradebook-save-tab', handler)
   })
 
+  useEffect(() => {
+    const handler = () => setShowForm((prev) => !prev)
+    document.addEventListener('gradebook-assignment-toggle-form', handler)
+    return () => document.removeEventListener('gradebook-assignment-toggle-form', handler)
+  }, [])
+
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex gap-2">
-          <button onClick={() => setShowForm(!showForm)} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
-            + New Assignment
-          </button>
-        </div>
-      </div>
-
       {showForm && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 flex gap-3 items-end">
           <div>
@@ -1939,12 +1959,17 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
         <table className="w-full text-sm">
           <thead className={V2_TABLE_HEAD_CLASS}>
             <tr>
-              <th className={STUDENT_AVATAR_COL_CLASS} rowSpan={isESL ? 2 : 1}></th>
-              <th className={STUDENT_INFO_COL_CLASS} rowSpan={isESL ? 2 : 1}>Student Information</th>
+              <th className={STUDENT_AVATAR_COL_CLASS}></th>
+              <th className={STUDENT_INFO_COL_CLASS}>Student Information</th>
               {isESL ? (
                 <>
-              <th colSpan={3} className="text-center px-3 py-2 font-medium bg-gray-200 text-gray-800 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}>Progress Test - Scores</th>
-              <th colSpan={4} className="text-center px-3 py-2 font-medium bg-green-100 text-green-800 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}>Progress Test - Percentages</th>
+                  <th className="text-center px-3 py-3 font-medium min-w-36 bg-gray-200 text-gray-700 border-l border-gray-200">Reading & Writing - Score</th>
+                  <th className="text-center px-3 py-3 font-medium min-w-32 bg-gray-200 text-gray-700 border-l border-gray-200">Listening - Score</th>
+                  <th className="text-center px-3 py-3 font-medium min-w-32 bg-gray-200 text-gray-700 border-l border-gray-200">Speaking - Score</th>
+                  <th className="text-center px-3 py-3 font-medium min-w-36 bg-green-100 text-green-800 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}>Reading & Writing - %</th>
+                  <th className="text-center px-3 py-3 font-medium min-w-32 bg-green-100 text-green-800 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}>Listening - %</th>
+                  <th className="text-center px-3 py-3 font-medium min-w-32 bg-green-100 text-green-800 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}>Speaking - %</th>
+                  <th className="text-center px-4 py-3 font-medium min-w-24 bg-green-100 text-green-800 border-l border-gray-200" style={{ backgroundClip: 'padding-box' }}>Overall</th>
                 </>
               ) : (
                 <>
@@ -1957,19 +1982,6 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
                 </>
               )}
             </tr>
-            {isESL ? (
-              <tr>
-                <>
-              <th className="text-center px-3 py-3 font-medium min-w-36 bg-gray-200 text-gray-700 border-l border-gray-200">Reading & Writing</th>
-              <th className="text-center px-3 py-3 font-medium min-w-32 bg-gray-200 text-gray-700 border-l border-gray-200">Listening</th>
-              <th className="text-center px-3 py-3 font-medium min-w-32 bg-gray-200 text-gray-700 border-l border-gray-200">Speaking</th>
-                <th className="text-center px-3 py-3 font-medium min-w-36 bg-green-100 text-green-800 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}>Reading & Writing</th>
-              <th className="text-center px-3 py-3 font-medium min-w-32 bg-green-100 text-green-800 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}>Listening</th>
-              <th className="text-center px-3 py-3 font-medium min-w-32 bg-green-100 text-green-800 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}>Speaking</th>
-                </>
-                <th className="text-center px-4 py-3 font-medium min-w-24 bg-green-100 text-green-800 border-l border-gray-200" style={{ backgroundClip: 'padding-box' }}>Overall</th>
-              </tr>
-            ) : null}
           </thead>
           <tbody className="divide-y divide-gray-100">
             {students.map(student => {
@@ -2442,6 +2454,12 @@ function SummaryTab({ classId, term, students, isESL }) {
 
   useEffect(() => { fetchAll() }, [classId, term])
 
+  useEffect(() => {
+    const handler = () => fetchAll()
+    document.addEventListener('gradebook-summary-refresh', handler)
+    return () => document.removeEventListener('gradebook-summary-refresh', handler)
+  }, [classId, term])
+
   const fetchAll = async () => {
     setLoading(true)
     const [
@@ -2551,11 +2569,6 @@ function SummaryTab({ classId, term, students, isESL }) {
 
   return (
     <div>
-      <div className="flex justify-end items-center mb-3">
-        <button onClick={fetchAll} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
-          ↻ Refresh
-        </button>
-      </div>
       {loading ? (
         <div className="text-center text-gray-400 py-10">Calculating...</div>
       ) : (
