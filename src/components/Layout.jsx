@@ -164,18 +164,26 @@ export default function Layout({ children }) {
           .select('name_eng, name_vn')
           .eq('id', profile.student_id_ref)
           .maybeSingle()
-      } else if (profile?.staff_id) {
-        query = supabase
-          .from('students')
-          .select('name_eng, name_vn')
-          .ilike('student_id', profile.staff_id)
-          .maybeSingle()
-      }
+       } else if (profile?.uid) {
+         query = supabase
+           .from('students')
+           .select('name_eng, name_vn, student_id')
+           .ilike('student_id', profile.uid)
+           .maybeSingle()
+       }
 
       if (!query) return
       const { data } = await query
-      if (data?.name_eng) setNavNameEng(data.name_eng)
-      if (data?.name_vn) setNavNameVn(data.name_vn)
+       if (data?.name_eng && data?.name_vn) {
+         setNavNameEng(data.name_eng)
+         setNavNameVn(data.name_vn)
+       } else if (data?.name_vn) {
+         setNavNameEng(data.name_vn)
+         setNavNameVn('')
+       } else if (data?.name_eng) {
+         setNavNameEng(data.name_eng)
+         setNavNameVn('')
+       }
     }
 
     resolveNavbarName()
@@ -374,7 +382,7 @@ export default function Layout({ children }) {
                     </>
                   ) : null}
                 </div>
-                <div className="text-xs text-gray-400">{idLabel}: {profile?.staff_id || '—'}</div>
+                 <div className="text-xs text-gray-400">{idLabel}: {profile?.uid || profile?.staff_id || '—'}</div>
               </div>
               <div className="flex flex-col items-center gap-1">
                 <span className="text-xs px-2 py-1 rounded-full font-medium"
