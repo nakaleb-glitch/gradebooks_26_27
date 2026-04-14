@@ -968,6 +968,7 @@ function Gradebook({ cls, term, onUnsavedChange }) {
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
   const [dirtyTabs, setDirtyTabs] = useState({})
+  const [helpOpen, setHelpOpen] = useState(false)
   const isESL = cls.subject === 'ESL'
   const isFinal = term === 'final_1' || term === 'final_2'
 
@@ -1029,7 +1030,42 @@ function Gradebook({ cls, term, onUnsavedChange }) {
       const leave = window.confirm('You have unsaved changes in this tab. Please click Save before switching tabs. Continue anyway?')
       if (!leave) return
     }
+    setHelpOpen(false)
     setActiveTab(nextTab)
+  }
+
+  const isSaveTab = ['participation', 'assignments', 'progress_test', 'student_attributes'].includes(activeTab)
+  const HELP_BY_TAB = {
+    participation: [
+      'Enter weekly participation scores out of 10.',
+      'Use comment buttons for week-specific notes.',
+      'Use Save to persist scores and comments.',
+    ],
+    assignments: [
+      'Create assignments with name and total points.',
+      'Scores are converted to percentages and averaged equally.',
+      'Use A (absent) to exclude a score from averaging.',
+    ],
+    progress_test: [
+      isESL ? 'Set total points for R/W, Listening, and Speaking.' : 'Set total points, then enter each student score.',
+      isESL ? 'Overall is the average of the three component percentages.' : 'Overall is score divided by total points.',
+      'Use Save to persist test scores and comments.',
+    ],
+    student_attributes: [
+      'Mark each attribute as G, S, or N.',
+      'Tap the same value again to clear it.',
+      'Use Save to persist attribute selections.',
+    ],
+    summary: [
+      'Summary values are calculated from saved Participation, Assignments, and Progress Test.',
+      'Total = Attainment (75%) + Progress Test (25%).',
+      'Final terms require final comments for Complete status.',
+    ],
+    comments: [
+      'Write end-of-term comments per student.',
+      'Comments are required for Final 1 and Final 2 completion.',
+      'Missing counter shows students without comments.',
+    ],
   }
 
   return (
@@ -1041,7 +1077,6 @@ function Gradebook({ cls, term, onUnsavedChange }) {
               Unsaved Changes
             </span>
           )}
-          <span className="text-sm text-slate-600 font-medium">{students.length} students</span>
         </div>
       </div>
 
@@ -1053,17 +1088,50 @@ function Gradebook({ cls, term, onUnsavedChange }) {
         </div>
       ) : (
         <>
-          <div className="inline-flex flex-wrap gap-1.5 p-1.5 rounded-2xl bg-slate-100 border border-slate-200 mb-6">
-            {TABS.map(tab => (
-              <button key={tab.key} onClick={() => handleTabChange(tab.key)}
-                className={`px-4 py-2 text-sm font-semibold rounded-xl transition-colors ${
-                  activeTab === tab.key
-                    ? 'bg-white text-sky-700 shadow-sm border border-slate-200'
-                    : 'text-slate-600 hover:text-slate-800 hover:bg-white/70'
-                }`}>
-                {tab.label}
+          <div className="flex items-center justify-between gap-3 mb-6">
+            <div className="inline-flex flex-wrap gap-1.5 p-1.5 rounded-2xl bg-slate-100 border border-slate-200">
+              {TABS.map(tab => (
+                <button key={tab.key} onClick={() => handleTabChange(tab.key)}
+                  className={`px-4 py-2 text-sm font-semibold rounded-xl transition-colors ${
+                    activeTab === tab.key
+                      ? 'bg-white text-sky-700 shadow-sm border border-slate-200'
+                      : 'text-slate-600 hover:text-slate-800 hover:bg-white/70'
+                  }`}>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <div className="relative flex items-center gap-2">
+              {isSaveTab && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    document.dispatchEvent(new CustomEvent('gradebook-save-tab', { detail: { tab: activeTab } }))
+                  }}
+                  className={V2_PRIMARY_BTN}
+                >
+                  Save
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setHelpOpen((prev) => !prev)}
+                className="w-8 h-8 rounded-full border border-slate-300 bg-white text-slate-600 text-sm font-bold hover:bg-slate-50"
+                aria-label="Show tab guidance"
+              >
+                ?
               </button>
-            ))}
+              {helpOpen && (
+                <div className="absolute right-0 top-10 z-30 w-80 rounded-xl border border-slate-200 bg-white shadow-lg p-3">
+                  <div className="text-xs font-semibold text-slate-700 mb-2">Tab guidance</div>
+                  <ul className="text-xs text-slate-600 space-y-1.5">
+                    {(HELP_BY_TAB[activeTab] || []).map((line) => (
+                      <li key={line}>• {line}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
 
           {activeTab === 'participation' && <ParticipationTab classId={cls.id} term={term} students={students} onDirtyChange={(value) => setTabDirty('participation', value)} />}
@@ -1082,7 +1150,6 @@ function Gradebook({ cls, term, onUnsavedChange }) {
 function ParticipationTab({ classId, term, students, onDirtyChange }) {
   const [grades, setGrades] = useState({})
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
   const [openCommentKey, setOpenCommentKey] = useState(null)
   const [draftComment, setDraftComment] = useState('')
   const draftKey = `gradebook:draft:participation:${classId}:${term}`
@@ -1124,6 +1191,7 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
   }
 
   const saveAll = async () => {
+    if (saving) return
     setSaving(true)
     const rows = []
     weekSchedule.forEach(({ week, isNoScore }) => {
@@ -1148,11 +1216,17 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
     })
     await supabase.from('participation_grades').upsert(rows, { onConflict: 'class_id,student_id,term,week' })
     setSaving(false)
-    setSaved(true)
     onDirtyChange?.(false)
     clearDraft(draftKey)
-    setTimeout(() => setSaved(false), 2000)
   }
+
+  useEffect(() => {
+    const handler = (event) => {
+      if (event.detail?.tab === 'participation') saveAll()
+    }
+    document.addEventListener('gradebook-save-tab', handler)
+    return () => document.removeEventListener('gradebook-save-tab', handler)
+  })
 
   const getAvg = (studentId) => {
     const scores = weekSchedule
@@ -1177,13 +1251,6 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-gray-500">Weekly participation scores out of 10.</p>
-        <button onClick={saveAll} disabled={saving}
-          className={V2_PRIMARY_BTN}>
-          {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save'}
-        </button>
-      </div>
       <div className={V2_TABLE_WRAP_CLASS}>
         <table className="w-full text-sm">
           <thead className={V2_TABLE_HEAD_CLASS}>
@@ -1317,7 +1384,6 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
   const [showForm, setShowForm] = useState(false)
   const [newAssignment, setNewAssignment] = useState({ name: '', max_points: '' })
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
   const [openCommentKey, setOpenCommentKey] = useState(null)
   const [draftComment, setDraftComment] = useState('')
   const [deletingAssignmentId, setDeletingAssignmentId] = useState(null)
@@ -1410,6 +1476,7 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
   }
 
   const saveAll = async () => {
+    if (saving) return
     setSaving(true)
     const rows = []
     assignments.forEach(assignment => {
@@ -1429,25 +1496,25 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
     })
     await supabase.from('assignment_grades').upsert(rows, { onConflict: 'assignment_id,student_id' })
     setSaving(false)
-    setSaved(true)
     onDirtyChange?.(false)
     clearDraft(draftKey)
-    setTimeout(() => setSaved(false), 2000)
   }
+
+  useEffect(() => {
+    const handler = (event) => {
+      if (event.detail?.tab === 'assignments') saveAll()
+    }
+    document.addEventListener('gradebook-save-tab', handler)
+    return () => document.removeEventListener('gradebook-save-tab', handler)
+  })
 
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-gray-500">Create assignments and enter student scores. Absent students are excluded from averages.</p>
         <div className="flex gap-2">
           <button onClick={() => setShowForm(!showForm)} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
             + New Assignment
           </button>
-          {assignments.length > 0 && (
-            <button onClick={saveAll} disabled={saving} className={V2_PRIMARY_BTN}>
-              {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save'}
-            </button>
-          )}
         </div>
       </div>
 
@@ -1676,7 +1743,6 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
       : { total_points: '' }
   )
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
   const [openCommentStudentId, setOpenCommentStudentId] = useState(null)
   const [draftComment, setDraftComment] = useState('')
   const gradesDraftKey = `gradebook:draft:progress:${classId}:${term}:${isESL ? 'esl' : 'single'}:grades`
@@ -1754,6 +1820,7 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
   }
 
   const saveAll = async () => {
+    if (saving) return
     setSaving(true)
     const rows = students.map(student => {
       const g = grades[student.id] || {}
@@ -1809,25 +1876,22 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
     }
 
     setSaving(false)
-    setSaved(true)
     onDirtyChange?.(false)
     clearDraft(gradesDraftKey)
     clearDraft(totalsDraftKey)
-    setTimeout(() => setSaved(false), 2000)
   }
+
+  useEffect(() => {
+    const handler = (event) => {
+      if (event.detail?.tab === 'progress_test') saveAll()
+    }
+    document.addEventListener('gradebook-save-tab', handler)
+    return () => document.removeEventListener('gradebook-save-tab', handler)
+  })
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-gray-500">
-          {isESL ? 'Enter total points for each component, then student scores.' : 'Enter total points for the test, then student scores.'}
-        </p>
-        <button onClick={saveAll} disabled={saving} className={V2_PRIMARY_BTN}>
-          {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save'}
-        </button>
-      </div>
-
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 flex gap-6 items-end">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5 mb-3 flex gap-3 items-end">
         {isESL ? (
           <>
             <div>
@@ -1837,7 +1901,7 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
                   onDirtyChange?.(true)
                   setTotals(prev => ({ ...prev, rw_total: e.target.value }))
                 }}
-                className="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-24 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label className="text-xs font-medium text-gray-500 block mb-1">Listening — Total Points</label>
@@ -1846,7 +1910,7 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
                   onDirtyChange?.(true)
                   setTotals(prev => ({ ...prev, l_total: e.target.value }))
                 }}
-                className="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-24 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label className="text-xs font-medium text-gray-500 block mb-1">Speaking — Total Points</label>
@@ -1855,7 +1919,7 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
                   onDirtyChange?.(true)
                   setTotals(prev => ({ ...prev, s_total: e.target.value }))
                 }}
-                className="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-24 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </>
         ) : (
@@ -1866,7 +1930,7 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
                 onDirtyChange?.(true)
                 setTotals(prev => ({ ...prev, total_points: e.target.value }))
               }}
-              className="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-24 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
         )}
       </div>
@@ -1875,8 +1939,8 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
         <table className="w-full text-sm">
           <thead className={V2_TABLE_HEAD_CLASS}>
             <tr>
-              <th className={STUDENT_AVATAR_COL_CLASS} rowSpan={2}></th>
-              <th className={STUDENT_INFO_COL_CLASS} rowSpan={2}>Student Information</th>
+              <th className={STUDENT_AVATAR_COL_CLASS} rowSpan={isESL ? 2 : 1}></th>
+              <th className={STUDENT_INFO_COL_CLASS} rowSpan={isESL ? 2 : 1}>Student Information</th>
               {isESL ? (
                 <>
               <th colSpan={3} className="text-center px-3 py-2 font-medium bg-gray-200 text-gray-800 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}>Progress Test - Scores</th>
@@ -1884,17 +1948,17 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
                 </>
               ) : (
                 <>
-                <th className="text-center px-3 py-2 font-medium bg-gray-200 text-gray-800 border-l border-gray-300 min-w-40" style={{ backgroundClip: 'padding-box' }}>
+                <th className="text-center px-3 py-3 font-medium bg-gray-200 text-gray-800 border-l border-gray-300 min-w-40" style={{ backgroundClip: 'padding-box' }}>
                   Progress Test - Points
                 </th>
-                <th className="text-center px-3 py-2 font-medium bg-green-100 text-green-800 border-l border-gray-300 min-w-36" style={{ backgroundClip: 'padding-box' }}>
+                <th className="text-center px-3 py-3 font-medium bg-green-100 text-green-800 border-l border-gray-300 min-w-36" style={{ backgroundClip: 'padding-box' }}>
                   Progress Test - Percentage
                 </th>
                 </>
               )}
             </tr>
-            <tr>
-              {isESL ? (
+            {isESL ? (
+              <tr>
                 <>
               <th className="text-center px-3 py-3 font-medium min-w-36 bg-gray-200 text-gray-700 border-l border-gray-200">Reading & Writing</th>
               <th className="text-center px-3 py-3 font-medium min-w-32 bg-gray-200 text-gray-700 border-l border-gray-200">Listening</th>
@@ -1903,13 +1967,9 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
               <th className="text-center px-3 py-3 font-medium min-w-32 bg-green-100 text-green-800 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}>Listening</th>
               <th className="text-center px-3 py-3 font-medium min-w-32 bg-green-100 text-green-800 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}>Speaking</th>
                 </>
-              ) : (
-                <th className="text-center px-3 py-3 text-gray-500 font-medium min-w-32 border-l border-gray-200">
-                  Score {totals.total_points ? `/ ${totals.total_points}` : ''}
-                </th>
-              )}
                 <th className="text-center px-4 py-3 font-medium min-w-24 bg-green-100 text-green-800 border-l border-gray-200" style={{ backgroundClip: 'padding-box' }}>Overall</th>
-            </tr>
+              </tr>
+            ) : null}
           </thead>
           <tbody className="divide-y divide-gray-100">
             {students.map(student => {
@@ -2189,7 +2249,6 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
 function StudentAttributesTab({ classId, term, students, onDirtyChange }) {
   const [attributes, setAttributes] = useState({})
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
   const draftKey = `gradebook:draft:attributes:${classId}:${term}`
 
   const ATTRIBUTE_FIELDS = [
@@ -2237,6 +2296,7 @@ function StudentAttributesTab({ classId, term, students, onDirtyChange }) {
   }
 
   const saveAll = async () => {
+    if (saving) return
     setSaving(true)
     const rows = students.map((student) => {
       const values = attributes[student.id] || {}
@@ -2257,25 +2317,20 @@ function StudentAttributesTab({ classId, term, students, onDirtyChange }) {
       .upsert(rows, { onConflict: 'class_id,student_id,term' })
 
     setSaving(false)
-    setSaved(true)
     onDirtyChange?.(false)
     clearDraft(draftKey)
-    setTimeout(() => setSaved(false), 2000)
   }
+
+  useEffect(() => {
+    const handler = (event) => {
+      if (event.detail?.tab === 'student_attributes') saveAll()
+    }
+    document.addEventListener('gradebook-save-tab', handler)
+    return () => document.removeEventListener('gradebook-save-tab', handler)
+  })
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-gray-500">Set G/S/N for each student attribute criterion.</p>
-        <button
-          onClick={saveAll}
-          disabled={saving}
-          className={V2_PRIMARY_BTN}
-        >
-          {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save'}
-        </button>
-      </div>
-
       <div className={V2_TABLE_WRAP_CLASS}>
         <table className="w-full text-sm">
           <thead className={V2_TABLE_HEAD_CLASS}>
@@ -2496,10 +2551,7 @@ function SummaryTab({ classId, term, students, isESL }) {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-gray-500">
-          Auto-calculated with renormalized weighting for missing components. Attainment = Participation (20%) + Assignments (80%). Total = Attainment (75%) + Progress Test (25%).
-        </p>
+      <div className="flex justify-end items-center mb-3">
         <button onClick={fetchAll} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
           ↻ Refresh
         </button>
@@ -2684,8 +2736,7 @@ function CommentsTab({ classId, term, students, onDirtyChange }) {
     <div>
       <div className="flex justify-between items-center mb-4">
         <p className="text-sm text-gray-500">
-          Write end of term comments for each student. Click box to expand.
-          <span className="ml-2 text-amber-700 font-medium">Missing: {missingCount}</span>
+          <span className="text-amber-700 font-medium">Missing: {missingCount}</span>
         </p>
         {saved && <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 font-medium">✓ Saved</span>}
       </div>
