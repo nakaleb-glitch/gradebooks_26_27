@@ -465,8 +465,7 @@ export default function ClassDetail() {
         <div className="space-y-6">
           {activeTab === 'students' && (
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden" style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}>
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">Student List</h3>
+              <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-end">
                 <span className="text-xs text-gray-500">{studentRoster.length} students</span>
               </div>
               {studentRoster.length === 0 ? (
@@ -516,7 +515,6 @@ export default function ClassDetail() {
 
           {activeTab === 'gradebooks' && (
             <div className="bg-white rounded-xl border border-gray-200 p-3.5" style={{ borderTopColor: '#d1232a', borderTopWidth: 3 }}>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Gradebooks</h3>
                 <div className="grid grid-cols-2 gap-3">
                   {TERMS.map(term => {
                     const isCurrentTerm = detectCurrentTerm() === term.key
@@ -543,7 +541,6 @@ export default function ClassDetail() {
 
           {activeTab === 'resources' && (
             <div className="bg-white rounded-xl border border-gray-200 p-3.5" style={{ borderTopColor: '#ffc612', borderTopWidth: 3 }}>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Teacher Resources</h3>
                 <ResourceCards
                   level={cls.level}
                   grade={String(cls.name || '').trim().match(/^(\d+)/)?.[1] || null}
@@ -555,7 +552,6 @@ export default function ClassDetail() {
 
           {activeTab === 'announcements' && (
             <div className="bg-white rounded-xl border border-gray-200 p-3.5" style={{ borderTopColor: '#22c55e', borderTopWidth: 3 }}>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Class Announcements</h3>
                 {profile?.role === 'teacher' && profile?.id === cls.teacher_id && (
                   <>
                     <div className="flex items-center justify-between mb-3">
@@ -708,7 +704,6 @@ export default function ClassDetail() {
 
           {activeTab === 'uploads' && (
             <div className="bg-white rounded-xl border border-gray-200 p-4" style={{ borderTopColor: '#6366f1', borderTopWidth: 3 }}>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Weekly Uploads</h3>
               <p className="text-sm text-gray-500">Coming soon...</p>
             </div>
           )}
