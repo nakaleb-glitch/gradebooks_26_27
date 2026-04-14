@@ -335,7 +335,7 @@ export default function Layout({ children }) {
 
             {/* Global Academic Status Indicator */}
             <div className="flex flex-col items-center gap-1">
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col items-center gap-1">
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-300">Academic Year:</span>
                   <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: '#1f86c7', color: '#ffffff' }}>
