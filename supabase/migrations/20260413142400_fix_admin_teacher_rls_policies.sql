@@ -39,8 +39,8 @@ BEGIN
         DROP POLICY IF EXISTS "Admins can manage gradebooks" ON public.term_comments;
     END IF;
 
-    IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'weekly_plans' AND schemaname = 'public') THEN
-        DROP POLICY IF EXISTS "Admins can manage weekly plans" ON public.weekly_plans;
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'weekly_plan_lessons' AND schemaname = 'public') THEN
+        DROP POLICY IF EXISTS "Admins can manage weekly plans" ON public.weekly_plan_lessons;
     END IF;
 
     IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'teacher_schedules' AND schemaname = 'public') THEN
@@ -241,8 +241,8 @@ END $$;
 -- Weekly Plans policy
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'weekly_plans' AND schemaname = 'public') THEN
-        CREATE POLICY "Admins can manage weekly plans" ON public.weekly_plans
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'weekly_plan_lessons' AND schemaname = 'public') THEN
+        CREATE POLICY "Admins can manage weekly plans" ON public.weekly_plan_lessons
         FOR ALL USING (
             EXISTS (
                 SELECT 1 FROM users 

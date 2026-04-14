@@ -21,7 +21,7 @@ import TeacherSchedules from './pages/admin/TeacherSchedules'
 import TeacherSchedule from './pages/TeacherSchedule'
 
 const ProtectedRoute = ({ children, adminOnly = false, allowedRoles = null }) => {
-  const { user, profile, loading, effectiveRole } = useAuth()
+  const { user, loading, effectiveRole } = useAuth()
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading...</div>
   if (!user) return <Navigate to="/login" />
   if (adminOnly && effectiveRole !== 'admin') return <Navigate to="/dashboard" />

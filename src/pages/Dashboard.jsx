@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import Layout from '../components/Layout'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { getCurrentWeekIndexWithOverride, getWeekIndexForDate } from '../lib/academicCalendar'
 import { normalizeLinkUrl, uploadTeacherAnnouncementPdf } from '../lib/announcementAttachments'
 import AnnouncementPdfButton from '../components/AnnouncementPdfButton'
 
@@ -103,19 +104,7 @@ const ALL_WEEKS = [
 
 // Calculate current week based on date - default to Week 0 for pre launch
 const getCurrentWeekIndex = () => {
-  // Check for debug override
-  const override = sessionStorage.getItem('debug_week_override')
-  if (override !== null) {
-    const idx = Number(override)
-    if (idx >= 0 && idx < ALL_WEEKS.length) return idx
-  }
-
-  const today = new Date()
-  // Default to Week 0 for all dates before August 2026
-  if (today < new Date('2026-08-17')) return 0
-
-  // TODO: Implement actual date mapping
-  return 0
+  return getCurrentWeekIndexWithOverride(ALL_WEEKS.length)
 }
 
 export default function Dashboard() {
@@ -1084,10 +1073,7 @@ export default function Dashboard() {
                               sessionStorage.setItem('debug_day_override', String(dayIdx))
 
                               // Auto calculate week number for this date
-                              const firstDay = new Date('2026-08-17')
-                              const diffTime = selectedDate.getTime() - firstDay.getTime()
-                              const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-                              const weekIndex = Math.max(0, Math.floor(diffDays / 7))
+                              const weekIndex = getWeekIndexForDate(selectedDate)
                               if (weekIndex >= 0 && weekIndex < ALL_WEEKS.length) {
                                 setDebugWeekOverride(weekIndex)
                                 sessionStorage.setItem('debug_week_override', String(weekIndex))

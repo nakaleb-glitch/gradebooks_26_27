@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { getCurrentWeekIndexWithOverride } from '../lib/academicCalendar'
 import Layout from '../components/Layout'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
@@ -66,19 +67,7 @@ const ALL_WEEKS = [
 
 // Calculate current week based on date - default to Week 0 for pre launch
 const getCurrentWeekIndex = () => {
-  // Check for debug override
-  const override = sessionStorage.getItem('debug_week_override')
-  if (override !== null) {
-    const idx = Number(override)
-    if (idx >= 0 && idx < ALL_WEEKS.length) return idx
-  }
-
-  const today = new Date()
-  // Default to Week 0 for all dates before August 2026
-  if (today < new Date('2026-08-17')) return 0
-
-  // TODO: Implement actual date mapping
-  return 0
+  return getCurrentWeekIndexWithOverride(ALL_WEEKS.length)
 }
 
 // Fixed subject sort order
@@ -100,7 +89,7 @@ const sortClassesBySubject = (classes) => {
 
 export default function WeeklyPlans() {
   const navigate = useNavigate()
-  const { profile } = useAuth()
+  const { profile, effectiveRole } = useAuth()
   const [homerooms, setHomerooms] = useState([])
   const [selectedHomeroom, setSelectedHomeroom] = useState('')
   const [selectedWeek, setSelectedWeek] = useState(getCurrentWeekIndex())
@@ -114,8 +103,8 @@ export default function WeeklyPlans() {
   const [editValue, setEditValue] = useState('')
   const [savingLesson, setSavingLesson] = useState(false)
   
-  const isAdmin = profile?.role === 'admin'
-  const isStudent = profile?.role === 'student'
+  const isAdmin = effectiveRole === 'admin'
+  const isStudent = effectiveRole === 'student'
   const currentWeek = ALL_WEEKS[selectedWeek]
 
   // Fetch unique homerooms on mount

@@ -16,7 +16,14 @@ CREATE POLICY "Students can update their own avatar" ON students
 DROP POLICY IF EXISTS "Admins can view all students" ON students;
 CREATE POLICY "Admins can view all students" ON students
   FOR SELECT
-  USING (auth.jwt() ->> 'role' = 'admin');
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM public.users u
+      WHERE u.id = auth.uid()
+        AND u.role IN ('admin', 'admin_teacher')
+    )
+  );
 
 -- Grant permissions
 GRANT UPDATE(avatar_url) ON students TO authenticated;

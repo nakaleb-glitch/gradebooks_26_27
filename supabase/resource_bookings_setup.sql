@@ -25,9 +25,14 @@ ON resource_bookings(week, location_id);
 -- Enable RLS
 ALTER TABLE resource_bookings ENABLE ROW LEVEL SECURITY;
 
--- Everyone can read all bookings
+DROP POLICY IF EXISTS resource_bookings_read_all ON resource_bookings;
+DROP POLICY IF EXISTS resource_bookings_create ON resource_bookings;
+DROP POLICY IF EXISTS resource_bookings_modify ON resource_bookings;
+DROP POLICY IF EXISTS resource_bookings_delete ON resource_bookings;
+
+-- Authenticated users can read bookings for operational coordination.
 CREATE POLICY resource_bookings_read_all ON resource_bookings
-  FOR SELECT USING (true);
+  FOR SELECT USING (auth.uid() IS NOT NULL);
 
 -- Authenticated users can create bookings
 CREATE POLICY resource_bookings_create ON resource_bookings
@@ -38,7 +43,7 @@ CREATE POLICY resource_bookings_modify ON resource_bookings
   FOR UPDATE USING (
     auth.uid() = user_id OR EXISTS (
       SELECT 1 FROM users 
-      WHERE id = auth.uid() AND role = 'admin'
+      WHERE id = auth.uid() AND role IN ('admin', 'admin_teacher')
     )
   );
 
@@ -46,6 +51,6 @@ CREATE POLICY resource_bookings_delete ON resource_bookings
   FOR DELETE USING (
     auth.uid() = user_id OR EXISTS (
       SELECT 1 FROM users 
-      WHERE id = auth.uid() AND role = 'admin'
+      WHERE id = auth.uid() AND role IN ('admin', 'admin_teacher')
     )
   );

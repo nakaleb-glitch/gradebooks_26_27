@@ -288,7 +288,13 @@ export default function Users() {
       return
     }
 
-    setMessage({ type: 'success', text: `User created successfully. Default password is royal@123.` })
+    const tempPassword = data?.results?.[0]?.temporary_password
+    setMessage({
+      type: 'success',
+      text: tempPassword
+        ? `User created successfully. Temporary password: ${tempPassword}`
+        : 'User created successfully. Ask the user to request a password reset if needed.',
+    })
     setCreateTeacherForm({
       full_name: '',
       staff_id: '',
@@ -340,7 +346,7 @@ export default function Users() {
       return
     }
 
-    const { error } = await supabase.functions.invoke('reset-user-password', {
+    const { data, error } = await supabase.functions.invoke('reset-user-password', {
       body: { user_id: targetUser.id },
       headers: {
         Authorization: `Bearer ${token}`,
@@ -366,7 +372,13 @@ export default function Users() {
         .ilike('staff_id', targetUser.staff_id)
     }
 
-    setMessage({ type: 'success', text: `Password reset for ${targetUser.email}. Default password is royal@123.` })
+    const tempPassword = data?.temporary_password
+    setMessage({
+      type: 'success',
+      text: tempPassword
+        ? `Password reset for ${targetUser.email}. Temporary password: ${tempPassword}`
+        : `Password reset for ${targetUser.email}.`,
+    })
     setConfirmReset(null)
     fetchUsers()
   }
@@ -396,15 +408,13 @@ export default function Users() {
           if (!full_name) missing.push('Full Name')
           if (!staff_id) missing.push('Staff ID')
           if (!email) missing.push('Email')
-          if (!level) missing.push('Level')
-          if (!subject) missing.push('Subject')
 
           if (missing.length > 0) {
             localErrors.push(`row ${index + 1}: missing ${missing.join(', ')}`)
             return
           }
 
-          teachers.push({ full_name, staff_id, email, role, level, subject })
+          teachers.push({ full_name, staff_id, email, role, level: level || null, subject: subject || null })
         })
 
         const token = await getValidAccessToken()
@@ -433,7 +443,13 @@ export default function Users() {
           if (errorCount > 0) {
             setMessage({ type: 'error', text: `${successCount} imported, ${errorCount} failed: ${allErrors.join(' | ')}` })
           } else {
-            setMessage({ type: 'success', text: `${successCount} users imported successfully with default password royal@123` })
+            const tempPasswords = (data.results || [])
+              .map((r) => r.temporary_password)
+              .filter(Boolean)
+            const passwordHint = tempPasswords.length > 0
+              ? ` Temporary passwords issued for ${tempPasswords.length} new account(s).`
+              : ''
+            setMessage({ type: 'success', text: `${successCount} users imported successfully.${passwordHint}` })
           }
           fetchUsers()
         }
@@ -624,7 +640,7 @@ export default function Users() {
       {confirmReset && (
         <div className="mb-6 px-4 py-4 rounded-lg bg-red-50 border border-red-200">
           <p className="text-sm font-medium text-red-700 mb-3">
-            Reset password for <strong>{confirmReset.full_name || confirmReset.email}</strong>? Their password will be set to <strong>royal@123</strong> and they will be required to change it on next login.
+            Reset password for <strong>{confirmReset.full_name || confirmReset.email}</strong>? A one-time temporary password will be generated and they will be required to change it on next login.
           </p>
           <div className="flex gap-2">
             <button
@@ -961,7 +977,7 @@ export default function Users() {
         <p className="text-xs text-gray-400 mt-2">Level: primary · secondary</p>
         <p className="text-xs text-gray-400">Role defaults to teacher when blank. Valid roles: teacher · admin</p>
         <p className="text-xs text-gray-400">Subject: ESL/GP · Mathematics · Science · VN ESL</p>
-        <p className="text-xs text-gray-400 mt-1">All imported users are created with default password royal@123 and must change password.</p>
+        <p className="text-xs text-gray-400 mt-1">Imported users receive one-time temporary passwords and must change password at first login.</p>
       </div>
 
       {/* Sticky save bar */}

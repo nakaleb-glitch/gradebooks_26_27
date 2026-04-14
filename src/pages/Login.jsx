@@ -27,7 +27,7 @@ export default function Login() {
     
     const { error: signInError } = await signInWithStaffId(userId, password)
     if (signInError) {
-      setError(signInError.message || 'Could not sign in. Please check credentials.')
+      setError('Invalid credentials. Please check your ID and password.')
     }
     
     setSubmitting(false)

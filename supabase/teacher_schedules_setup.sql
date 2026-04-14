@@ -23,14 +23,30 @@ CREATE INDEX idx_teacher_schedules_day_period ON teacher_schedules(day, period);
 -- Enable RLS
 ALTER TABLE teacher_schedules ENABLE ROW LEVEL SECURITY;
 
--- Admin can manage all schedules
+-- Admin and admin_teacher users can manage all schedules.
+DROP POLICY IF EXISTS "Admins can manage teacher schedules" ON teacher_schedules;
 CREATE POLICY "Admins can manage teacher schedules" ON teacher_schedules
   FOR ALL
   TO authenticated
-  USING (auth.jwt() ->> 'role' = 'admin')
-  WITH CHECK (auth.jwt() ->> 'role' = 'admin');
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM public.users u
+      WHERE u.id = auth.uid()
+        AND u.role IN ('admin', 'admin_teacher')
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1
+      FROM public.users u
+      WHERE u.id = auth.uid()
+        AND u.role IN ('admin', 'admin_teacher')
+    )
+  );
 
 -- Teachers can view their own schedules
+DROP POLICY IF EXISTS "Teachers can view their own schedules" ON teacher_schedules;
 CREATE POLICY "Teachers can view their own schedules" ON teacher_schedules
   FOR SELECT
   TO authenticated

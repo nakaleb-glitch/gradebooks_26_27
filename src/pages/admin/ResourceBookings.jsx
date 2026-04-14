@@ -2,6 +2,7 @@ import { useState, useEffect, useContext } from 'react'
 import Layout from '../../components/Layout'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { getCurrentWeekIndexWithOverride } from '../../lib/academicCalendar'
 import { useAuth } from '../../contexts/AuthContext'
 
 // School official week calendar - matching system standard
@@ -87,24 +88,12 @@ const TIMETABLE = [
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']
 
 const getCurrentWeekIndex = () => {
-  // Check for debug override
-  const override = sessionStorage.getItem('debug_week_override')
-  if (override !== null) {
-    const idx = Number(override)
-    if (idx >= 0 && idx < ALL_WEEKS.length) return idx
-  }
-
-  const today = new Date()
-  // Default to Week 0 for all dates before August 2026
-  if (today < new Date('2026-08-17')) return 0
-
-  // TODO: Implement actual date mapping
-  return 0
+  return getCurrentWeekIndexWithOverride(ALL_WEEKS.length)
 }
 
 export default function ResourceBookings() {
   const navigate = useNavigate()
-  const { user, profile } = useAuth()
+  const { user, profile, effectiveRole } = useAuth()
   const [selectedWeek, setSelectedWeek] = useState(getCurrentWeekIndex())
   const [selectedLocation, setSelectedLocation] = useState('library')
   const [bookings, setBookings] = useState({})
@@ -186,7 +175,7 @@ export default function ResourceBookings() {
   }
 
   const canModifyBooking = (booking) => {
-    return user && (user.id === booking.user_id || profile?.role === 'admin')
+    return user && (user.id === booking.user_id || effectiveRole === 'admin')
   }
 
   return (
@@ -201,7 +190,7 @@ export default function ResourceBookings() {
             ← Go Back
           </button>
 
-          {profile?.role === 'admin' && (
+          {effectiveRole === 'admin' && (
             <div className="flex gap-3">
               <button
                 onClick={() => {
@@ -313,7 +302,7 @@ export default function ResourceBookings() {
                           isBlocked ? (
                             <div className="w-full min-h-[60px] p-2 rounded border border-gray-400 bg-gray-500 text-white text-xs flex items-center justify-center">
                               <div className="font-medium">BLOCKED</div>
-                              {profile?.role === 'admin' && (
+                              {effectiveRole === 'admin' && (
                                 <button
                                   onClick={() => cancelBooking(booking.id)}
                                   className="ml-2 text-xs text-white underline hover:text-gray-200"

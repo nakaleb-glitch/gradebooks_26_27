@@ -1,7 +1,7 @@
 
 [functions.create-teachers]
 enabled = true
-verify_jwt = false
+verify_jwt = true
 import_map = "./functions/create-teachers/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
@@ -12,18 +12,18 @@ entrypoint = "./functions/create-teachers/index.ts"
 
 [functions.reset-user-password]
 enabled = true
-verify_jwt = false
+verify_jwt = true
 import_map = "./functions/reset-user-password/deno.json"
 entrypoint = "./functions/reset-user-password/index.ts"
 
 [functions.delete-user]
 enabled = true
-verify_jwt = false
+verify_jwt = true
 import_map = "./functions/delete-user/deno.json"
 entrypoint = "./functions/delete-user/index.ts"
 
 [functions.create-students]
 enabled = true
-verify_jwt = false
+verify_jwt = true
 import_map = "./functions/create-students/deno.json"
 entrypoint = "./functions/create-students/index.ts"

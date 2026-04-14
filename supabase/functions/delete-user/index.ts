@@ -46,7 +46,7 @@ serve(async (req) => {
       .eq('id', callerData.user.id)
       .single()
 
-    if (callerProfile?.role !== 'admin') {
+    if (callerProfile?.role !== 'admin' && callerProfile?.role !== 'admin_teacher') {
       return new Response(JSON.stringify({ error: 'Only admins can delete users' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -69,30 +69,6 @@ serve(async (req) => {
       })
     }
 
-    const { error: classUnassignError } = await supabaseAdmin
-      .from('classes')
-      .update({ teacher_id: null })
-      .eq('teacher_id', userId)
-
-    if (classUnassignError) {
-      return new Response(JSON.stringify({ error: classUnassignError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    const { error: profileDeleteError } = await supabaseAdmin
-      .from('users')
-      .delete()
-      .eq('id', userId)
-
-    if (profileDeleteError) {
-      return new Response(JSON.stringify({ error: profileDeleteError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
     const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(userId)
     if (authDeleteError) {
       return new Response(JSON.stringify({ error: authDeleteError.message }), {
@@ -101,7 +77,33 @@ serve(async (req) => {
       })
     }
 
-    return new Response(JSON.stringify({ success: true }), {
+    const cleanupErrors: string[] = []
+
+    const { error: classUnassignError } = await supabaseAdmin
+      .from('classes')
+      .update({ teacher_id: null })
+      .eq('teacher_id', userId)
+    if (classUnassignError) cleanupErrors.push(`class cleanup failed: ${classUnassignError.message}`)
+
+    const { error: profileDeleteError } = await supabaseAdmin
+      .from('users')
+      .delete()
+      .eq('id', userId)
+    if (profileDeleteError) cleanupErrors.push(`profile cleanup failed: ${profileDeleteError.message}`)
+
+    if (cleanupErrors.length > 0) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Auth user deleted but data cleanup is incomplete.',
+        needs_manual_cleanup: true,
+        details: cleanupErrors,
+      }), {
+        status: 409,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    return new Response(JSON.stringify({ success: true, cleanup_complete: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (err) {

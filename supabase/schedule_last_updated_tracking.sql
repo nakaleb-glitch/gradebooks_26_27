@@ -13,11 +13,12 @@ INSERT INTO schedule_audit (level) VALUES ('secondary') ON CONFLICT DO NOTHING;
 CREATE OR REPLACE FUNCTION update_schedule_audit()
 RETURNS TRIGGER AS $$
 BEGIN
+  -- DELETE triggers do not have NEW, so coalesce NEW/OLD safely.
   UPDATE schedule_audit 
   SET last_updated_at = now(),
       last_updated_by = auth.uid()
-  WHERE level = NEW.level;
-  RETURN NEW;
+  WHERE level = COALESCE(NEW.level, OLD.level);
+  RETURN COALESCE(NEW, OLD);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

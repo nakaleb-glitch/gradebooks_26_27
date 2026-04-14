@@ -25,9 +25,20 @@ CREATE INDEX IF NOT EXISTS idx_weekly_plans_submitted_by ON weekly_plan_lessons(
 ALTER TABLE weekly_plan_lessons ENABLE ROW LEVEL SECURITY;
 
 -- Policies:
--- Teachers can read all plans
-CREATE POLICY "Teachers can view all weekly plans" ON weekly_plan_lessons
-    FOR SELECT USING (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Teachers can view all weekly plans" ON weekly_plan_lessons;
+DROP POLICY IF EXISTS "Teachers can edit their own class weekly plans" ON weekly_plan_lessons;
+DROP POLICY IF EXISTS "Teachers can update their own class weekly plans" ON weekly_plan_lessons;
+DROP POLICY IF EXISTS "Admins have full access to weekly plans" ON weekly_plan_lessons;
+
+-- Teachers can read plans for classes they are assigned to.
+CREATE POLICY "Teachers can view own class weekly plans" ON weekly_plan_lessons
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM classes
+            WHERE classes.id = weekly_plan_lessons.class_id
+            AND classes.teacher_id = auth.uid()
+        )
+    );
 
 -- Teachers can only edit plans for classes they are assigned to
 CREATE POLICY "Teachers can edit their own class weekly plans" ON weekly_plan_lessons
@@ -54,7 +65,7 @@ CREATE POLICY "Admins have full access to weekly plans" ON weekly_plan_lessons
         EXISTS (
             SELECT 1 FROM users 
             WHERE id = auth.uid() 
-            AND role = 'admin'
+            AND role IN ('admin', 'admin_teacher')
         )
     );
 

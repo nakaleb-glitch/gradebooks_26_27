@@ -4,4 +4,4 @@ drop constraint if exists users_role_check;
 
 alter table public.users
 add constraint users_role_check
-check (role in ('admin', 'teacher', 'student'));
+check (role in ('admin', 'teacher', 'student', 'admin_teacher'));

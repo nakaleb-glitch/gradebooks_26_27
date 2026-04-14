@@ -9,6 +9,11 @@ DECLARE
     table_schema text;
     new_policy_def text;
 BEGIN
+    -- Deprecated: this migration rewrites policies generically and can change semantics.
+    -- Keep as historical artifact; use explicit table-scoped migrations instead.
+    RAISE NOTICE 'Skipping deprecated migration 20260413142105_update_admin_rls_policies.sql';
+    RETURN;
+
     -- Loop through all RLS policies that check for admin role
     FOR policy_record IN
         SELECT

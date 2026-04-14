@@ -90,12 +90,12 @@ export default function Students() {
 
   const syncStudentLogins = async (studentRows) => {
     if (!Array.isArray(studentRows) || studentRows.length === 0) {
-      return { synced: 0, failed: 0, errors: [] }
+      return { synced: 0, failed: 0, errors: [], temporaryPasswords: [] }
     }
 
     const token = await getValidAccessToken()
     if (!token) {
-      return { synced: 0, failed: studentRows.length, errors: ['Session expired. Please sign in again as admin.'] }
+      return { synced: 0, failed: studentRows.length, errors: ['Session expired. Please sign in again as admin.'], temporaryPasswords: [] }
     }
 
     const payload = studentRows.map((s) => ({
@@ -109,6 +109,7 @@ export default function Students() {
     let synced = 0
     let failed = 0
     const errors = []
+    const temporaryPasswords = []
     let offset = 0
 
     for (const chunk of chunks) {
@@ -124,11 +125,15 @@ export default function Students() {
           const absoluteRow = localRow > 0 ? offset + localRow : '?'
           errors.push(`row ${absoluteRow}: ${e.error}`)
         })
+        ;(data?.results || [])
+          .map((r) => r.temporary_password)
+          .filter(Boolean)
+          .forEach((p) => temporaryPasswords.push(p))
       }
       offset += chunk.length
     }
 
-    return { synced, failed, errors }
+    return { synced, failed, errors, temporaryPasswords }
   }
 
   const getHomeroom = (classValue) => String(classValue || '').trim().split(/\s+/)[0] || ''
@@ -362,7 +367,13 @@ export default function Students() {
         detail: `No class match for: ${enrollmentResult.missingStudents.join(', ')}`,
       })
     } else {
-      setMessage({ type: 'success', text: 'Student saved successfully and login account is ready (default password: royal@123).' })
+      const tempPassword = syncResult?.temporaryPasswords?.[0]
+      setMessage({
+        type: 'success',
+        text: tempPassword
+          ? `Student saved successfully. Temporary password: ${tempPassword}`
+          : 'Student saved successfully and login account is ready.',
+      })
     }
     setNewStudent({
       student_id: '',
@@ -397,7 +408,7 @@ export default function Students() {
       return
     }
 
-    const { error } = await supabase.functions.invoke('reset-user-password', {
+    const { data, error } = await supabase.functions.invoke('reset-user-password', {
       body: { user_id: targetUser.id },
       headers: {
         Authorization: `Bearer ${token}`,
@@ -416,7 +427,13 @@ export default function Students() {
       .eq('status', 'new')
       .ilike('staff_id', student.student_id)
 
-    setMessage({ type: 'success', text: `Password reset for ${student.student_id}. Default password is royal@123.` })
+    const tempPassword = data?.temporary_password
+    setMessage({
+      type: 'success',
+      text: tempPassword
+        ? `Password reset for ${student.student_id}. Temporary password: ${tempPassword}`
+        : `Password reset for ${student.student_id}.`,
+    })
     setConfirmReset(null)
     fetchStudents()
   }
@@ -658,7 +675,7 @@ export default function Students() {
       {confirmReset && (
         <div className="mb-6 px-4 py-4 rounded-lg bg-red-50 border border-red-200">
           <p className="text-sm font-medium text-red-700 mb-3">
-            Reset password for <strong>{confirmReset.name_eng || confirmReset.student_id}</strong>? Their password will be set to <strong>royal@123</strong> and they will be required to change it on next login.
+            Reset password for <strong>{confirmReset.name_eng || confirmReset.student_id}</strong>? A one-time temporary password will be generated and they will be required to change it on next login.
           </p>
           <div className="flex gap-2">
             <button

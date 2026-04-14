@@ -32,12 +32,17 @@ export const AuthProvider = ({ children }) => {
   }
 
   const fetchProfile = async (userId) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('users')
       .select('*')
       .eq('id', userId)
       .single()
-    setProfile(data)
+    if (error) {
+      setProfile(null)
+      setLoading(false)
+      return
+    }
+    setProfile(data || null)
     setLoading(false)
   }
 
@@ -84,8 +89,8 @@ export const AuthProvider = ({ children }) => {
     const { data: userEmail, error: lookupError } = await supabase
       .rpc('get_email_by_staff_id', { p_staff_id: normalized })
 
-    if (lookupError) return { error: lookupError }
-    if (!userEmail) return { error: new Error('Staff ID not found.') }
+    if (lookupError) return { error: new Error('Invalid credentials.') }
+    if (!userEmail) return { error: new Error('Invalid credentials.') }
 
     const { error } = await supabase.auth.signInWithPassword({
       email: userEmail,

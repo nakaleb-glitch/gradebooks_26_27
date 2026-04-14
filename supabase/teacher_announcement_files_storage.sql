@@ -64,6 +64,6 @@ using (
     select 1
     from public.users u
     where u.id = auth.uid()
-      and u.role = 'admin'
+      and u.role in ('admin', 'admin_teacher')
   )
 );

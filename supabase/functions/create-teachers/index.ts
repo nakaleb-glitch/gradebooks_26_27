@@ -6,6 +6,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const generateTemporaryPassword = () => {
+  const bytes = new Uint8Array(12)
+  crypto.getRandomValues(bytes)
+  const token = btoa(String.fromCharCode(...bytes)).replace(/[^A-Za-z0-9]/g, '').slice(0, 12)
+  return `Royal!${token}`
+}
+
 const capitalizeFirst = (value: string) => {
   const v = (value || '').trim()
   if (!v) return ''
@@ -101,8 +108,6 @@ serve(async (req) => {
       if (!full_name) missing.push('full_name')
       if (!staff_id) missing.push('staff_id')
       if (!email) missing.push('email')
-      if (!level) missing.push('level')
-      if (!subject) missing.push('subject')
 
       if (missing.length > 0) {
         errors.push({
@@ -114,14 +119,16 @@ serve(async (req) => {
         continue
       }
 
+      const temporaryPassword = generateTemporaryPassword()
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email,
-        password: 'royal@123',
+        password: temporaryPassword,
         email_confirm: true,
         user_metadata: {
           full_name,
           staff_id,
-          force_password_change: true
+          force_password_change: true,
+          temporary_password_issued_at: new Date().toISOString(),
         }
       })
 
@@ -137,15 +144,15 @@ serve(async (req) => {
             full_name,
             staff_id,
             role: role === 'admin' ? 'admin' : role === 'admin_teacher' ? 'admin_teacher' : 'teacher',
-            level,
-            subject,
+            level: level || null,
+            subject: subject || null,
             must_change_password: true
           }, { onConflict: 'id' })
 
         if (upsertError) {
           errors.push({ row: i + 1, email, staff_id, error: 'Auth created but profile failed: ' + upsertError.message })
         } else {
-          results.push({ row: i + 1, email, staff_id, success: true })
+          results.push({ row: i + 1, email, staff_id, success: true, temporary_password: temporaryPassword })
         }
       }
     }

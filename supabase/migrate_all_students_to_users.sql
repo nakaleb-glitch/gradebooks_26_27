@@ -1,5 +1,5 @@
 -- Run this ONCE to create user accounts for ALL existing students
--- This will generate student_id@royal.edu.vn emails with default password
+-- This will generate student_id@royal.edu.vn emails with per-user random passwords.
 
 DO $$
 DECLARE
@@ -10,9 +10,6 @@ BEGIN
     -- Enable pgcrypto if not already enabled
     CREATE EXTENSION IF NOT EXISTS pgcrypto;
     
-    -- Precalculate default password hash
-    hashed_pw := crypt('royal123', gen_salt('bf'));
-
     FOR s IN SELECT id, student_id, name_eng, level FROM public.students LOOP
         
         -- Skip if already has user account
@@ -22,6 +19,9 @@ BEGIN
 
         -- Generate unique user id
         user_id := gen_random_uuid();
+
+        -- Generate a unique random password hash for this user.
+        hashed_pw := crypt(gen_random_uuid()::text, gen_salt('bf'));
 
         -- Create auth user
         INSERT INTO auth.users (

@@ -37,7 +37,7 @@ using (
   exists (
     select 1
     from public.users u
-    where u.id = auth.uid() and u.role = 'admin'
+    where u.id = auth.uid() and u.role in ('admin', 'admin_teacher')
   )
 );
 
@@ -50,13 +50,13 @@ using (
   exists (
     select 1
     from public.users u
-    where u.id = auth.uid() and u.role = 'admin'
+    where u.id = auth.uid() and u.role in ('admin', 'admin_teacher')
   )
 )
 with check (
   exists (
     select 1
     from public.users u
-    where u.id = auth.uid() and u.role = 'admin'
+    where u.id = auth.uid() and u.role in ('admin', 'admin_teacher')
   )
 );
