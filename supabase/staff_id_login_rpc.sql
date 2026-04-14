@@ -21,15 +21,6 @@ BEGIN
     RETURN user_email;
   END IF;
 
-  -- Try student_id lookup
-  SELECT email INTO user_email
-  FROM public.users u
-  WHERE lower(u.student_id) = lower(trim(p_staff_id))
-  LIMIT 1;
-
-  IF user_email IS NOT NULL THEN
-    RETURN user_email;
-  END IF;
 
   -- Try direct students table lookup
   SELECT u.email INTO user_email
