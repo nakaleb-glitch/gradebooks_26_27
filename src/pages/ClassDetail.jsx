@@ -2271,14 +2271,21 @@ function SummaryTab({ classId, term, students, isESL }) {
       const pt = ptByStudent[student.id]
       const ptOverall = pt?.overall_percentage ?? null
 
+      const hasParticipation = partPct != null
+      const hasAssignments = assignAvg != null
+      const hasProgressTest = ptOverall != null
+
       const total = weightedNormalized([
         { value: attainment, weight: 75 },
         { value: ptOverall, weight: 25 },
       ])
 
-      const calcStatus = total != null
-        ? (attainment != null && ptOverall != null ? 'Complete' : 'Partial')
-        : 'Missing'
+      const completedComponents = [hasParticipation, hasAssignments, hasProgressTest].filter(Boolean).length
+      const calcStatus = completedComponents === 3
+        ? 'Complete'
+        : completedComponents === 0
+          ? 'Missing'
+          : 'Partial'
 
       summary[student.id] = { 
         partPct, 
