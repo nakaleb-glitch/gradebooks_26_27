@@ -334,6 +334,20 @@ export default function ClassDetail() {
     }
   }
 
+  const handleTopTabChange = (nextTab) => {
+    if (selectedTerm) {
+      const hasUnsaved = hasUnsavedGradebook || sessionStorage.getItem('gradebook_unsaved_changes') === '1'
+      if (hasUnsaved) {
+        window.alert('You have unsaved gradebook changes. Please save or discard them before switching tabs.')
+        return
+      }
+      setSelectedTerm(null)
+      sessionStorage.setItem('gradebook_unsaved_changes', '0')
+      setHasUnsavedGradebook(false)
+    }
+    setActiveTab(nextTab)
+  }
+
   if (loading) return <Layout><div className="text-center text-gray-400 py-20">Loading...</div></Layout>
   if (!cls) return <Layout><div className="text-center text-gray-400 py-20">Class not found.</div></Layout>
 
@@ -370,7 +384,7 @@ export default function ClassDetail() {
       {/* Page Tabs */}
       <div className="flex gap-1 border-b border-gray-200 mb-6">
         <button
-          onClick={() => setActiveTab('students')}
+          onClick={() => handleTopTabChange('students')}
           className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
             activeTab === 'students'
               ? 'border-blue-600 text-blue-600'
@@ -380,7 +394,7 @@ export default function ClassDetail() {
           Student List
         </button>
         <button
-          onClick={() => setActiveTab('gradebooks')}
+          onClick={() => handleTopTabChange('gradebooks')}
           className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
             activeTab === 'gradebooks'
               ? 'border-blue-600 text-blue-600'
@@ -390,7 +404,7 @@ export default function ClassDetail() {
           Gradebooks
         </button>
         <button
-          onClick={() => setActiveTab('resources')}
+          onClick={() => handleTopTabChange('resources')}
           className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
             activeTab === 'resources'
               ? 'border-blue-600 text-blue-600'
@@ -400,7 +414,7 @@ export default function ClassDetail() {
           Teacher Resources
         </button>
         <button
-          onClick={() => setActiveTab('announcements')}
+          onClick={() => handleTopTabChange('announcements')}
           className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
             activeTab === 'announcements'
               ? 'border-blue-600 text-blue-600'
@@ -410,7 +424,7 @@ export default function ClassDetail() {
           Class Announcements
         </button>
         <button
-          onClick={() => setActiveTab('uploads')}
+          onClick={() => handleTopTabChange('uploads')}
           className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
             activeTab === 'uploads'
               ? 'border-blue-600 text-blue-600'
@@ -436,26 +450,28 @@ export default function ClassDetail() {
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                       <tr>
+                        <th className="text-left px-3 py-3 text-gray-500 font-medium w-[56px]">Profile Picture / Avatar</th>
                         <th className="text-left px-3 py-3 text-gray-500 font-medium w-[80px]">Student ID</th>
-                        <th className="text-left px-3 py-3 text-gray-500 font-medium">Student Name</th>
-                        <th className="text-left px-3 py-3 text-gray-500 font-medium w-[40px]"></th>
+                        <th className="text-left px-3 py-3 text-gray-500 font-medium">Student Name (VN)</th>
+                        <th className="text-left px-3 py-3 text-gray-500 font-medium">Student Name (ENG)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-300">
                       {studentRoster.map(student => (
                         <tr key={student.id} className="hover:bg-gray-50">
-                          <td className="px-3 py-3 text-gray-600">{student.student_id || '—'}</td>
-                          <td className="px-3 py-3 font-medium">
-                            <span className="text-gray-900">{student.name_eng || '—'}</span>
-                            <span className="text-gray-400 px-1">-</span>
-                            <span className="text-blue-700">{student.name_vn || '—'}</span>
-                          </td>
                           <td className="px-3 py-3">
                             <ProfileAvatar 
                               avatarUrl={student.avatar_url} 
                               name={student.name_eng} 
                               size={32}
                             />
+                          </td>
+                          <td className="px-3 py-3 text-gray-600">{student.student_id || '—'}</td>
+                          <td className="px-3 py-3 font-medium text-blue-700">
+                            {student.name_vn || '—'}
+                          </td>
+                          <td className="px-3 py-3 font-medium text-gray-900">
+                            {student.name_eng || '—'}
                           </td>
                         </tr>
                       ))}
