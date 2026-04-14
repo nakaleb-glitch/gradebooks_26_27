@@ -835,10 +835,14 @@ const letterGradeFromPercentage = (score) => {
   return 'E'
 }
 
-const STUDENT_AVATAR_COL_CLASS = 'text-left px-3 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-[72px] min-w-[72px]'
-const STUDENT_INFO_COL_CLASS = 'text-left px-4 py-3 text-gray-500 font-medium bg-gray-50 w-[300px] min-w-[300px]'
-const STUDENT_AVATAR_CELL_CLASS = 'px-3 py-3 sticky left-0 bg-white'
-const STUDENT_INFO_CELL_CLASS = 'px-4 py-3 bg-white'
+const STUDENT_AVATAR_COL_CLASS = 'text-left px-3 py-3 text-slate-600 font-semibold sticky left-0 z-20 bg-slate-100/95 w-[76px] min-w-[76px] border-r border-slate-200'
+const STUDENT_INFO_COL_CLASS = 'text-left px-4 py-3 text-slate-700 font-semibold sticky left-[76px] z-20 bg-slate-100/95 w-[320px] min-w-[320px] border-r border-slate-200'
+const STUDENT_AVATAR_CELL_CLASS = 'px-3 py-3 sticky left-0 z-10 bg-white/95 backdrop-blur-sm border-r border-slate-100'
+const STUDENT_INFO_CELL_CLASS = 'px-4 py-3 sticky left-[76px] z-10 bg-white/95 backdrop-blur-sm border-r border-slate-100'
+const V2_TABLE_WRAP_CLASS = 'bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto'
+const V2_TABLE_HEAD_CLASS = 'bg-slate-100/80 border-b border-slate-200'
+const V2_ROW_CLASS = 'hover:bg-sky-50/40 min-h-[58px]'
+const V2_PRIMARY_BTN = 'px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700 disabled:bg-slate-300 disabled:text-slate-500 transition-colors'
 
 const weightedNormalized = (items) => {
   const present = items.filter((item) => item.value != null)
@@ -1011,23 +1015,23 @@ function Gradebook({ cls, term, termLabel, onBack, onUnsavedChange }) {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">{termLabel}</h3>
+    <div className="bg-gradient-to-b from-sky-50/70 to-white border border-sky-100 rounded-2xl p-5 md:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-4 border-b border-slate-200">
+        <div>
+          <h3 className="text-xl font-semibold text-slate-900">{termLabel}</h3>
+          <p className="text-sm text-slate-500 mt-0.5">Teacher Gradebook V2</p>
+        </div>
         <div className="flex items-center gap-3">
           {hasAnyUnsaved && (
-            <span className="text-xs px-2 py-1 rounded-full font-medium bg-amber-100 text-amber-700 border border-amber-200">
+            <span className="text-xs px-2.5 py-1 rounded-full font-semibold bg-amber-100 text-amber-700 border border-amber-200">
               Unsaved Changes
             </span>
           )}
-          <span className="text-sm text-gray-500">{students.length} students</span>
+          <span className="text-sm text-slate-600 font-medium">{students.length} students</span>
           <button
             type="button"
             onClick={handleBackToTerms}
-            className="text-sm text-white px-3 py-1.5 rounded-lg transition-colors"
-            style={{ backgroundColor: '#1f86c7' }}
-            onMouseEnter={(e) => e.target.style.backgroundColor = '#1a74ad'}
-            onMouseLeave={(e) => e.target.style.backgroundColor = '#1f86c7'}
+            className={V2_PRIMARY_BTN}
           >
             ← Go Back
           </button>
@@ -1037,16 +1041,18 @@ function Gradebook({ cls, term, termLabel, onBack, onUnsavedChange }) {
       {loading ? (
         <div className="text-center text-gray-400 py-20">Loading students...</div>
       ) : students.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">
+        <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-400 shadow-sm">
           No students enrolled in this class yet.
         </div>
       ) : (
         <>
-          <div className="flex gap-1 border-b border-gray-200 mb-6">
+          <div className="inline-flex flex-wrap gap-1.5 p-1.5 rounded-2xl bg-slate-100 border border-slate-200 mb-6">
             {TABS.map(tab => (
               <button key={tab.key} onClick={() => handleTabChange(tab.key)}
-                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
-                  activeTab === tab.key ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                className={`px-4 py-2 text-sm font-semibold rounded-xl transition-colors ${
+                  activeTab === tab.key
+                    ? 'bg-white text-sky-700 shadow-sm border border-slate-200'
+                    : 'text-slate-600 hover:text-slate-800 hover:bg-white/70'
                 }`}>
                 {tab.label}
               </button>
@@ -1167,13 +1173,13 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
       <div className="flex justify-between items-center mb-4">
         <p className="text-sm text-gray-500">Weekly participation scores out of 10.</p>
         <button onClick={saveAll} disabled={saving}
-          className="px-4 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300">
+          className={V2_PRIMARY_BTN}>
           {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save'}
         </button>
       </div>
-      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+      <div className={V2_TABLE_WRAP_CLASS}>
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className={V2_TABLE_HEAD_CLASS}>
             <tr>
               <th className={STUDENT_AVATAR_COL_CLASS}></th>
               <th className={STUDENT_INFO_COL_CLASS}>Student Information</th>
@@ -1191,7 +1197,7 @@ function ParticipationTab({ classId, term, students, onDirtyChange }) {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {students.map(student => (
-              <tr key={student.id} className="hover:bg-gray-50 min-h-[56px]">
+              <tr key={student.id} className={V2_ROW_CLASS}>
                 <td className={STUDENT_AVATAR_CELL_CLASS}>
                   <ProfileAvatar 
                     avatarUrl={student.avatar_url} 
@@ -1431,7 +1437,7 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
             + New Assignment
           </button>
           {assignments.length > 0 && (
-            <button onClick={saveAll} disabled={saving} className="px-4 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300">
+            <button onClick={saveAll} disabled={saving} className={V2_PRIMARY_BTN}>
               {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save'}
             </button>
           )}
@@ -1484,9 +1490,9 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
       {assignments.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">No assignments yet. Create one to get started.</div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+        <div className={V2_TABLE_WRAP_CLASS}>
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className={V2_TABLE_HEAD_CLASS}>
               <tr>
                 <th className={STUDENT_AVATAR_COL_CLASS}></th>
               <th className={STUDENT_INFO_COL_CLASS}>Student Information</th>
@@ -1513,7 +1519,7 @@ function AssignmentsTab({ classId, term, students, onDirtyChange }) {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {students.map(student => (
-                <tr key={student.id} className="hover:bg-gray-50 min-h-[56px]">
+                <tr key={student.id} className={V2_ROW_CLASS}>
                   <td className={STUDENT_AVATAR_CELL_CLASS}>
                     <ProfileAvatar 
                       avatarUrl={student.avatar_url} 
@@ -1809,7 +1815,7 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
         <p className="text-sm text-gray-500">
           {isESL ? 'Enter total points for each component, then student scores.' : 'Enter total points for the test, then student scores.'}
         </p>
-        <button onClick={saveAll} disabled={saving} className="px-4 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300">
+        <button onClick={saveAll} disabled={saving} className={V2_PRIMARY_BTN}>
           {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save'}
         </button>
       </div>
@@ -1858,9 +1864,9 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
         )}
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+      <div className={V2_TABLE_WRAP_CLASS}>
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className={V2_TABLE_HEAD_CLASS}>
             <tr>
               <th colSpan={2} className="text-left px-4 py-3 text-gray-500 font-medium sticky left-0 bg-gray-50 w-[280px]">Student Information</th>
               {isESL ? (
@@ -1898,7 +1904,7 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
               const g = grades[student.id] || {}
               const overall = getOverall(student.id)
               return (
-                <tr key={student.id} className="hover:bg-gray-50 min-h-[56px]">
+                <tr key={student.id} className={V2_ROW_CLASS}>
                   <td className={STUDENT_AVATAR_CELL_CLASS}>
                     <ProfileAvatar 
                       avatarUrl={student.avatar_url} 
@@ -2252,15 +2258,15 @@ function StudentAttributesTab({ classId, term, students, onDirtyChange }) {
         <button
           onClick={saveAll}
           disabled={saving}
-          className="px-4 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300"
+          className={V2_PRIMARY_BTN}
         >
           {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save'}
         </button>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+      <div className={V2_TABLE_WRAP_CLASS}>
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className={V2_TABLE_HEAD_CLASS}>
             <tr>
               <th className={STUDENT_AVATAR_COL_CLASS}></th>
               <th className={STUDENT_INFO_COL_CLASS}>Student Information</th>
@@ -2275,7 +2281,7 @@ function StudentAttributesTab({ classId, term, students, onDirtyChange }) {
             {students.map((student) => {
               const row = attributes[student.id] || {}
               return (
-                <tr key={student.id} className="hover:bg-gray-50 min-h-[56px]">
+                <tr key={student.id} className={V2_ROW_CLASS}>
                   <td className={STUDENT_AVATAR_CELL_CLASS}>
                     <ProfileAvatar 
                       avatarUrl={student.avatar_url} 
@@ -2295,15 +2301,15 @@ function StudentAttributesTab({ classId, term, students, onDirtyChange }) {
                      const currentValue = row[field.key] ?? ''
                      return (
                        <td key={field.key} className="px-3 py-2 text-center border-l border-gray-300 bg-blue-50" style={{ backgroundClip: 'padding-box' }}>
-                         <div className="flex justify-center gap-2">
+                        <div className="flex justify-center gap-1">
                            {/* G Button - Good */}
                            <button
                              type="button"
                              onClick={() => setAttribute(student.id, field.key, currentValue === 'G' ? '' : 'G')}
-                             className={`w-8 h-8 rounded-full text-sm font-bold transition-all flex items-center justify-center ${
+                            className={`min-w-[44px] h-9 rounded-lg text-sm font-bold transition-all flex items-center justify-center ${
                                currentValue === 'G'
-                                 ? 'bg-green-500 text-white shadow-sm'
-                                 : 'bg-white border-2 border-gray-200 text-gray-500 hover:border-green-400 hover:text-green-600'
+                                ? 'bg-green-500 text-white shadow-sm ring-2 ring-green-200'
+                                : 'bg-white border-2 border-gray-200 text-gray-500 hover:border-green-400 hover:text-green-600'
                              }`}
                              title="Good"
                            >
@@ -2314,10 +2320,10 @@ function StudentAttributesTab({ classId, term, students, onDirtyChange }) {
                            <button
                              type="button"
                              onClick={() => setAttribute(student.id, field.key, currentValue === 'S' ? '' : 'S')}
-                             className={`w-8 h-8 rounded-full text-sm font-bold transition-all flex items-center justify-center ${
+                            className={`min-w-[44px] h-9 rounded-lg text-sm font-bold transition-all flex items-center justify-center ${
                                currentValue === 'S'
-                                 ? 'bg-amber-500 text-white shadow-sm'
-                                 : 'bg-white border-2 border-gray-200 text-gray-500 hover:border-amber-400 hover:text-amber-600'
+                                ? 'bg-amber-500 text-white shadow-sm ring-2 ring-amber-200'
+                                : 'bg-white border-2 border-gray-200 text-gray-500 hover:border-amber-400 hover:text-amber-600'
                              }`}
                              title="Satisfactory"
                            >
@@ -2328,10 +2334,10 @@ function StudentAttributesTab({ classId, term, students, onDirtyChange }) {
                            <button
                              type="button"
                              onClick={() => setAttribute(student.id, field.key, currentValue === 'N' ? '' : 'N')}
-                             className={`w-8 h-8 rounded-full text-sm font-bold transition-all flex items-center justify-center ${
+                            className={`min-w-[44px] h-9 rounded-lg text-sm font-bold transition-all flex items-center justify-center ${
                                currentValue === 'N'
-                                 ? 'bg-red-500 text-white shadow-sm'
-                                 : 'bg-white border-2 border-gray-200 text-gray-500 hover:border-red-400 hover:text-red-600'
+                                ? 'bg-red-500 text-white shadow-sm ring-2 ring-red-200'
+                                : 'bg-white border-2 border-gray-200 text-gray-500 hover:border-red-400 hover:text-red-600'
                              }`}
                              title="Needs Improvement"
                            >
@@ -2489,9 +2495,9 @@ function SummaryTab({ classId, term, students, isESL }) {
       {loading ? (
         <div className="text-center text-gray-400 py-10">Calculating...</div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+        <div className={V2_TABLE_WRAP_CLASS}>
           <table className="w-full text-sm border-collapse">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className={V2_TABLE_HEAD_CLASS}>
             <tr>
               <th className={STUDENT_AVATAR_COL_CLASS}></th>
               <th className={STUDENT_INFO_COL_CLASS}>Student Information</th>
@@ -2563,19 +2569,23 @@ function SummaryTab({ classId, term, students, isESL }) {
                       <span className="font-semibold text-gray-800">{letterGradeFromPercentage(d.total)}</span>
                     </td>
                     <td className="px-4 py-3 text-center bg-gray-50 border-l border-gray-200">
-                      <span className={`text-xs font-medium ${
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
                         d.calcStatus === 'Complete'
-                          ? 'text-green-700'
+                          ? 'text-green-700 bg-green-100 border border-green-200'
                           : d.calcStatus === 'Partial'
-                            ? 'text-amber-700'
-                            : 'text-gray-400'
+                            ? 'text-amber-700 bg-amber-100 border border-amber-200'
+                            : 'text-slate-500 bg-slate-100 border border-slate-200'
                       }`}>
                         {d.calcStatus || 'Missing'}
                       </span>
                     </td>
                     {isFinalTerm ? (
                       <td className="px-3 py-3 text-center bg-gray-50 border-l border-gray-200">
-                        <span className="text-xs text-gray-600">
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                          String(finalCommentsByStudent[student.id] || '').trim()
+                            ? 'text-green-700 bg-green-100 border-green-200'
+                            : 'text-rose-700 bg-rose-100 border-rose-200'
+                        }`}>
                           {String(finalCommentsByStudent[student.id] || '').trim() ? 'Completed' : 'Required'}
                         </span>
                       </td>
@@ -2667,9 +2677,9 @@ function CommentsTab({ classId, term, students, onDirtyChange }) {
         </p>
         {saved && <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 font-medium">✓ Saved</span>}
       </div>
-      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+      <div className={V2_TABLE_WRAP_CLASS}>
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className={V2_TABLE_HEAD_CLASS}>
             <tr>
               <th className={STUDENT_AVATAR_COL_CLASS}></th>
               <th className={STUDENT_INFO_COL_CLASS}>Student Information</th>
@@ -2679,7 +2689,7 @@ function CommentsTab({ classId, term, students, onDirtyChange }) {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {students.map(student => (
-              <tr key={student.id} className="hover:bg-gray-50 min-h-[56px]">
+              <tr key={student.id} className={V2_ROW_CLASS}>
                 <td className={STUDENT_AVATAR_CELL_CLASS}>
                   <ProfileAvatar 
                     avatarUrl={student.avatar_url} 
