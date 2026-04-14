@@ -186,10 +186,10 @@ export default function Login() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setPortalMode(null)}
+                    onClick={() => setPortalMode(portalMode === 'staff' ? 'student' : 'staff')}
                     className="w-full rounded-xl px-6 py-3 text-gray-500 text-sm font-medium hover:text-gray-700 transition-colors"
                   >
-                    ← Back to portal selection
+                    ← Switch to {portalMode === 'staff' ? 'Student Portal' : 'Staff / Admin Portal'}
                   </button>
                 </form>
               </>
