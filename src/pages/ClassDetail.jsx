@@ -408,7 +408,7 @@ export default function ClassDetail() {
        </div>
 
       {/* Page Tabs */}
-      <div className="flex gap-1 border-b border-gray-200 mb-6">
+      <div className="flex gap-1 border-b border-gray-200 mb-4">
         <button
           onClick={() => handleTopTabChange('students')}
           className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
@@ -462,7 +462,7 @@ export default function ClassDetail() {
       </div>
 
       {!selectedTerm ? (
-        <div className="space-y-10">
+        <div className="space-y-6">
           {activeTab === 'students' && (
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden" style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}>
               <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
@@ -515,14 +515,14 @@ export default function ClassDetail() {
           )}
 
           {activeTab === 'gradebooks' && (
-            <div className="bg-white rounded-xl border border-gray-200 p-4" style={{ borderTopColor: '#d1232a', borderTopWidth: 3 }}>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Gradebooks</h3>
-                <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white rounded-xl border border-gray-200 p-3.5" style={{ borderTopColor: '#d1232a', borderTopWidth: 3 }}>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Gradebooks</h3>
+                <div className="grid grid-cols-2 gap-3">
                   {TERMS.map(term => {
                     const isCurrentTerm = detectCurrentTerm() === term.key
                     return (
                       <button key={term.key} onClick={() => setSelectedTerm(term.key)}
-                        className={`bg-white rounded-xl border p-6 text-left hover:shadow-sm transition-all relative ${isCurrentTerm ? 'border-green-400 bg-green-50' : 'border-gray-200'}`}
+                        className={`bg-white rounded-xl border p-5 text-left hover:shadow-sm transition-all relative ${isCurrentTerm ? 'border-green-400 bg-green-50' : 'border-gray-200'}`}
                         style={{ borderTopColor: isCurrentTerm ? '#22c55e' : '#9ca3af', borderTopWidth: 3 }}>
                         {isCurrentTerm && (
                           <span className="absolute top-3 right-3 text-[10px] px-2 py-0.5 bg-green-600 text-white rounded-full font-medium">
@@ -542,8 +542,8 @@ export default function ClassDetail() {
           )}
 
           {activeTab === 'resources' && (
-            <div className="bg-white rounded-xl border border-gray-200 p-4" style={{ borderTopColor: '#ffc612', borderTopWidth: 3 }}>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Teacher Resources</h3>
+            <div className="bg-white rounded-xl border border-gray-200 p-3.5" style={{ borderTopColor: '#ffc612', borderTopWidth: 3 }}>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Teacher Resources</h3>
                 <ResourceCards
                   level={cls.level}
                   grade={String(cls.name || '').trim().match(/^(\d+)/)?.[1] || null}
@@ -554,7 +554,7 @@ export default function ClassDetail() {
           )}
 
           {activeTab === 'announcements' && (
-            <div className="bg-white rounded-xl border border-gray-200 p-4" style={{ borderTopColor: '#22c55e', borderTopWidth: 3 }}>
+            <div className="bg-white rounded-xl border border-gray-200 p-3.5" style={{ borderTopColor: '#22c55e', borderTopWidth: 3 }}>
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Class Announcements</h3>
                 {profile?.role === 'teacher' && profile?.id === cls.teacher_id && (
                   <>
@@ -707,7 +707,7 @@ export default function ClassDetail() {
           )}
 
           {activeTab === 'uploads' && (
-            <div className="bg-white rounded-xl border border-gray-200 p-6" style={{ borderTopColor: '#6366f1', borderTopWidth: 3 }}>
+            <div className="bg-white rounded-xl border border-gray-200 p-4" style={{ borderTopColor: '#6366f1', borderTopWidth: 3 }}>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Weekly Uploads</h3>
               <p className="text-sm text-gray-500">Coming soon...</p>
             </div>
@@ -1069,8 +1069,8 @@ function Gradebook({ cls, term, onUnsavedChange }) {
   }
 
   return (
-    <div className="bg-gradient-to-b from-sky-50/70 to-white border border-sky-100 rounded-2xl p-5 md:p-6">
-      <div className="flex flex-wrap items-center justify-end gap-3 mb-4">
+    <div className="bg-gradient-to-b from-sky-50/70 to-white border border-sky-100 rounded-2xl p-4 md:p-5">
+      <div className="flex flex-wrap items-center justify-end gap-3 mb-3">
         <div className="flex items-center gap-3">
           {hasAnyUnsaved && (
             <span className="text-xs px-2.5 py-1 rounded-full font-semibold bg-amber-100 text-amber-700 border border-amber-200">
@@ -1088,7 +1088,7 @@ function Gradebook({ cls, term, onUnsavedChange }) {
         </div>
       ) : (
         <>
-          <div className="flex items-center justify-between gap-3 mb-6">
+          <div className="flex items-center justify-between gap-3 mb-4">
             <div className="inline-flex flex-wrap gap-1.5 p-1.5 rounded-2xl bg-slate-100 border border-slate-200">
               {TABS.map(tab => (
                 <button key={tab.key} onClick={() => handleTabChange(tab.key)}
