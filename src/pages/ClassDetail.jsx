@@ -350,33 +350,61 @@ export default function ClassDetail() {
 
   if (loading) return <Layout><div className="text-center text-gray-400 py-20">Loading...</div></Layout>
   if (!cls) return <Layout><div className="text-center text-gray-400 py-20">Class not found.</div></Layout>
+  const selectedTermLabel = TERMS.find(t => t.key === selectedTerm)?.label
 
   return (
     <Layout>
-      <div className="mb-8">
-        <button
-          onClick={() => {
-            const hasUnsaved = hasUnsavedGradebook || sessionStorage.getItem('gradebook_unsaved_changes') === '1'
-            if (hasUnsaved) {
-              const leave = window.confirm('You have unsaved gradebook changes. Please click Save before leaving this page. Continue anyway?')
-              if (!leave) return
-            }
-            sessionStorage.setItem('gradebook_unsaved_changes', '0')
-            const hasHistory = window.history.length > 1
-            if (hasHistory) navigate(-1)
-            else navigate(profile?.role === 'admin' ? '/admin/classes' : '/dashboard')
-          }}
-          className="text-sm text-white px-3 py-1.5 rounded-lg mb-4 flex items-center gap-1 transition-colors"
-          style={{ backgroundColor: '#1f86c7' }}
-          onMouseEnter={(e) => e.target.style.backgroundColor = '#1a74ad'}
-          onMouseLeave={(e) => e.target.style.backgroundColor = '#1f86c7'}
-        >
-          ← Go Back
-        </button>
-        <h2 className="text-2xl font-bold text-gray-900">{cls.name}</h2>
-        <p className="text-gray-500 text-sm mt-1">
-          {cls.level === 'primary' ? 'Primary' : 'Secondary'} · {cls.programme === 'bilingual' ? 'Bilingual' : 'Integrated'} · 2026-2027
-        </p>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <button
+            onClick={() => {
+              const hasUnsaved = hasUnsavedGradebook || sessionStorage.getItem('gradebook_unsaved_changes') === '1'
+              if (hasUnsaved) {
+                const leave = window.confirm('You have unsaved gradebook changes. Please click Save before leaving this page. Continue anyway?')
+                if (!leave) return
+              }
+              sessionStorage.setItem('gradebook_unsaved_changes', '0')
+              const hasHistory = window.history.length > 1
+              if (hasHistory) navigate(-1)
+              else navigate(profile?.role === 'admin' ? '/admin/classes' : '/dashboard')
+            }}
+            className="text-sm text-white px-3 py-1.5 rounded-lg mb-4 flex items-center gap-1 transition-colors"
+            style={{ backgroundColor: '#1f86c7' }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = '#1a74ad'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = '#1f86c7'}
+          >
+            ← Go Back
+          </button>
+          <h2 className="text-2xl font-bold text-gray-900">{cls.name}</h2>
+          <p className="text-gray-500 text-sm mt-1">
+            {cls.level === 'primary' ? 'Primary' : 'Secondary'} · {cls.programme === 'bilingual' ? 'Bilingual' : 'Integrated'} · 2026-2027
+          </p>
+        </div>
+        {selectedTerm && (
+          <div className="text-right mt-10">
+            <div className="text-lg font-semibold text-gray-900">{selectedTermLabel}</div>
+            <div className="text-sm text-gray-500">Teacher Gradebook V2</div>
+            <button
+              type="button"
+              onClick={() => {
+                const hasUnsaved = hasUnsavedGradebook || sessionStorage.getItem('gradebook_unsaved_changes') === '1'
+                if (hasUnsaved) {
+                  const leave = window.confirm('You have unsaved changes. Please click Save before leaving this gradebook. Continue anyway?')
+                  if (!leave) return
+                }
+                sessionStorage.setItem('gradebook_unsaved_changes', '0')
+                setHasUnsavedGradebook(false)
+                setSelectedTerm(null)
+              }}
+              className="mt-2 text-sm text-white px-3 py-1.5 rounded-lg transition-colors"
+              style={{ backgroundColor: '#1f86c7' }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#1a74ad'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = '#1f86c7'}
+            >
+              ← Go Back
+            </button>
+          </div>
+        )}
        </div>
 
       {/* Page Tabs */}
@@ -748,8 +776,6 @@ export default function ClassDetail() {
         <Gradebook
           cls={cls}
           term={selectedTerm}
-          termLabel={TERMS.find(t => t.key === selectedTerm)?.label}
-          onBack={() => setSelectedTerm(null)}
           onUnsavedChange={setHasUnsavedGradebook}
         />
       )}
@@ -937,7 +963,7 @@ const handleGridCellKeyDown = (event) => {
 }
 
 // ── Gradebook Shell ───────────────────────────────────────────────────────────
-function Gradebook({ cls, term, termLabel, onBack, onUnsavedChange }) {
+function Gradebook({ cls, term, onUnsavedChange }) {
   const [activeTab, setActiveTab] = useState('participation')
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
@@ -997,14 +1023,6 @@ function Gradebook({ cls, term, termLabel, onBack, onUnsavedChange }) {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [hasAnyUnsaved])
 
-  const handleBackToTerms = () => {
-    if (hasAnyUnsaved) {
-      const leave = window.confirm('You have unsaved changes. Please click Save before leaving this gradebook. Continue anyway?')
-      if (!leave) return
-    }
-    onBack()
-  }
-
   const handleTabChange = (nextTab) => {
     if (nextTab === activeTab) return
     if (dirtyTabs[activeTab]) {
@@ -1016,11 +1034,7 @@ function Gradebook({ cls, term, termLabel, onBack, onUnsavedChange }) {
 
   return (
     <div className="bg-gradient-to-b from-sky-50/70 to-white border border-sky-100 rounded-2xl p-5 md:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-4 border-b border-slate-200">
-        <div>
-          <h3 className="text-xl font-semibold text-slate-900">{termLabel}</h3>
-          <p className="text-sm text-slate-500 mt-0.5">Teacher Gradebook V2</p>
-        </div>
+      <div className="flex flex-wrap items-center justify-end gap-3 mb-4">
         <div className="flex items-center gap-3">
           {hasAnyUnsaved && (
             <span className="text-xs px-2.5 py-1 rounded-full font-semibold bg-amber-100 text-amber-700 border border-amber-200">
@@ -1028,13 +1042,6 @@ function Gradebook({ cls, term, termLabel, onBack, onUnsavedChange }) {
             </span>
           )}
           <span className="text-sm text-slate-600 font-medium">{students.length} students</span>
-          <button
-            type="button"
-            onClick={handleBackToTerms}
-            className={V2_PRIMARY_BTN}
-          >
-            ← Go Back
-          </button>
         </div>
       </div>
 
@@ -1868,8 +1875,8 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
         <table className="w-full text-sm">
           <thead className={V2_TABLE_HEAD_CLASS}>
             <tr>
-              <th className={STUDENT_AVATAR_COL_CLASS}></th>
-              <th className={STUDENT_INFO_COL_CLASS}>Student Information</th>
+              <th className={STUDENT_AVATAR_COL_CLASS} rowSpan={2}></th>
+              <th className={STUDENT_INFO_COL_CLASS} rowSpan={2}>Student Information</th>
               {isESL ? (
                 <>
               <th colSpan={3} className="text-center px-3 py-2 font-medium bg-gray-200 text-gray-800 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}>Progress Test - Scores</th>
@@ -1877,14 +1884,16 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
                 </>
               ) : (
                 <>
-                <th className="text-center px-3 py-3 text-gray-500 font-medium min-w-32 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}></th>
-                <th className="text-center bg-green-100 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}></th>
+                <th className="text-center px-3 py-2 font-medium bg-gray-200 text-gray-800 border-l border-gray-300 min-w-40" style={{ backgroundClip: 'padding-box' }}>
+                  Progress Test - Points
+                </th>
+                <th className="text-center px-3 py-2 font-medium bg-green-100 text-green-800 border-l border-gray-300 min-w-36" style={{ backgroundClip: 'padding-box' }}>
+                  Progress Test - Percentage
+                </th>
                 </>
               )}
             </tr>
             <tr>
-              <th className={STUDENT_AVATAR_COL_CLASS}></th>
-              <th className={STUDENT_INFO_COL_CLASS}>Student Information</th>
               {isESL ? (
                 <>
               <th className="text-center px-3 py-3 font-medium min-w-36 bg-gray-200 text-gray-700 border-l border-gray-200">Reading & Writing</th>
@@ -1895,7 +1904,9 @@ function ProgressTestTab({ classId, term, students, isESL, onDirtyChange }) {
               <th className="text-center px-3 py-3 font-medium min-w-32 bg-green-100 text-green-800 border-l border-gray-300" style={{ backgroundClip: 'padding-box' }}>Speaking</th>
                 </>
               ) : (
-                <th className="text-center px-3 py-3 text-gray-500 font-medium min-w-32">Score {totals.total_points ? `/ ${totals.total_points}` : ''}</th>
+                <th className="text-center px-3 py-3 text-gray-500 font-medium min-w-32 border-l border-gray-200">
+                  Score {totals.total_points ? `/ ${totals.total_points}` : ''}
+                </th>
               )}
                 <th className="text-center px-4 py-3 font-medium min-w-24 bg-green-100 text-green-800 border-l border-gray-200" style={{ backgroundClip: 'padding-box' }}>Overall</th>
             </tr>
