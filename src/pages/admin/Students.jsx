@@ -230,11 +230,7 @@ export default function Students() {
       .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(' ')
 
-  useEffect(() => {
-    fetchStudents()
-  }, [])
-
-  const fetchStudents = async () => {
+  async function fetchStudents() {
     setLoading(true)
     const [{ data: studentRows }, { data: userRows }, { data: resetRows }, { data: classRows }] = await Promise.all([
       supabase
@@ -276,6 +272,10 @@ export default function Students() {
     setResetRequestsByStudentId(resetMap)
     setLoading(false)
   }
+
+  useEffect(() => {
+    fetchStudents()
+  }, [])
 
   const handleCSV = (e) => {
     const file = e.target.files[0]
@@ -403,7 +403,7 @@ export default function Students() {
       return
     }
 
-    const { data, error } = await supabase.functions.invoke('reset-user-password', {
+    const { error } = await supabase.functions.invoke('reset-user-password', {
       body: { user_id: targetUser.id },
       headers: {
         Authorization: `Bearer ${token}`,
@@ -471,7 +471,6 @@ export default function Students() {
     setDeletingAll(false)
     setConfirmDeleteAll(false)
     setDeleteConfirmText('')
-    setImportCredentials([])
     setConfirmReset(null)
     setMessageDetailOpen(false)
     fetchStudents()

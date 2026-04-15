@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Layout from '../../components/Layout'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { useAuth } from '../../contexts/AuthContext'
 
 const TIMETABLE = [
   { period: 1, primary: '08:10 - 08:45', secondary: '08:00 - 08:40', label: 'Period 1' },
@@ -24,7 +23,6 @@ const SUBJECTS = [
 
 export default function TeacherSchedules() {
   const navigate = useNavigate()
-  const { profile } = useAuth()
   const [selectedLevel, setSelectedLevel] = useState('primary')
   const [schedules, setSchedules] = useState({})
   const [teachers, setTeachers] = useState([])
@@ -33,28 +31,20 @@ export default function TeacherSchedules() {
   const [editForm, setEditForm] = useState({ teacher_id: '', subject: '' })
   const [saving, setSaving] = useState(false)
   const fileInputRef = useRef(null)
-  const [showCsvHelp, setShowCsvHelp] = useState(false)
   const [statusMessage, setStatusMessage] = useState(null)
   const [confirmClear, setConfirmClear] = useState(false)
   const [lastUpdated, setLastUpdated] = useState(null)
 
-  useEffect(() => {
-    fetchTeachers()
-    fetchClasses()
-    fetchSchedules()
-    fetchLastUpdated()
-  }, [selectedLevel])
-
-  const fetchTeachers = async () => {
+  const fetchTeachers = useCallback(async () => {
     const { data } = await supabase
       .from('users')
       .select('id, full_name')
       .in('role', ['teacher', 'admin_teacher'])
       .order('full_name')
     setTeachers(data || [])
-  }
+  }, [])
 
-  const fetchClasses = async () => {
+  const fetchClasses = useCallback(async () => {
     const { data } = await supabase
       .from('classes')
       .select('id, name, level, programme, teacher_id, subject')
@@ -63,9 +53,9 @@ export default function TeacherSchedules() {
     
     // Store all class objects, not just homeroom names
     setClasses(data || [])
-  }
+  }, [selectedLevel])
 
-  const fetchSchedules = async () => {
+  const fetchSchedules = useCallback(async () => {
     const { data } = await supabase
       .from('teacher_schedules')
       .select('*')
@@ -77,7 +67,26 @@ export default function TeacherSchedules() {
       })
       setSchedules(mapped)
     }
-  }
+  }, [selectedLevel])
+
+  const fetchLastUpdated = useCallback(async () => {
+    const { data } = await supabase
+      .from('schedule_audit')
+      .select('last_updated_at, users(full_name)')
+      .eq('level', selectedLevel)
+      .single()
+    
+    if (data) {
+      setLastUpdated(data)
+    }
+  }, [selectedLevel])
+
+  useEffect(() => {
+    fetchTeachers()
+    fetchClasses()
+    fetchSchedules()
+    fetchLastUpdated()
+  }, [fetchTeachers, fetchClasses, fetchSchedules, fetchLastUpdated])
 
   const openEditModal = (className, day, period) => {
     const existing = schedules[`${className}-${day}-${period}`]
@@ -87,25 +96,6 @@ export default function TeacherSchedules() {
       teacher_name: existing?.teacher_id ? getTeacherName(existing.teacher_id) : ''
     })
     setEditingCell({ className, day, period })
-  }
-
-  // Get teachers filtered for current homeroom
-  const getFilteredTeachers = () => {
-    if (!editingCell) return teachers
-    
-    // Find ALL classes for this homeroom
-    const matchingClasses = classes.filter(c => 
-      c.name && c.name.startsWith(editingCell.className + ' ')
-    )
-    
-    // Collect all unique teachers for these classes
-    const classTeacherIds = new Set()
-    matchingClasses.forEach(c => {
-      if (c.teacher_id) classTeacherIds.add(c.teacher_id)
-    })
-    
-    // Return ONLY the teachers assigned to this homeroom's classes
-    return teachers.filter(t => classTeacherIds.has(t.id))
   }
 
   const saveSchedule = async () => {
@@ -185,18 +175,6 @@ export default function TeacherSchedules() {
     }
     
     setTimeout(() => setStatusMessage(null), 5000)
-  }
-
-  const fetchLastUpdated = async () => {
-    const { data } = await supabase
-      .from('schedule_audit')
-      .select('last_updated_at, users(full_name)')
-      .eq('level', selectedLevel)
-      .single()
-    
-    if (data) {
-      setLastUpdated(data)
-    }
   }
 
   const getTeacherName = (id) => {
