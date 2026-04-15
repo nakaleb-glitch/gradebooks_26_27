@@ -379,6 +379,7 @@ export default function ClassDetail() {
           <p className="text-gray-500 text-sm mt-1">
             {cls.level === 'primary' ? 'Primary' : 'Secondary'} · {cls.programme === 'bilingual' ? 'Bilingual' : 'Integrated'} · 2026-2027
           </p>
+          <p className="text-xs text-gray-500 mt-1">{studentRoster.length} students</p>
         </div>
         {selectedTerm && (
           <div className="text-right mt-10">
@@ -465,9 +466,6 @@ export default function ClassDetail() {
         <div className="space-y-6">
           {activeTab === 'students' && (
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden" style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}>
-              <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-end">
-                <span className="text-xs text-gray-500">{studentRoster.length} students</span>
-              </div>
               {studentRoster.length === 0 ? (
                 <div className="p-6 text-sm text-gray-400">No students enrolled in this class yet.</div>
               ) : (
