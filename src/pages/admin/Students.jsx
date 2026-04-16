@@ -56,12 +56,26 @@ export default function Students() {
   const studentsCsvTemplateHref = `data:text/csv;charset=utf-8,${encodeURIComponent(studentsCsvTemplate)}`
   const isAdmin = effectiveRole === 'admin'
 
-  const getValidAccessToken = async () => {
+  const ACCESS_TOKEN_REFRESH_BUFFER_SECONDS = 60
+  const AUTH_ERROR_HINTS = ['401', '403', 'jwt', 'token', 'auth', 'unauthorized', 'forbidden']
+
+  const isAuthLikeError = (value) => {
+    const text = String(value || '').toLowerCase()
+    return AUTH_ERROR_HINTS.some((hint) => text.includes(hint))
+  }
+
+  const getValidAccessToken = async ({ forceRefresh = false } = {}) => {
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
     if (sessionError) return null
 
-    const currentToken = sessionData?.session?.access_token
-    if (currentToken) return currentToken
+    const session = sessionData?.session
+    const currentToken = session?.access_token
+    const expiresAt = Number(session?.expires_at || 0)
+    const nowSeconds = Math.floor(Date.now() / 1000)
+    const shouldRefresh =
+      forceRefresh || !currentToken || !expiresAt || expiresAt - nowSeconds <= ACCESS_TOKEN_REFRESH_BUFFER_SECONDS
+
+    if (!shouldRefresh) return currentToken
 
     const { data: refreshedData, error: refreshError } = await supabase.auth.refreshSession()
     if (refreshError) return null
@@ -147,8 +161,9 @@ export default function Students() {
     if (!token) {
       return {
         enrolled: 0,
-        missing: studentRows.length,
-        missingStudents: ['Session expired. Please sign in again as admin.'],
+        missing: 0,
+        missingStudents: [],
+        authError: 'Session expired. Please sign in again as admin.',
       }
     }
 
@@ -158,7 +173,7 @@ export default function Students() {
       class: s.class,
     }))
 
-    const { data, error } = await supabase.functions.invoke('sync-student-enrollments', {
+    let { data, error } = await supabase.functions.invoke('sync-student-enrollments', {
       body: {
         students: payload,
         academic_year: ACADEMIC_YEAR,
@@ -169,19 +184,50 @@ export default function Students() {
       },
     })
 
+    if (error && isAuthLikeError(error.message)) {
+      const refreshedToken = await getValidAccessToken({ forceRefresh: true })
+      if (refreshedToken) {
+        const retried = await supabase.functions.invoke('sync-student-enrollments', {
+          body: {
+            students: payload,
+            academic_year: ACADEMIC_YEAR,
+          },
+          headers: {
+            Authorization: `Bearer ${refreshedToken}`,
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+        })
+        data = retried.data
+        error = retried.error
+      }
+    }
+
     if (error) {
+      const message = `Enrollment sync failed: ${error.message}`
+      console.error('[students] enrollment sync invoke failed', {
+        status: error?.context?.status,
+        message: error.message,
+      })
       return {
         enrolled: 0,
-        missing: studentRows.length,
-        missingStudents: [`Enrollment sync failed: ${error.message}`],
+        missing: 0,
+        missingStudents: [],
+        authError: isAuthLikeError(error.message) ? message : null,
+        syncError: isAuthLikeError(error.message) ? null : message,
       }
     }
 
     if (data?.error) {
+      const message = `Enrollment sync failed: ${data.error}`
+      console.error('[students] enrollment sync function error payload', {
+        error: data.error,
+      })
       return {
         enrolled: 0,
-        missing: studentRows.length,
-        missingStudents: [`Enrollment sync failed: ${data.error}`],
+        missing: 0,
+        missingStudents: [],
+        authError: isAuthLikeError(data.error) ? message : null,
+        syncError: isAuthLikeError(data.error) ? null : message,
       }
     }
 
@@ -189,6 +235,8 @@ export default function Students() {
       enrolled: Number(data?.enrolled || 0),
       missing: Number(data?.missing || 0),
       missingStudents: Array.isArray(data?.missingStudents) ? data.missingStudents : [],
+      authError: null,
+      syncError: null,
     }
   }
 
@@ -299,6 +347,11 @@ export default function Students() {
           const syncResult = await syncStudentLogins(upsertedRows || [])
           const summary = `${rows.length} students imported. Enrolled: ${enrollmentResult.enrolled}, Missing class match: ${enrollmentResult.missing}. Student logins: ${syncResult.synced} synced, ${syncResult.failed} failed.`
           const detailParts = []
+          if (enrollmentResult.authError) {
+            detailParts.push(enrollmentResult.authError)
+          } else if (enrollmentResult.syncError) {
+            detailParts.push(enrollmentResult.syncError)
+          }
           if (enrollmentResult.missingStudents.length > 0) {
             detailParts.push(`No class match for: ${enrollmentResult.missingStudents.join(', ')}`)
           }
@@ -306,7 +359,7 @@ export default function Students() {
             detailParts.push(syncResult.errors.join(' | '))
           }
           setMessage({
-            type: syncResult.failed > 0 || enrollmentResult.missing > 0 ? 'error' : 'success',
+            type: syncResult.failed > 0 || enrollmentResult.missing > 0 || enrollmentResult.authError || enrollmentResult.syncError ? 'error' : 'success',
             text: summary,
             detail: detailParts.length > 0 ? detailParts.join(' | ') : null,
           })
@@ -348,7 +401,13 @@ export default function Students() {
 
     const enrollmentResult = await syncStudentEnrollments(upsertedRows || [])
     const syncResult = await syncStudentLogins(upsertedRows || [])
-    if (syncResult.failed > 0) {
+    if (enrollmentResult.authError || enrollmentResult.syncError) {
+      setMessage({
+        type: 'error',
+        text: 'Student saved, but enrollment sync failed.',
+        detail: enrollmentResult.authError || enrollmentResult.syncError,
+      })
+    } else if (syncResult.failed > 0) {
       setMessage({
         type: 'error',
         text: `Student saved, but login sync failed (${syncResult.failed}).`,
