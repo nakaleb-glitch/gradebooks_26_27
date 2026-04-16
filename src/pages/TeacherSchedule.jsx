@@ -3,6 +3,7 @@ import Layout from '../components/Layout'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { getCurrentWeekIndexWithOverride } from '../lib/academicCalendar'
 
 const PRIMARY_TIMETABLE = [
   { period: 1, time: '08:00 - 08:35', label: 'Period 1', type: 'class' },
@@ -35,6 +36,7 @@ const SECONDARY_TIMETABLE = [
 ]
 
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']
+const WEEK_OPTIONS = Array.from({ length: 40 }, (_, idx) => idx)
 
 export default function TeacherSchedule() {
   const navigate = useNavigate()
@@ -43,6 +45,7 @@ export default function TeacherSchedule() {
   const [teachers, setTeachers] = useState([])
   const [selectedTeacher, setSelectedTeacher] = useState(null)
   const [teacherLevel, setTeacherLevel] = useState(null)
+  const [selectedWeek, setSelectedWeek] = useState(() => getCurrentWeekIndexWithOverride(40))
 
   useEffect(() => {
     fetchTeachers()
@@ -60,7 +63,7 @@ export default function TeacherSchedule() {
       const teacher = teachers.find(t => t.id === selectedTeacher)
       setTeacherLevel(teacher?.level || 'primary')
     }
-  }, [selectedTeacher])
+  }, [selectedTeacher, selectedWeek])
 
   const fetchTeachers = async () => {
     const { data } = await supabase
@@ -76,11 +79,48 @@ export default function TeacherSchedule() {
       .from('teacher_schedules')
       .select('*')
       .eq('teacher_id', selectedTeacher)
-    
+
+    const { data: coverRows } = await supabase
+      .from('teacher_schedule_covers')
+      .select(`
+        id,
+        notes,
+        cover_teacher_id,
+        base_schedule:teacher_schedules!teacher_schedule_covers_base_schedule_id_fkey(
+          id, day, period, class_name, subject, teacher_id,
+          users!teacher_schedules_teacher_id_fkey(full_name)
+        ),
+        cover_teacher:users!teacher_schedule_covers_cover_teacher_id_fkey(full_name)
+      `)
+      .eq('week', selectedWeek)
+
     if (data) {
       const mapped = {}
       data.forEach(s => {
         mapped[`${s.day}-${s.period}`] = s
+      })
+
+      ;(coverRows || []).forEach((cover) => {
+        const base = cover.base_schedule
+        if (!base) return
+        const key = `${base.day}-${base.period}`
+
+        if (base.teacher_id === selectedTeacher) {
+          mapped[key] = {
+            ...mapped[key],
+            cover_status: 'covered',
+            cover_teacher_name: cover.cover_teacher?.full_name || 'Assigned teacher',
+          }
+          return
+        }
+
+        if (cover.cover_teacher_id === selectedTeacher) {
+          mapped[key] = {
+            ...base,
+            cover_status: 'covering',
+            covered_teacher_name: base.users?.full_name || 'Original teacher',
+          }
+        }
       })
       setSchedules(mapped)
     }
@@ -157,6 +197,18 @@ export default function TeacherSchedule() {
         <p className="text-sm text-gray-500 mt-1">
           {profile?.role === 'teacher' ? 'Your weekly teaching schedule.' : 'Select a teacher to view their full weekly timetable.'}
         </p>
+        <div className="mt-3">
+          <label className="block text-xs font-medium text-gray-500 mb-1">Week</label>
+          <select
+            value={selectedWeek}
+            onChange={(e) => setSelectedWeek(Number(e.target.value))}
+            className="w-40 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {WEEK_OPTIONS.map((week) => (
+              <option key={week} value={week}>Week {week}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
         {/* Teacher Selector - Only show for admins */}
@@ -247,6 +299,16 @@ export default function TeacherSchedule() {
                                <div className={`rounded p-2 border ${getClassColor(schedule.class_name)}`}>
                                  <div className="font-medium">{schedule.subject}</div>
                                  <div className="text-xs opacity-90">{schedule.class_name}</div>
+                                 {schedule.cover_status === 'covered' && (
+                                   <div className="text-[10px] mt-1 text-amber-700">
+                                     Covered by {schedule.cover_teacher_name}
+                                   </div>
+                                 )}
+                                 {schedule.cover_status === 'covering' && (
+                                   <div className="text-[10px] mt-1 text-green-700">
+                                     Covering for {schedule.covered_teacher_name}
+                                   </div>
+                                 )}
                                </div>
                              ) : (
                               <div className="text-gray-400 text-sm italic">Free Period</div>

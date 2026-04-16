@@ -18,6 +18,7 @@ import StudentClassDetail from './pages/StudentClassDetail'
 import StudentGradebookLookup from './pages/admin/StudentGradebookLookup'
 import ResourceBookings from './pages/admin/ResourceBookings'
 import TeacherSchedules from './pages/admin/TeacherSchedules'
+import CoverManagement from './pages/admin/CoverManagement'
 import TeacherSchedule from './pages/TeacherSchedule'
 
 const ProtectedRoute = ({ children, adminOnly = false, allowedRoles = null }) => {
@@ -51,6 +52,7 @@ function AppRoutes() {
       <Route path="/admin/student-gradebook-lookup" element={<ProtectedRoute adminOnly><StudentGradebookLookup /></ProtectedRoute>} />
       <Route path="/admin/resource-bookings" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><ResourceBookings /></ProtectedRoute>} />
       <Route path="/admin/teacher-schedules" element={<ProtectedRoute adminOnly><TeacherSchedules /></ProtectedRoute>} />
+      <Route path="/admin/cover-management" element={<ProtectedRoute adminOnly><CoverManagement /></ProtectedRoute>} />
       <Route path="/teacher-schedule" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><TeacherSchedule /></ProtectedRoute>} />
       <Route path="/weekly-plans" element={<ProtectedRoute><WeeklyPlans /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/login" />} />

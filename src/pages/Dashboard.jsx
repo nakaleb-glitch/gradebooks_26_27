@@ -491,11 +491,51 @@ export default function Dashboard() {
       .from('teacher_schedules')
       .select('*')
       .eq('teacher_id', profile.id)
-    
+
+    const { data: coverRows } = await supabase
+      .from('teacher_schedule_covers')
+      .select(`
+        id,
+        week,
+        notes,
+        cover_teacher_id,
+        base_schedule:teacher_schedules!teacher_schedule_covers_base_schedule_id_fkey(
+          id, day, period, class_name, subject, teacher_id, level,
+          users!teacher_schedules_teacher_id_fkey(full_name)
+        ),
+        cover_teacher:users!teacher_schedule_covers_cover_teacher_id_fkey(full_name)
+      `)
+      .eq('week', debugWeekOverride)
+
     if (scheduleData) {
       const mapped = {}
       scheduleData.forEach(s => {
         mapped[`${s.day}-${s.period}`] = s
+      })
+
+      ;(coverRows || []).forEach((cover) => {
+        const base = cover.base_schedule
+        if (!base) return
+        const key = `${base.day}-${base.period}`
+
+        if (base.teacher_id === profile.id) {
+          mapped[key] = {
+            ...mapped[key],
+            cover_status: 'covered',
+            cover_teacher_name: cover.cover_teacher?.full_name || 'Assigned teacher',
+            cover_notes: cover.notes || null,
+          }
+          return
+        }
+
+        if (cover.cover_teacher_id === profile.id) {
+          mapped[key] = {
+            ...base,
+            cover_status: 'covering',
+            covered_teacher_name: base.users?.full_name || 'Original teacher',
+            cover_notes: cover.notes || null,
+          }
+        }
       })
       setTeacherSchedule(mapped)
     }
@@ -998,6 +1038,14 @@ export default function Dashboard() {
                   <div className="font-semibold text-gray-900">Teacher Schedule Management</div>
                   <div className="text-sm text-gray-500 mt-1">Create and manage teacher schedules.</div>
                 </Link>
+                <Link
+                  to="/admin/cover-management"
+                  className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block min-h-[120px]"
+                  style={{ borderTopColor: '#16a34a', borderTopWidth: 3 }}
+                >
+                  <div className="font-semibold text-gray-900">Cover Lesson Management</div>
+                  <div className="text-sm text-gray-500 mt-1">Assign temporary weekly cover lessons.</div>
+                </Link>
             </div>
           </div>
 
@@ -1298,6 +1346,16 @@ export default function Dashboard() {
                                 )}
                                 {schedule && (
                                   <div className="text-[10px] text-gray-500 truncate">{schedule.class_name}</div>
+                                )}
+                                {schedule?.cover_status === 'covered' && (
+                                  <div className="text-[10px] text-amber-700 truncate">
+                                    Covered by {schedule.cover_teacher_name}
+                                  </div>
+                                )}
+                                {schedule?.cover_status === 'covering' && (
+                                  <div className="text-[10px] text-green-700 truncate">
+                                    Covering for {schedule.covered_teacher_name}
+                                  </div>
                                 )}
                               </div>
                             </div>
