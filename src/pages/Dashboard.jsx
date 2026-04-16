@@ -1418,7 +1418,7 @@ export default function Dashboard() {
                                     type="button"
                                     onClick={() => updateCoverMaterialsLink(schedule)}
                                     disabled={updatingCoverMaterials}
-                                    className="mt-1 text-[10px] text-blue-700 hover:underline disabled:opacity-60"
+                                    className="mt-1 ml-2 text-[10px] text-blue-700 hover:underline disabled:opacity-60"
                                   >
                                     {updatingCoverMaterials ? 'Updating...' : 'Update'}
                                   </button>
