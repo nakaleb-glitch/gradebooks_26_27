@@ -1403,6 +1403,16 @@ export default function Dashboard() {
                                     View Materials
                                   </a>
                                 )}
+                                {schedule?.materials_link && schedule?.cover_status === 'covered' && (
+                                  <a
+                                    href={schedule.materials_link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[10px] text-blue-600 hover:underline break-all"
+                                  >
+                                    View
+                                  </a>
+                                )}
                                 {schedule?.cover_status === 'covered' && (
                                   <button
                                     type="button"
@@ -1410,7 +1420,7 @@ export default function Dashboard() {
                                     disabled={updatingCoverMaterials}
                                     className="mt-1 text-[10px] text-blue-700 hover:underline disabled:opacity-60"
                                   >
-                                    {updatingCoverMaterials ? 'Updating...' : 'View / Update'}
+                                    {updatingCoverMaterials ? 'Updating...' : 'Update'}
                                   </button>
                                 )}
                               </div>
