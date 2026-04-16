@@ -3,10 +3,20 @@ import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import { supabase } from '../../lib/supabase'
 import { getWeekIndexForDate } from '../../lib/academicCalendar'
+import { normalizeLinkUrl } from '../../lib/announcementAttachments'
 import { useAuth } from '../../contexts/AuthContext'
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 const ROLES = ['teacher', 'admin_teacher']
+const isValidHttpUrl = (value) => {
+  if (!value) return true
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
 
 export default function CoverManagement() {
   const navigate = useNavigate()
@@ -154,12 +164,19 @@ export default function CoverManagement() {
     if (!form.base_schedule_id || !form.cover_teacher_id || !selectedAbsentTeacher) return
 
     setSaving(true)
+    const normalizedMaterialsLink = normalizeLinkUrl(form.materials_link)
+    if (!isValidHttpUrl(normalizedMaterialsLink)) {
+      setStatusMessage({ type: 'error', text: 'Please enter a valid materials link URL.' })
+      setSaving(false)
+      return
+    }
+
     const payload = {
       base_schedule_id: form.base_schedule_id,
       week: selectedWeek,
       cover_teacher_id: form.cover_teacher_id,
       notes: form.notes.trim() || null,
-      materials_link: form.materials_link.trim() || null,
+      materials_link: normalizedMaterialsLink,
       created_by: profile.id,
     }
 

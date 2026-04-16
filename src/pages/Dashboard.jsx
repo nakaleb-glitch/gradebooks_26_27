@@ -9,6 +9,15 @@ import AnnouncementPdfButton from '../components/AnnouncementPdfButton'
 
 const INCIDENT_TYPES = ['Disruption', 'Respect', 'Bullying', 'Academic Dishonesty', 'Attendance', 'Other']
 const SEVERITY_LEVELS = ['Low', 'Medium', 'High']
+const isValidHttpUrl = (value) => {
+  if (!value) return true
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
 
 const PRIMARY_TIMETABLE = [
   { period: 1, time: '08:00 - 08:35', label: 'Period 1', type: 'class' },
@@ -754,10 +763,16 @@ export default function Dashboard() {
     const nextValue = window.prompt('Paste materials folder link (leave blank to clear):', schedule.materials_link || '')
     if (nextValue === null) return
 
+    const normalizedLink = normalizeLinkUrl(nextValue)
+    if (!isValidHttpUrl(normalizedLink)) {
+      window.alert('Please enter a valid URL for materials link.')
+      return
+    }
+
     setUpdatingCoverMaterials(true)
     const { error } = await supabase
       .from('teacher_schedule_covers')
-      .update({ materials_link: nextValue.trim() || null })
+      .update({ materials_link: normalizedLink })
       .eq('base_schedule_id', schedule.cover_base_schedule_id)
       .eq('week', activeWeekOverride)
 

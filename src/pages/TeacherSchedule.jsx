@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { getCurrentWeekIndexWithOverride } from '../lib/academicCalendar'
+import { normalizeLinkUrl } from '../lib/announcementAttachments'
 
 const PRIMARY_TIMETABLE = [
   { period: 1, time: '08:00 - 08:35', label: 'Period 1', type: 'class' },
@@ -37,6 +38,15 @@ const SECONDARY_TIMETABLE = [
 
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']
 const WEEK_OPTIONS = Array.from({ length: 40 }, (_, idx) => idx)
+const isValidHttpUrl = (value) => {
+  if (!value) return true
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
 
 export default function TeacherSchedule() {
   const navigate = useNavigate()
@@ -135,10 +145,16 @@ export default function TeacherSchedule() {
     const nextValue = window.prompt('Paste materials folder link (leave blank to clear):', schedule.materials_link || '')
     if (nextValue === null) return
 
+    const normalizedLink = normalizeLinkUrl(nextValue)
+    if (!isValidHttpUrl(normalizedLink)) {
+      window.alert('Please enter a valid URL for materials link.')
+      return
+    }
+
     setUpdatingCoverMaterials(true)
     const { error } = await supabase
       .from('teacher_schedule_covers')
-      .update({ materials_link: nextValue.trim() || null })
+      .update({ materials_link: normalizedLink })
       .eq('base_schedule_id', schedule.cover_base_schedule_id)
       .eq('week', selectedWeek)
 
