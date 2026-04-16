@@ -2,21 +2,18 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import { supabase } from '../../lib/supabase'
-import { getCurrentWeekIndexWithOverride } from '../../lib/academicCalendar'
+import { getWeekIndexForDate } from '../../lib/academicCalendar'
 import { useAuth } from '../../contexts/AuthContext'
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-
-const WEEK_OPTIONS = Array.from({ length: 40 }, (_, idx) => ({
-  value: idx,
-  label: `Week ${idx}`,
-}))
+const ROLES = ['teacher', 'admin_teacher']
 
 export default function CoverManagement() {
   const navigate = useNavigate()
   const { profile } = useAuth()
   const [selectedLevel, setSelectedLevel] = useState('primary')
-  const [selectedWeek, setSelectedWeek] = useState(() => getCurrentWeekIndexWithOverride(40))
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [selectedAbsentTeacher, setSelectedAbsentTeacher] = useState('')
   const [baseSchedules, setBaseSchedules] = useState([])
   const [covers, setCovers] = useState([])
   const [teachers, setTeachers] = useState([])
@@ -28,12 +25,31 @@ export default function CoverManagement() {
     notes: '',
   })
 
+  const selectedWeek = useMemo(
+    () => getWeekIndexForDate(selectedDate ? new Date(selectedDate) : new Date()),
+    [selectedDate]
+  )
+  const selectedDay = useMemo(() => {
+    const date = selectedDate ? new Date(selectedDate) : new Date()
+    const day = date.getDay()
+    if (day === 0 || day === 6) return null
+    return day - 1
+  }, [selectedDate])
+
   const fetchData = useCallback(async () => {
+    if (selectedDay === null) {
+      setBaseSchedules([])
+      setCovers([])
+      setTeachers([])
+      return
+    }
+
     const [scheduleRes, coverRes, teacherRes] = await Promise.all([
       supabase
         .from('teacher_schedules')
         .select('id, class_name, day, period, subject, teacher_id, users!teacher_schedules_teacher_id_fkey(full_name)')
         .eq('level', selectedLevel)
+        .eq('day', selectedDay)
         .order('day', { ascending: true })
         .order('period', { ascending: true })
         .order('class_name', { ascending: true }),
@@ -55,8 +71,8 @@ export default function CoverManagement() {
         .order('created_at', { ascending: false }),
       supabase
         .from('users')
-        .select('id, full_name')
-        .in('role', ['teacher', 'admin_teacher'])
+        .select('id, full_name, role')
+        .in('role', ROLES)
         .eq('level', selectedLevel)
         .order('full_name', { ascending: true }),
     ])
@@ -69,23 +85,71 @@ export default function CoverManagement() {
       return
     }
 
-    setBaseSchedules(scheduleRes.data || [])
-    setCovers((coverRes.data || []).filter((row) => row.base_schedule && row.base_schedule.level === selectedLevel))
+    const daySchedules = scheduleRes.data || []
+    const dayCovers = (coverRes.data || []).filter(
+      (row) => row.base_schedule && row.base_schedule.level === selectedLevel && row.base_schedule.day === selectedDay
+    )
+    setBaseSchedules(daySchedules)
+    setCovers(dayCovers)
     setTeachers(teacherRes.data || [])
-  }, [selectedLevel, selectedWeek])
+  }, [selectedDay, selectedLevel, selectedWeek])
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
 
-  const selectedBaseSchedule = useMemo(
-    () => baseSchedules.find((s) => s.id === form.base_schedule_id) || null,
-    [baseSchedules, form.base_schedule_id]
+  useEffect(() => {
+    setSelectedAbsentTeacher('')
+    setForm({ base_schedule_id: '', cover_teacher_id: '', notes: '' })
+  }, [selectedLevel, selectedDate])
+
+  const absentTeacherOptions = useMemo(() => {
+    const teacherIds = new Set(baseSchedules.map((schedule) => schedule.teacher_id))
+    return teachers.filter((teacher) => teacherIds.has(teacher.id))
+  }, [baseSchedules, teachers])
+
+  const absentTeacherSchedules = useMemo(
+    () => baseSchedules.filter((schedule) => schedule.teacher_id === selectedAbsentTeacher),
+    [baseSchedules, selectedAbsentTeacher]
   )
+
+  const selectedBaseSchedule = useMemo(
+    () => absentTeacherSchedules.find((s) => s.id === form.base_schedule_id) || null,
+    [absentTeacherSchedules, form.base_schedule_id]
+  )
+
+  const coversForAbsentTeacher = useMemo(
+    () => covers.filter((cover) => !selectedAbsentTeacher || cover.base_schedule?.teacher_id === selectedAbsentTeacher),
+    [covers, selectedAbsentTeacher]
+  )
+
+  const availableCoverTeachers = useMemo(() => {
+    if (!selectedBaseSchedule) return []
+
+    const busyTeacherIds = new Set()
+    baseSchedules.forEach((schedule) => {
+      if (schedule.period === selectedBaseSchedule.period) {
+        busyTeacherIds.add(schedule.teacher_id)
+      }
+    })
+
+    covers.forEach((cover) => {
+      const base = cover.base_schedule
+      if (!base || base.period !== selectedBaseSchedule.period || base.day !== selectedDay) return
+      busyTeacherIds.add(base.teacher_id)
+      if (cover.cover_teacher_id) busyTeacherIds.add(cover.cover_teacher_id)
+    })
+
+    return teachers.filter((teacher) => {
+      if (teacher.id === selectedAbsentTeacher) return false
+      if (teacher.id === form.cover_teacher_id) return true
+      return !busyTeacherIds.has(teacher.id)
+    })
+  }, [baseSchedules, covers, form.cover_teacher_id, selectedAbsentTeacher, selectedBaseSchedule, selectedDay, teachers])
 
   const createOrUpdateCover = async (e) => {
     e.preventDefault()
-    if (!form.base_schedule_id || !form.cover_teacher_id) return
+    if (!form.base_schedule_id || !form.cover_teacher_id || !selectedAbsentTeacher) return
 
     setSaving(true)
     const payload = {
@@ -114,6 +178,7 @@ export default function CoverManagement() {
   }
 
   const editCover = (cover) => {
+    setSelectedAbsentTeacher(cover.base_schedule?.teacher_id || '')
     setForm({
       base_schedule_id: cover.base_schedule_id,
       cover_teacher_id: cover.cover_teacher_id || '',
@@ -167,12 +232,12 @@ export default function CoverManagement() {
         </div>
         <h2 className="text-2xl font-bold text-gray-900">Cover Lesson Management</h2>
         <p className="text-sm text-gray-500 mt-1">
-          Assign temporary cover teachers by week. Covers only affect the selected week.
+          Pick an absence date and teacher, then assign covers for that teacher's periods only.
         </p>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Level</label>
             <select
@@ -185,16 +250,19 @@ export default function CoverManagement() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Week</label>
-            <select
-              value={selectedWeek}
-              onChange={(e) => setSelectedWeek(Number(e.target.value))}
+            <label className="block text-xs font-medium text-gray-500 mb-1">Absence Date</label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-            >
-              {WEEK_OPTIONS.map((week) => (
-                <option key={week.value} value={week.value}>{week.label}</option>
-              ))}
-            </select>
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Derived Week / Day</label>
+            <div className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-700">
+              {selectedDay === null ? 'Weekend - no class periods' : `Week ${selectedWeek} · ${DAYS[selectedDay]}`}
+            </div>
           </div>
         </div>
       </div>
@@ -213,15 +281,36 @@ export default function CoverManagement() {
         <form onSubmit={createOrUpdateCover} className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
           <h3 className="text-lg font-semibold text-gray-900">Assign Cover</h3>
           <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Absent Teacher</label>
+            <select
+              required
+              value={selectedAbsentTeacher}
+              onChange={(e) => {
+                setSelectedAbsentTeacher(e.target.value)
+                setForm({ base_schedule_id: '', cover_teacher_id: '', notes: '' })
+              }}
+              disabled={selectedDay === null}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-400"
+            >
+              <option value="">
+                {selectedDay === null ? 'Weekend selected' : 'Select absent teacher'}
+              </option>
+              {absentTeacherOptions.map((teacher) => (
+                <option key={teacher.id} value={teacher.id}>{teacher.full_name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Base Lesson Slot</label>
             <select
               required
               value={form.base_schedule_id}
-              onChange={(e) => setForm((prev) => ({ ...prev, base_schedule_id: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              onChange={(e) => setForm((prev) => ({ ...prev, base_schedule_id: e.target.value, cover_teacher_id: '' }))}
+              disabled={!selectedAbsentTeacher}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-400"
             >
-              <option value="">Select a lesson slot</option>
-              {baseSchedules.map((schedule) => (
+              <option value="">{selectedAbsentTeacher ? 'Select a lesson slot' : 'Select absent teacher first'}</option>
+              {absentTeacherSchedules.map((schedule) => (
                 <option key={schedule.id} value={schedule.id}>
                   {formatSlot(schedule)}
                 </option>
@@ -235,13 +324,19 @@ export default function CoverManagement() {
               required
               value={form.cover_teacher_id}
               onChange={(e) => setForm((prev) => ({ ...prev, cover_teacher_id: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              disabled={!selectedBaseSchedule}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-400"
             >
-              <option value="">Select a cover teacher</option>
-              {teachers.map((teacher) => (
+              <option value="">{selectedBaseSchedule ? 'Select a cover teacher' : 'Select lesson slot first'}</option>
+              {availableCoverTeachers.map((teacher) => (
                 <option key={teacher.id} value={teacher.id}>{teacher.full_name}</option>
               ))}
             </select>
+            {selectedBaseSchedule && availableCoverTeachers.length === 0 && (
+              <div className="text-xs text-red-600 mt-1">
+                No free teachers available for this period.
+              </div>
+            )}
           </div>
 
           <div>
@@ -257,7 +352,7 @@ export default function CoverManagement() {
 
           {selectedBaseSchedule && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              Original teacher keeps this lesson visible and it will be marked as covered for this week.
+              Original teacher keeps this lesson visible and it will be marked as covered for this date's week only.
             </div>
           )}
 
@@ -272,13 +367,15 @@ export default function CoverManagement() {
         </form>
 
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">Covers for Week {selectedWeek}</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-3">
+            Covers for Week {selectedWeek}{selectedDay === null ? '' : ` · ${DAYS[selectedDay]}`}
+          </h3>
           <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
-            {covers.length === 0 ? (
+            {coversForAbsentTeacher.length === 0 ? (
               <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500">
-                No cover assignments for this week and level.
+                No cover assignments for this filter.
               </div>
-            ) : covers.map((cover) => (
+            ) : coversForAbsentTeacher.map((cover) => (
               <div key={cover.id} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3">
                 <div className="text-sm font-medium text-gray-800">
                   {formatSlot(cover.base_schedule)}

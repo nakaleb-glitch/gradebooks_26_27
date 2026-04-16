@@ -69,7 +69,7 @@ export default function TeacherSchedule() {
     const { data } = await supabase
       .from('users')
       .select('id, full_name, level')
-      .eq('role', 'teacher')
+      .in('role', ['teacher', 'admin_teacher'])
       .order('full_name')
     setTeachers(data || [])
   }

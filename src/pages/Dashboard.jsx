@@ -396,6 +396,8 @@ export default function Dashboard() {
     }
 
     const currentWeek = getCurrentWeekIndex()
+    const derivedCoverWeek = getWeekIndexForDate(debugDateOverride ? new Date(debugDateOverride) : new Date())
+    const activeCoverWeek = Number.isFinite(derivedCoverWeek) ? derivedCoverWeek : debugWeekOverride
     
     const [{ data: classData }, { count: submittedPlanCount }, { data: dashboardItems }, { data: teacherAnnouncementRows }, { data: submittedReports }] = await Promise.all([
       supabase.from('classes').select('*').eq('teacher_id', profile.id).order('name'),
@@ -505,7 +507,7 @@ export default function Dashboard() {
         ),
         cover_teacher:users!teacher_schedule_covers_cover_teacher_id_fkey(full_name)
       `)
-      .eq('week', debugWeekOverride)
+      .eq('week', activeCoverWeek)
 
     if (scheduleData) {
       const mapped = {}
