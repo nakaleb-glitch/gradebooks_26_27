@@ -22,6 +22,7 @@ import {
   rowsFromCsvRecords,
   subjectColumnMatchesTeacherSubject,
   subjectColumns,
+  summarizePlaceholderAssignments,
 } from '../../lib/periodAllocation'
 
 const SAVE_DEBOUNCE_MS = 400
@@ -202,6 +203,11 @@ export default function PeriodAllocation() {
   const combinedSummaries = useMemo(
     () => computeCombinedTeacherSummaries(data, teacherMap),
     [data, teacherMap],
+  )
+
+  const placeholderAssignmentLines = useMemo(
+    () => summarizePlaceholderAssignments(data),
+    [data],
   )
 
   const placeholders = data.placeholderTeachers ?? []
@@ -426,13 +432,6 @@ export default function PeriodAllocation() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={openPlaceholderModal}
-              className="px-4 py-2 rounded-lg text-sm font-medium border border-violet-300 bg-violet-50 text-violet-900 hover:bg-violet-100 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60"
-            >
-              Add placeholder teacher
-            </button>
-            <button
-              type="button"
               onClick={addRow}
               className="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
             >
@@ -444,7 +443,7 @@ export default function PeriodAllocation() {
                 onClick={() => setActionsOpen((o) => !o)}
                 aria-expanded={actionsOpen}
                 aria-haspopup="true"
-                className="px-4 py-2 rounded-lg text-sm font-medium border border-slate-300 bg-white text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 flex items-center gap-1"
+                className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 flex items-center gap-1"
               >
                 Actions
                 <span className="text-xs opacity-70" aria-hidden>
@@ -453,13 +452,13 @@ export default function PeriodAllocation() {
               </button>
               {actionsOpen && (
                 <div
-                  className="absolute right-0 mt-1 w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-lg z-30 dark:border-slate-600 dark:bg-slate-900"
+                  className="absolute right-0 mt-1 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg z-30"
                   role="menu"
                 >
                   <button
                     type="button"
                     role="menuitem"
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
                     onClick={() => {
                       handleExportJson()
                     }}
@@ -469,18 +468,18 @@ export default function PeriodAllocation() {
                   <button
                     type="button"
                     role="menuitem"
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
                     onClick={() => jsonImportRef.current?.click()}
                   >
                     Load JSON backup
                   </button>
-                  <hr className="my-1 border-slate-200 dark:border-slate-600" />
+                  <hr className="my-1 border-gray-200" />
                   <button
                     type="button"
                     role="menuitem"
                     disabled={gridDisabled}
                     title={gridDisabled ? 'Switch to Bilingual or Integrated' : undefined}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed"
                     onClick={() => !gridDisabled && handleExportClassesCsv()}
                   >
                     Export classes CSV
@@ -490,12 +489,12 @@ export default function PeriodAllocation() {
                     role="menuitem"
                     disabled={gridDisabled}
                     title={gridDisabled ? 'Switch to Bilingual or Integrated' : undefined}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed"
                     onClick={() => !gridDisabled && csvImportRef.current?.click()}
                   >
                     Import classes CSV
                   </button>
-                  <hr className="my-1 border-slate-200 dark:border-slate-600" />
+                  <hr className="my-1 border-gray-200" />
                   <button
                     type="button"
                     role="menuitem"
@@ -525,20 +524,24 @@ export default function PeriodAllocation() {
           </div>
         </div>
 
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-1">
+        <h1 className="text-2xl font-semibold text-gray-900 mb-1">
           Period &amp; Subject Allocations
         </h1>
-        <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+        <p className="text-sm text-gray-600 mb-2">
           Plan and manage allocations.
         </p>
-        <p className="text-xs text-slate-500 dark:text-slate-500 mb-2">
+        <p className="text-xs text-gray-500 mb-2">
           Staff and placeholder dropdowns follow Teacher Management <strong>Level</strong> and{' '}
           <strong>Subject</strong>. Preps dedupe by grade (from class code) per subject column. Data
-          syncs to the server; <code className="text-[11px]">{STORAGE_KEY_V2}</code> is a local backup.
+          syncs to the server;{' '}
+          <code className="text-[11px] font-mono rounded px-1.5 py-0.5 bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+            {STORAGE_KEY_V2}
+          </code>{' '}
+          is a local backup.
         </p>
         <p className="text-xs mb-4 min-h-[1.25rem]" aria-live="polite">
           {saveStatus === 'saving' && (
-            <span className="text-slate-500 dark:text-slate-400">Saving to server…</span>
+            <span className="text-gray-500">Saving to server…</span>
           )}
           {saveStatus === 'saved' && (
             <span className="text-emerald-700 dark:text-emerald-400">Saved to server.</span>
@@ -548,14 +551,14 @@ export default function PeriodAllocation() {
           )}
         </p>
 
-        <div className="flex gap-2 mb-4 border-b border-slate-200 dark:border-slate-700">
+        <div className="flex gap-2 mb-4 border-b border-gray-200">
           <button
             type="button"
             onClick={() => setActiveTab('summary')}
             className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
               activeTab === 'summary'
                 ? 'border-indigo-600 text-indigo-700 dark:text-indigo-300'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
           >
             Summary
@@ -566,7 +569,7 @@ export default function PeriodAllocation() {
             className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
               activeTab === 'bilingual'
                 ? 'border-purple-600 text-purple-700 dark:text-purple-300'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
           >
             Bilingual
@@ -577,7 +580,7 @@ export default function PeriodAllocation() {
             className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
               activeTab === 'integrated'
                 ? 'border-teal-600 text-teal-700 dark:text-teal-300'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
           >
             Integrated
@@ -586,39 +589,39 @@ export default function PeriodAllocation() {
 
         {activeTab !== 'summary' && (
           <>
-            <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-2">
+            <h2 className="text-base font-semibold text-gray-900 mb-2">
               {tabTitle}
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+            <p className="text-xs text-gray-500 mb-2">
               Teaching hours: Primary {PRIMARY_MINUTES} min/period, Secondary {SECONDARY_MINUTES}{' '}
               min/period. Preps count once per subject column within the same department and
               programme (shared lessons across classes).
             </p>
-            <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm mb-8">
+            <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm mb-8 bg-white">
               <table className="min-w-max w-full text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-100 dark:bg-slate-800">
-                    <th className="sticky left-0 z-20 px-2 py-2 text-left font-semibold border-b border-r border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-800">
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="sticky left-0 z-20 px-2 py-2 text-left text-gray-600 font-medium border-b border-r border-gray-200 bg-gray-50">
                       No.
                     </th>
-                    <th className="px-2 py-2 text-left font-semibold border-b border-slate-200 dark:border-slate-600">
+                    <th className="px-2 py-2 text-left text-gray-600 font-medium border-b border-gray-200">
                       Department
                     </th>
-                    <th className="px-2 py-2 text-left font-semibold border-b border-slate-200 dark:border-slate-600 min-w-[5rem]">
+                    <th className="px-2 py-2 text-left text-gray-600 font-medium border-b border-gray-200 min-w-[5rem]">
                       Class
                     </th>
-                    <th className="px-2 py-2 text-left font-semibold border-b border-slate-200 dark:border-slate-600">
+                    <th className="px-2 py-2 text-left text-gray-600 font-medium border-b border-gray-200">
                       Programme
                     </th>
                     {subjectCols.map((c) => (
                       <th
                         key={c.key}
-                        className="px-1 py-2 text-center font-semibold border-b border-slate-200 dark:border-slate-600 whitespace-nowrap"
+                        className="px-1 py-2 text-center text-gray-600 font-medium border-b border-gray-200 whitespace-nowrap"
                       >
                         {c.label} [{c.periodsPerWeek}]
                       </th>
                     ))}
-                    <th className="px-1 py-2 border-b border-slate-200 dark:border-slate-600 w-16" />
+                    <th className="px-1 py-2 border-b border-gray-200 w-16" />
                   </tr>
                 </thead>
                 <tbody>
@@ -626,7 +629,7 @@ export default function PeriodAllocation() {
                     <tr>
                       <td
                         colSpan={6 + subjectCols.length}
-                        className="px-3 py-6 text-center text-slate-500 dark:text-slate-400"
+                        className="px-3 py-6 text-center text-gray-500"
                       >
                         No classes yet. Click &quot;Add class&quot; or use Actions → Import classes
                         CSV.
@@ -636,12 +639,12 @@ export default function PeriodAllocation() {
                     rows.map((row, idx) => (
                       <tr
                         key={row.id}
-                        className="odd:bg-white even:bg-slate-50/80 dark:odd:bg-slate-900 dark:even:bg-slate-900/70"
+                        className="odd:bg-white even:bg-gray-50 border-t border-gray-200"
                       >
-                        <th className="sticky left-0 z-10 px-2 py-1 text-left font-medium border-t border-r border-slate-200 dark:border-slate-600 bg-inherit">
+                        <th className="sticky left-0 z-10 px-2 py-1 text-left font-medium text-gray-900 border-t border-r border-gray-200 bg-inherit">
                           {idx + 1}
                         </th>
-                        <td className="border-t border-slate-200 dark:border-slate-700 p-1">
+                        <td className="border-t border-gray-200 p-1">
                           <select
                             value={row.department}
                             onChange={(e) =>
@@ -657,7 +660,7 @@ export default function PeriodAllocation() {
                             <option value="secondary">Secondary</option>
                           </select>
                         </td>
-                        <td className="border-t border-slate-200 dark:border-slate-700 p-1">
+                        <td className="border-t border-gray-200 p-1">
                           <input
                             type="text"
                             value={row.className}
@@ -665,10 +668,10 @@ export default function PeriodAllocation() {
                               updateRowField(row.id, 'className', e.target.value)
                             }
                             placeholder="e.g. 1B1"
-                            className="w-full min-w-[4.5rem] text-[11px] rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 py-1 px-1"
+                            className="w-full min-w-[4.5rem] text-[11px] rounded border border-gray-300 bg-white py-1 px-1"
                           />
                         </td>
-                        <td className="border-t border-slate-200 dark:border-slate-700 p-1 text-[11px] text-slate-600 dark:text-slate-400">
+                        <td className="border-t border-gray-200 p-1 text-[11px] text-gray-600">
                           {gridTab === 'bilingual' ? 'Bilingual' : 'Integrated'}
                         </td>
                         {subjectCols.map((c) => {
@@ -713,14 +716,14 @@ export default function PeriodAllocation() {
                           return (
                             <td
                               key={c.key}
-                              className="border-t border-slate-200 dark:border-slate-700 p-0.5 align-middle"
+                              className="border-t border-gray-200 p-0.5 align-middle"
                             >
                               <select
                                 value={raw}
                                 onChange={(e) =>
                                   updateRowField(row.id, c.key, e.target.value)
                                 }
-                                className="w-[min(10rem,26vw)] max-w-[180px] text-[11px] leading-tight rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 py-1 px-0.5"
+                                className="w-[min(10rem,26vw)] max-w-[180px] text-[11px] leading-tight rounded border border-gray-300 bg-white py-1 px-0.5"
                               >
                                 <option value="">—</option>
                                 {showCurrentGroup && (
@@ -802,13 +805,13 @@ export default function PeriodAllocation() {
                             </td>
                           )
                         })}
-                        <td className="border-t border-slate-200 dark:border-slate-700 p-1">
+                        <td className="border-t border-gray-200 p-1">
                           <button
                             type="button"
                             onClick={() => {
                               if (window.confirm('Remove this row?')) removeRow(row.id)
                             }}
-                            className="text-red-600 hover:underline text-[11px]"
+                            className="text-red-600 hover:underline dark:text-red-400 text-[11px]"
                           >
                             Remove
                           </button>
@@ -824,19 +827,19 @@ export default function PeriodAllocation() {
 
         {activeTab === 'summary' && (
           <div className="mb-4">
-            <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-2">
+            <h2 className="text-base font-semibold text-gray-900 mb-2">
               Teacher hour allocations (Bilingual + Integrated)
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+            <p className="text-xs text-gray-500 mb-3">
               Periods and teaching hours sum both programmes. # of preps sums each programme’s
               deduped prep counts (shared lessons per department/subject column). Admin ={' '}
               {CONTRACT_HOURS_WEEK} h − teaching − prep.
             </p>
 
-            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/40 p-3 mb-4">
+            <div className="rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900 p-3 mb-4">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                  Placeholder teachers
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Recruitment Needs
                 </h3>
                 <button
                   type="button"
@@ -847,60 +850,77 @@ export default function PeriodAllocation() {
                 </button>
               </div>
               {placeholders.length === 0 ? (
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  None defined. Use &quot;Add placeholder teacher&quot; to create recruitment
-                  placeholders; they appear in grids by level and subject.
+                <p className="text-xs text-gray-500">
+                  None defined. Use <strong>Add…</strong> above to create recruitment placeholders;
+                  they appear in Bilingual and Integrated grids by level and subject.
                 </p>
               ) : (
-                <ul className="text-xs space-y-1.5">
-                  {placeholders.map((p) => (
-                    <li
-                      key={p.id}
-                      className="flex flex-wrap items-center justify-between gap-2 py-1 border-b border-slate-200/80 dark:border-slate-700/80 last:border-0"
-                    >
-                      <span>
-                        <span className="font-medium text-slate-800 dark:text-slate-200">
-                          {p.name}
-                        </span>
-                        <span className="text-slate-500 dark:text-slate-400">
-                          {' '}
-                          — {p.subject}
-                          {normalizeTeacherLevel(p.level)
-                            ? ` · ${normalizeTeacherLevel(p.level) === 'primary' ? 'Primary' : 'Secondary'}`
-                            : ' · Level unspecified'}
-                        </span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => removePlaceholder(p.id)}
-                        className="text-red-600 hover:underline dark:text-red-400 shrink-0"
+                <ul className="text-xs space-y-2">
+                  {placeholders.map((p) => {
+                    const lines = placeholderAssignmentLines.get(p.id) ?? []
+                    return (
+                      <li
+                        key={p.id}
+                        className="py-1 border-b border-gray-200 last:border-0"
                       >
-                        Remove
-                      </button>
-                    </li>
-                  ))}
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <span>
+                            <span className="font-medium text-gray-900">
+                              {p.name}
+                            </span>
+                            <span className="text-gray-500">
+                              {' '}
+                              — {p.subject}
+                              {normalizeTeacherLevel(p.level)
+                                ? ` · ${normalizeTeacherLevel(p.level) === 'primary' ? 'Primary' : 'Secondary'}`
+                                : ' · Level unspecified'}
+                            </span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removePlaceholder(p.id)}
+                            className="text-red-600 hover:underline dark:text-red-400 shrink-0"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <p className="mt-1 text-[11px] text-gray-500 leading-snug">
+                          {lines.length === 0 ? (
+                            <>Not assigned in any grid yet.</>
+                          ) : (
+                            <>
+                              <span className="font-medium text-gray-600">
+                                Assigned:{' '}
+                              </span>
+                              {lines.join(' · ')}
+                            </>
+                          )}
+                        </p>
+                      </li>
+                    )
+                  })}
                 </ul>
               )}
             </div>
 
-            <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
               <table className="min-w-[640px] w-full text-sm">
                 <thead>
-                  <tr className="bg-slate-100 dark:bg-slate-800 text-left">
-                    <th className="px-2 py-2 font-semibold">No.</th>
-                    <th className="px-2 py-2 font-semibold">Teacher</th>
-                    <th className="px-2 py-2 font-semibold">Subject(s)</th>
-                    <th className="px-2 py-2 font-semibold text-right">Periods</th>
-                    <th className="px-2 py-2 font-semibold text-right">Teaching hours</th>
-                    <th className="px-2 py-2 font-semibold text-right"># of preps</th>
-                    <th className="px-2 py-2 font-semibold text-right">Prep time</th>
-                    <th className="px-2 py-2 font-semibold text-right">Admin hours</th>
+                  <tr className="bg-gray-50 border-b border-gray-200 text-left">
+                    <th className="px-2 py-2 text-gray-600 font-medium">No.</th>
+                    <th className="px-2 py-2 text-gray-600 font-medium">Teacher</th>
+                    <th className="px-2 py-2 text-gray-600 font-medium">Subject(s)</th>
+                    <th className="px-2 py-2 text-gray-600 font-medium text-right">Periods</th>
+                    <th className="px-2 py-2 text-gray-600 font-medium text-right">Teaching hours</th>
+                    <th className="px-2 py-2 text-gray-600 font-medium text-right"># of preps</th>
+                    <th className="px-2 py-2 text-gray-600 font-medium text-right">Prep time</th>
+                    <th className="px-2 py-2 text-gray-600 font-medium text-right">Admin hours</th>
                   </tr>
                 </thead>
                 <tbody>
                   {combinedSummaries.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-3 py-4 text-center text-slate-500">
+                      <td colSpan={8} className="px-3 py-4 text-center text-gray-400">
                         No teacher assignments in Bilingual or Integrated grids yet.
                       </td>
                     </tr>
@@ -908,26 +928,28 @@ export default function PeriodAllocation() {
                     combinedSummaries.map((s, i) => (
                       <tr
                         key={s.teacherKey}
-                        className="border-t border-slate-200 dark:border-slate-700 odd:bg-white even:bg-slate-50/80 dark:odd:bg-slate-900 dark:even:bg-slate-900/70"
+                        className="border-t border-gray-200 odd:bg-white even:bg-gray-50"
                       >
-                        <td className="px-2 py-2 tabular-nums">{i + 1}</td>
-                        <td className="px-2 py-2">{s.displayName}</td>
-                        <td className="px-2 py-2 text-slate-600 dark:text-slate-400">
+                        <td className="px-2 py-2 tabular-nums text-gray-900">{i + 1}</td>
+                        <td className="px-2 py-2 text-gray-900">{s.displayName}</td>
+                        <td className="px-2 py-2 text-gray-600">
                           {s.subjectSummary}
                         </td>
-                        <td className="px-2 py-2 text-right tabular-nums">{s.periods}</td>
-                        <td className="px-2 py-2 text-right tabular-nums">
+                        <td className="px-2 py-2 text-right tabular-nums text-gray-900">{s.periods}</td>
+                        <td className="px-2 py-2 text-right tabular-nums text-gray-900">
                           {fmt2(s.teachingHours)}
                         </td>
-                        <td className="px-2 py-2 text-right tabular-nums">
+                        <td className="px-2 py-2 text-right tabular-nums text-gray-900">
                           {fmt1(s.lessonPreps)}
                         </td>
-                        <td className="px-2 py-2 text-right tabular-nums">
+                        <td className="px-2 py-2 text-right tabular-nums text-gray-900">
                           {fmt2(s.prepTimeHours)} h
                         </td>
                         <td
                           className={`px-2 py-2 text-right tabular-nums ${
-                            s.adminHours < 0 ? 'text-amber-700 dark:text-amber-400' : ''
+                            s.adminHours < 0
+                              ? 'text-amber-700 dark:text-amber-400'
+                              : 'text-gray-900'
                           }`}
                         >
                           {fmt2(s.adminHours)} h
@@ -949,16 +971,16 @@ export default function PeriodAllocation() {
           aria-modal="true"
           aria-labelledby="ph-modal-title"
         >
-          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-xl dark:border-slate-600 dark:bg-slate-900">
+          <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-5 shadow-xl">
             <h2
               id="ph-modal-title"
-              className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3"
+              className="text-lg font-semibold text-gray-900 mb-3"
             >
               Add placeholder teacher
             </h2>
             <form onSubmit={handleAddPlaceholderSubmit} className="space-y-3">
               <div>
-                <label htmlFor="ph-name" className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                <label htmlFor="ph-name" className="block text-xs font-medium text-gray-600 mb-1">
                   Name
                 </label>
                 <input
@@ -966,20 +988,20 @@ export default function PeriodAllocation() {
                   type="text"
                   value={phFormName}
                   onChange={(e) => setPhFormName(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
                   placeholder="e.g. Vacancy — ESL"
                   autoComplete="off"
                 />
               </div>
               <div>
-                <label htmlFor="ph-level" className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                <label htmlFor="ph-level" className="block text-xs font-medium text-gray-600 mb-1">
                   Level
                 </label>
                 <select
                   id="ph-level"
                   value={phFormLevel}
                   onChange={(e) => setPhFormLevel(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
                 >
                   <option value="">Unspecified (appears in both Primary and Secondary rows)</option>
                   <option value="primary">Primary</option>
@@ -987,14 +1009,14 @@ export default function PeriodAllocation() {
                 </select>
               </div>
               <div>
-                <label htmlFor="ph-subject" className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                <label htmlFor="ph-subject" className="block text-xs font-medium text-gray-600 mb-1">
                   Subject
                 </label>
                 <select
                   id="ph-subject"
                   value={phFormSubject}
                   onChange={(e) => setPhFormSubject(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
                 >
                   {PLACEHOLDER_SUBJECT_OPTIONS.map((s) => (
                     <option key={s} value={s}>
@@ -1007,7 +1029,7 @@ export default function PeriodAllocation() {
                 <button
                   type="button"
                   onClick={() => setPlaceholderModalOpen(false)}
-                  className="px-4 py-2 rounded-lg text-sm border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                 >
                   Cancel
                 </button>

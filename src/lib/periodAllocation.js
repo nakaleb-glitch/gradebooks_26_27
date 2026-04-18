@@ -265,6 +265,7 @@ export function teacherAllowedForCell(teacher, rowDepartment, columnKey) {
  * @property {string} teacherKey
  * @property {string} displayName
  * @property {string} subjectSummary
+ * @property {string[]} subjectLabels — column labels (ESL, GP, Mathematics, …) for this row
  * @property {number} periods
  * @property {number} primaryPeriodUnits
  * @property {number} secondaryPeriodUnits
@@ -314,6 +315,74 @@ export function prepDedupSegment(className, rowId) {
   const lower = s.toLowerCase()
   if (lower) return `c:${lower}`
   return `row:${rowId}`
+}
+
+/**
+ * Human-readable grade hint from class code (leading 1–2 digits), else class text or em dash.
+ * @param {string | undefined} className
+ * @param {string} [rowId]
+ */
+export function gradeLabelFromClassName(className) {
+  const s = String(className || '').trim()
+  const m = s.match(/^(\d{1,2})(?=\D|$)/)
+  if (m) return `G${m[1]}`
+  if (s) return `class: ${s}`
+  return '—'
+}
+
+/**
+ * Summary tab sort: ESL/GP first, then Mathematics, then Science, then other (e.g. VN ESL).
+ * @param {string[]} labels
+ */
+export function combinedSummarySortRank(labels) {
+  const set = new Set(labels)
+  if (set.has('ESL') || set.has('GP')) return 0
+  if (set.has('Mathematics')) return 1
+  if (set.has('Science')) return 2
+  return 3
+}
+
+/**
+ * Where each placeholder id appears in bilingual + integrated grids (deduped lines).
+ * @param {{ bilingual: { rows: object[] }, integrated: { rows: object[] } }} data
+ * @returns {Map<string, string[]>}
+ */
+export function summarizePlaceholderAssignments(data) {
+  /** @type {Map<string, Set<string>>} */
+  const acc = new Map()
+  const programmes = /** @type {const} */ (['bilingual', 'integrated'])
+
+  function addLine(id, line) {
+    if (!acc.has(id)) acc.set(id, new Set())
+    acc.get(id).add(line)
+  }
+
+  for (const prog of programmes) {
+    const rows = data[prog]?.rows
+    if (!Array.isArray(rows)) continue
+    const cols = subjectColumns(prog)
+    const progLabel = prog === 'bilingual' ? 'Bilingual' : 'Integrated'
+    for (const row of rows) {
+      const grade = gradeLabelFromClassName(row.className)
+      for (const c of cols) {
+        const raw = row[c.key] ?? ''
+        const parsed = parseAssignment(raw)
+        if (parsed?.kind !== 'placeholder') continue
+        const id = parsed.id
+        addLine(id, `${progLabel} · ${c.label} · ${grade}`)
+      }
+    }
+  }
+
+  /** @type {Map<string, string[]>} */
+  const out = new Map()
+  for (const [id, set] of acc) {
+    out.set(
+      id,
+      [...set].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
+    )
+  }
+  return out
 }
 
 /**
@@ -391,11 +460,15 @@ export function computeTeacherSummaries(
       entry.labels.size <= 1
         ? [...entry.labels][0] || '—'
         : 'Multiple'
+    const subjectLabels = [...entry.labels].sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: 'base' }),
+    )
 
     out.push({
       teacherKey: tkey,
       displayName: entry.displayName,
       subjectSummary,
+      subjectLabels,
       periods,
       primaryPeriodUnits: entry.primaryUnits,
       secondaryPeriodUnits: entry.secondaryUnits,
@@ -432,11 +505,12 @@ export function computeCombinedTeacherSummaries(data, teacherNames = new Map()) 
     teacherNames,
     placeholderById,
   )
-  /** @type {Map<string, { teacherKey: string, displayName: string, periods: number, primaryPeriodUnits: number, secondaryPeriodUnits: number, lessonPreps: number, subjectParts: string[] }>} */
+  /** @type {Map<string, { teacherKey: string, displayName: string, periods: number, primaryPeriodUnits: number, secondaryPeriodUnits: number, lessonPreps: number, subjectParts: string[], subjectLabels: string[] }>} */
   const merged = new Map()
 
   function add(s) {
     const cur = merged.get(s.teacherKey)
+    const labels = s.subjectLabels ?? []
     if (!cur) {
       merged.set(s.teacherKey, {
         teacherKey: s.teacherKey,
@@ -446,6 +520,7 @@ export function computeCombinedTeacherSummaries(data, teacherNames = new Map()) 
         secondaryPeriodUnits: s.secondaryPeriodUnits,
         lessonPreps: s.lessonPreps,
         subjectParts: [s.subjectSummary],
+        subjectLabels: [...labels],
       })
       return
     }
@@ -454,6 +529,9 @@ export function computeCombinedTeacherSummaries(data, teacherNames = new Map()) 
     cur.secondaryPeriodUnits += s.secondaryPeriodUnits
     cur.lessonPreps += s.lessonPreps
     cur.subjectParts.push(s.subjectSummary)
+    cur.subjectLabels = [...new Set([...cur.subjectLabels, ...labels])].sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: 'base' }),
+    )
   }
 
   for (const s of b) add(s)
@@ -473,6 +551,7 @@ export function computeCombinedTeacherSummaries(data, teacherNames = new Map()) 
       teacherKey: cur.teacherKey,
       displayName: cur.displayName,
       subjectSummary,
+      subjectLabels: cur.subjectLabels,
       periods: cur.periods,
       primaryPeriodUnits: cur.primaryPeriodUnits,
       secondaryPeriodUnits: cur.secondaryPeriodUnits,
@@ -483,9 +562,12 @@ export function computeCombinedTeacherSummaries(data, teacherNames = new Map()) 
     })
   }
 
-  out.sort((a, b) =>
-    a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }),
-  )
+  out.sort((a, b) => {
+    const ra = combinedSummarySortRank(a.subjectLabels)
+    const rb = combinedSummarySortRank(b.subjectLabels)
+    if (ra !== rb) return ra - rb
+    return a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' })
+  })
   return out
 }
 
