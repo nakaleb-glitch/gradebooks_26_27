@@ -269,6 +269,8 @@ export function teacherAllowedForCell(teacher, rowDepartment, columnKey) {
  * @property {number} periods
  * @property {number} primaryPeriodUnits
  * @property {number} secondaryPeriodUnits
+ * @property {'primary' | 'secondary' | 'mixed' | ''} levelKey
+ * @property {string} levelLabel
  * @property {number} teachingHours
  * @property {number} lessonPreps
  * @property {number} prepTimeHours
@@ -340,6 +342,40 @@ export function combinedSummarySortRank(labels) {
   if (set.has('Mathematics')) return 1
   if (set.has('Science')) return 2
   return 3
+}
+
+/**
+ * @param {'primary' | 'secondary' | 'mixed' | ''} levelKey
+ */
+function summaryLevelSortRank(levelKey) {
+  if (levelKey === 'primary') return 0
+  if (levelKey === 'secondary') return 1
+  if (levelKey === 'mixed') return 2
+  return 3
+}
+
+/**
+ * @param {number} primaryPeriodUnits
+ * @param {number} secondaryPeriodUnits
+ * @returns {'primary' | 'secondary' | 'mixed' | ''}
+ */
+function levelKeyFromPeriodUnits(primaryPeriodUnits, secondaryPeriodUnits) {
+  const hasPrimary = primaryPeriodUnits > 0
+  const hasSecondary = secondaryPeriodUnits > 0
+  if (hasPrimary && hasSecondary) return 'mixed'
+  if (hasPrimary) return 'primary'
+  if (hasSecondary) return 'secondary'
+  return ''
+}
+
+/**
+ * @param {'primary' | 'secondary' | 'mixed' | ''} levelKey
+ */
+function levelLabelFromLevelKey(levelKey) {
+  if (levelKey === 'primary') return 'Primary'
+  if (levelKey === 'secondary') return 'Secondary'
+  if (levelKey === 'mixed') return 'Primary + Secondary'
+  return '—'
 }
 
 /**
@@ -456,13 +492,12 @@ export function computeTeacherSummaries(
 
     const prepTimeHours = lessonPreps * 1.5
     const adminHours = CONTRACT_HOURS_WEEK - teachingHours - prepTimeHours
-    const subjectSummary =
-      entry.labels.size <= 1
-        ? [...entry.labels][0] || '—'
-        : 'Multiple'
     const subjectLabels = [...entry.labels].sort((a, b) =>
       a.localeCompare(b, undefined, { sensitivity: 'base' }),
     )
+    const subjectSummary = subjectLabels.length > 0 ? subjectLabels.join(', ') : '—'
+    const levelKey = levelKeyFromPeriodUnits(entry.primaryUnits, entry.secondaryUnits)
+    const levelLabel = levelLabelFromLevelKey(levelKey)
 
     out.push({
       teacherKey: tkey,
@@ -472,6 +507,8 @@ export function computeTeacherSummaries(
       periods,
       primaryPeriodUnits: entry.primaryUnits,
       secondaryPeriodUnits: entry.secondaryUnits,
+      levelKey,
+      levelLabel,
       teachingHours,
       lessonPreps,
       prepTimeHours,
@@ -505,7 +542,7 @@ export function computeCombinedTeacherSummaries(data, teacherNames = new Map()) 
     teacherNames,
     placeholderById,
   )
-  /** @type {Map<string, { teacherKey: string, displayName: string, periods: number, primaryPeriodUnits: number, secondaryPeriodUnits: number, lessonPreps: number, subjectParts: string[], subjectLabels: string[] }>} */
+  /** @type {Map<string, { teacherKey: string, displayName: string, periods: number, primaryPeriodUnits: number, secondaryPeriodUnits: number, lessonPreps: number, subjectLabels: string[] }>} */
   const merged = new Map()
 
   function add(s) {
@@ -519,7 +556,6 @@ export function computeCombinedTeacherSummaries(data, teacherNames = new Map()) 
         primaryPeriodUnits: s.primaryPeriodUnits,
         secondaryPeriodUnits: s.secondaryPeriodUnits,
         lessonPreps: s.lessonPreps,
-        subjectParts: [s.subjectSummary],
         subjectLabels: [...labels],
       })
       return
@@ -528,7 +564,6 @@ export function computeCombinedTeacherSummaries(data, teacherNames = new Map()) 
     cur.primaryPeriodUnits += s.primaryPeriodUnits
     cur.secondaryPeriodUnits += s.secondaryPeriodUnits
     cur.lessonPreps += s.lessonPreps
-    cur.subjectParts.push(s.subjectSummary)
     cur.subjectLabels = [...new Set([...cur.subjectLabels, ...labels])].sort((a, b) =>
       a.localeCompare(b, undefined, { sensitivity: 'base' }),
     )
@@ -539,9 +574,10 @@ export function computeCombinedTeacherSummaries(data, teacherNames = new Map()) 
 
   const out = []
   for (const cur of merged.values()) {
-    const uniq = new Set(cur.subjectParts.filter((x) => x && x !== '—'))
     const subjectSummary =
-      uniq.size === 0 ? '—' : uniq.size === 1 ? [...uniq][0] : 'Multiple'
+      cur.subjectLabels.length > 0 ? cur.subjectLabels.join(', ') : '—'
+    const levelKey = levelKeyFromPeriodUnits(cur.primaryPeriodUnits, cur.secondaryPeriodUnits)
+    const levelLabel = levelLabelFromLevelKey(levelKey)
     const teachingHours =
       (cur.primaryPeriodUnits * PRIMARY_MINUTES) / 60 +
       (cur.secondaryPeriodUnits * SECONDARY_MINUTES) / 60
@@ -555,6 +591,8 @@ export function computeCombinedTeacherSummaries(data, teacherNames = new Map()) 
       periods: cur.periods,
       primaryPeriodUnits: cur.primaryPeriodUnits,
       secondaryPeriodUnits: cur.secondaryPeriodUnits,
+      levelKey,
+      levelLabel,
       teachingHours,
       lessonPreps: cur.lessonPreps,
       prepTimeHours,
@@ -566,6 +604,9 @@ export function computeCombinedTeacherSummaries(data, teacherNames = new Map()) 
     const ra = combinedSummarySortRank(a.subjectLabels)
     const rb = combinedSummarySortRank(b.subjectLabels)
     if (ra !== rb) return ra - rb
+    const la = summaryLevelSortRank(a.levelKey)
+    const lb = summaryLevelSortRank(b.levelKey)
+    if (la !== lb) return la - lb
     return a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' })
   })
   return out

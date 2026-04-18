@@ -49,6 +49,8 @@ export default function PeriodAllocation() {
   )
   const [data, setData] = useState(() => createInitialStateV2())
   const [placeholderModalOpen, setPlaceholderModalOpen] = useState(false)
+  const [editingPlaceholderId, setEditingPlaceholderId] = useState(null)
+  const [recruitmentExpanded, setRecruitmentExpanded] = useState(true)
   const [phFormName, setPhFormName] = useState('')
   const [phFormLevel, setPhFormLevel] = useState('')
   const [phFormSubject, setPhFormSubject] = useState(PLACEHOLDER_SUBJECT_OPTIONS[0])
@@ -213,9 +215,22 @@ export default function PeriodAllocation() {
   const placeholders = data.placeholderTeachers ?? []
 
   const openPlaceholderModal = useCallback(() => {
+    setEditingPlaceholderId(null)
     setPhFormName('')
     setPhFormLevel('')
     setPhFormSubject(PLACEHOLDER_SUBJECT_OPTIONS[0])
+    setPlaceholderModalOpen(true)
+  }, [])
+
+  const openPlaceholderEditModal = useCallback((placeholder) => {
+    setEditingPlaceholderId(placeholder.id)
+    setPhFormName(placeholder.name || '')
+    setPhFormLevel(normalizeTeacherLevel(placeholder.level))
+    setPhFormSubject(
+      PLACEHOLDER_SUBJECT_OPTIONS.includes(placeholder.subject)
+        ? placeholder.subject
+        : PLACEHOLDER_SUBJECT_OPTIONS[0],
+    )
     setPlaceholderModalOpen(true)
   }, [])
 
@@ -228,23 +243,35 @@ export default function PeriodAllocation() {
         return
       }
       if (!PLACEHOLDER_SUBJECT_OPTIONS.includes(phFormSubject)) return
-      const id =
-        typeof crypto !== 'undefined' && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `ph-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
-      setData((prev) => ({
-        ...prev,
-        placeholderTeachers: [
-          ...(prev.placeholderTeachers ?? []),
-          { id, name, level: phFormLevel, subject: phFormSubject },
-        ],
-      }))
+      if (editingPlaceholderId) {
+        setData((prev) => ({
+          ...prev,
+          placeholderTeachers: (prev.placeholderTeachers ?? []).map((p) =>
+            p.id === editingPlaceholderId
+              ? { ...p, name, level: phFormLevel, subject: phFormSubject }
+              : p,
+          ),
+        }))
+      } else {
+        const id =
+          typeof crypto !== 'undefined' && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `ph-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+        setData((prev) => ({
+          ...prev,
+          placeholderTeachers: [
+            ...(prev.placeholderTeachers ?? []),
+            { id, name, level: phFormLevel, subject: phFormSubject },
+          ],
+        }))
+      }
       setPlaceholderModalOpen(false)
+      setEditingPlaceholderId(null)
       setPhFormName('')
       setPhFormLevel('')
       setPhFormSubject(PLACEHOLDER_SUBJECT_OPTIONS[0])
     },
-    [phFormName, phFormLevel, phFormSubject],
+    [editingPlaceholderId, phFormName, phFormLevel, phFormSubject],
   )
 
   const removePlaceholder = useCallback((id) => {
@@ -841,66 +868,86 @@ export default function PeriodAllocation() {
                 <h3 className="text-sm font-semibold text-gray-900">
                   Recruitment Needs
                 </h3>
-                <button
-                  type="button"
-                  onClick={openPlaceholderModal}
-                  className="text-xs font-medium text-violet-700 hover:underline dark:text-violet-300"
-                >
-                  Add…
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setRecruitmentExpanded((v) => !v)}
+                    className="text-xs font-medium text-gray-700 hover:underline dark:text-gray-300"
+                    aria-expanded={recruitmentExpanded}
+                  >
+                    {recruitmentExpanded ? 'Collapse' : 'Expand'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openPlaceholderModal}
+                    className="text-xs font-medium text-violet-700 hover:underline dark:text-violet-300"
+                  >
+                    Add…
+                  </button>
+                </div>
               </div>
-              {placeholders.length === 0 ? (
-                <p className="text-xs text-gray-500">
-                  None defined. Use <strong>Add…</strong> above to create recruitment placeholders;
-                  they appear in Bilingual and Integrated grids by level and subject.
-                </p>
-              ) : (
-                <ul className="text-xs space-y-2">
-                  {placeholders.map((p) => {
-                    const lines = placeholderAssignmentLines.get(p.id) ?? []
-                    return (
-                      <li
-                        key={p.id}
-                        className="py-1 border-b border-gray-200 last:border-0"
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <span>
-                            <span className="font-medium text-gray-900">
-                              {p.name}
-                            </span>
-                            <span className="text-gray-500">
-                              {' '}
-                              — {p.subject}
-                              {normalizeTeacherLevel(p.level)
-                                ? ` · ${normalizeTeacherLevel(p.level) === 'primary' ? 'Primary' : 'Secondary'}`
-                                : ' · Level unspecified'}
-                            </span>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => removePlaceholder(p.id)}
-                            className="text-red-600 hover:underline dark:text-red-400 shrink-0"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                        <p className="mt-1 text-[11px] text-gray-500 leading-snug">
-                          {lines.length === 0 ? (
-                            <>Not assigned in any grid yet.</>
-                          ) : (
-                            <>
-                              <span className="font-medium text-gray-600">
-                                Assigned:{' '}
+              {recruitmentExpanded &&
+                (placeholders.length === 0 ? (
+                  <p className="text-xs text-gray-500">
+                    None defined. Use <strong>Add…</strong> above to create recruitment placeholders;
+                    they appear in Bilingual and Integrated grids by level and subject.
+                  </p>
+                ) : (
+                  <ul className="text-xs space-y-2">
+                    {placeholders.map((p) => {
+                      const lines = placeholderAssignmentLines.get(p.id) ?? []
+                      return (
+                        <li
+                          key={p.id}
+                          className="py-1 border-b border-gray-200 last:border-0"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <span>
+                              <span className="font-medium text-gray-900">
+                                {p.name}
                               </span>
-                              {lines.join(' · ')}
-                            </>
-                          )}
-                        </p>
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
+                              <span className="text-gray-500">
+                                {' '}
+                                — {p.subject}
+                                {normalizeTeacherLevel(p.level)
+                                  ? ` · ${normalizeTeacherLevel(p.level) === 'primary' ? 'Primary' : 'Secondary'}`
+                                  : ' · Level unspecified'}
+                              </span>
+                            </span>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => openPlaceholderEditModal(p)}
+                                className="rounded px-2 py-0.5 text-[11px] font-medium text-blue-700 border border-blue-200 bg-blue-50 hover:bg-blue-100 dark:text-blue-300 dark:border-blue-700 dark:bg-blue-900/30"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removePlaceholder(p.id)}
+                                className="text-red-600 hover:underline dark:text-red-400"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                          <p className="mt-1 text-[11px] text-gray-500 leading-snug">
+                            {lines.length === 0 ? (
+                              <>Not assigned in any grid yet.</>
+                            ) : (
+                              <>
+                                <span className="font-medium text-gray-600">
+                                  Assigned:{' '}
+                                </span>
+                                {lines.join(' · ')}
+                              </>
+                            )}
+                          </p>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                ))}
             </div>
 
             <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
@@ -909,6 +956,7 @@ export default function PeriodAllocation() {
                   <tr className="bg-gray-50 border-b border-gray-200 text-left">
                     <th className="px-2 py-2 text-gray-600 font-medium">No.</th>
                     <th className="px-2 py-2 text-gray-600 font-medium">Teacher</th>
+                    <th className="px-2 py-2 text-gray-600 font-medium">Level</th>
                     <th className="px-2 py-2 text-gray-600 font-medium">Subject(s)</th>
                     <th className="px-2 py-2 text-gray-600 font-medium text-right">Periods</th>
                     <th className="px-2 py-2 text-gray-600 font-medium text-right">Teaching hours</th>
@@ -920,7 +968,7 @@ export default function PeriodAllocation() {
                 <tbody>
                   {combinedSummaries.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-3 py-4 text-center text-gray-400">
+                      <td colSpan={9} className="px-3 py-4 text-center text-gray-400">
                         No teacher assignments in Bilingual or Integrated grids yet.
                       </td>
                     </tr>
@@ -932,6 +980,7 @@ export default function PeriodAllocation() {
                       >
                         <td className="px-2 py-2 tabular-nums text-gray-900">{i + 1}</td>
                         <td className="px-2 py-2 text-gray-900">{s.displayName}</td>
+                        <td className="px-2 py-2 text-gray-600">{s.levelLabel}</td>
                         <td className="px-2 py-2 text-gray-600">
                           {s.subjectSummary}
                         </td>
@@ -976,7 +1025,7 @@ export default function PeriodAllocation() {
               id="ph-modal-title"
               className="text-lg font-semibold text-gray-900 mb-3"
             >
-              Add placeholder teacher
+              {editingPlaceholderId ? 'Edit placeholder teacher' : 'Add placeholder teacher'}
             </h2>
             <form onSubmit={handleAddPlaceholderSubmit} className="space-y-3">
               <div>
@@ -1028,7 +1077,10 @@ export default function PeriodAllocation() {
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setPlaceholderModalOpen(false)}
+                  onClick={() => {
+                    setPlaceholderModalOpen(false)
+                    setEditingPlaceholderId(null)
+                  }}
                   className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                 >
                   Cancel
@@ -1037,7 +1089,7 @@ export default function PeriodAllocation() {
                   type="submit"
                   className="px-4 py-2 rounded-lg text-sm font-medium bg-violet-600 text-white hover:bg-violet-700"
                 >
-                  Add
+                  {editingPlaceholderId ? 'Save' : 'Add'}
                 </button>
               </div>
             </form>
