@@ -11,6 +11,11 @@ export const PRIMARY_MINUTES = 35
 export const SECONDARY_MINUTES = 40
 export const CONTRACT_HOURS_WEEK = 40
 
+/** Recruitment placeholder subject options (aligned with Users.jsx) */
+export const PLACEHOLDER_SUBJECT_OPTIONS = ['ESL/GP', 'Mathematics', 'Science', 'VN ESL']
+
+const ALLOWED_PLACEHOLDER_SUBJECTS = new Set(PLACEHOLDER_SUBJECT_OPTIONS)
+
 /** One column per subject; `periodsPerWeek` is the bracket number in headers. */
 export const BILINGUAL_SUBJECTS = [
   { key: 'esl', label: 'ESL', periodsPerWeek: 8 },
@@ -58,6 +63,7 @@ export function createInitialStateV2() {
     version: 2,
     bilingual: { rows: [] },
     integrated: { rows: [] },
+    placeholderTeachers: [],
   }
 }
 
@@ -84,6 +90,26 @@ function normalizeRow(row, programme) {
 }
 
 /**
+ * @param {unknown} raw
+ * @returns {{ id: string, name: string, level: string, subject: string } | null}
+ */
+function normalizePlaceholderTeacher(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  const id = typeof raw.id === 'string' && raw.id.trim() ? raw.id.trim() : ''
+  const name = typeof raw.name === 'string' ? raw.name.trim() : ''
+  if (!id || !name) return null
+  const level =
+    raw.level === 'secondary'
+      ? 'secondary'
+      : raw.level === 'primary'
+        ? 'primary'
+        : ''
+  const subject = normalizeUserSubject(raw.subject)
+  if (!ALLOWED_PLACEHOLDER_SUBJECTS.has(subject)) return null
+  return { id, name, level, subject }
+}
+
+/**
  * @param {unknown} data
  */
 export function normalizePersistedStateV2(data) {
@@ -95,22 +121,46 @@ export function normalizePersistedStateV2(data) {
   const integratedRows = Array.isArray(data.integrated?.rows)
     ? data.integrated.rows.map((r) => normalizeRow(r, 'integrated'))
     : []
+  const placeholderTeachers = Array.isArray(data.placeholderTeachers)
+    ? data.placeholderTeachers
+        .map((p) => normalizePlaceholderTeacher(p))
+        .filter(Boolean)
+    : []
   return {
     version: 2,
     bilingual: { rows: bilingualRows },
     integrated: { rows: integratedRows },
+    placeholderTeachers,
   }
 }
 
 /**
+ * @param {{ id: string, name: string, level?: string, subject?: string }[]} [list]
+ * @returns {Map<string, { id: string, name: string, level: string, subject: string }>}
+ */
+export function placeholderTeacherMapFromList(list) {
+  const m = new Map()
+  if (!Array.isArray(list)) return m
+  for (const raw of list) {
+    const p = normalizePlaceholderTeacher(raw)
+    if (p) m.set(p.id, p)
+  }
+  return m
+}
+
+/**
  * @param {string} value
- * @returns {{ kind: 'user', id: string } | { kind: 'name', name: string } | null}
+ * @returns {{ kind: 'user', id: string } | { kind: 'name', name: string } | { kind: 'placeholder', id: string } | null}
  */
 export function parseAssignment(value) {
   if (!value || typeof value !== 'string') return null
   if (value.startsWith('user:')) {
     const id = value.slice(5).trim()
     return id ? { kind: 'user', id } : null
+  }
+  if (value.startsWith('ph:')) {
+    const id = value.slice(3).trim()
+    return id ? { kind: 'placeholder', id } : null
   }
   if (value.startsWith('name:')) {
     const rest = value.slice(5)
@@ -132,6 +182,11 @@ export function formatUserAssignment(userId) {
 export function formatNameAssignment(name) {
   const t = String(name || '').trim()
   return t ? `name:${encodeURIComponent(t)}` : ''
+}
+
+export function formatPlaceholderAssignment(id) {
+  const t = String(id || '').trim()
+  return t ? `ph:${t}` : ''
 }
 
 /**
@@ -180,6 +235,19 @@ export function subjectColumnMatchesTeacherSubject(columnKey, userSubjectRaw) {
 }
 
 /**
+ * @param {{ id: string, name: string, level?: string, subject?: string }[]} placeholders
+ * @param {'primary' | 'secondary'} rowDepartment
+ * @param {string} columnKey
+ */
+export function placeholderOptionsForCell(placeholders, rowDepartment, columnKey) {
+  const sub = (p) => subjectColumnMatchesTeacherSubject(columnKey, p.subject)
+  const lvl = (p) => normalizeTeacherLevel(p.level)
+  const match = placeholders.filter((p) => sub(p) && lvl(p) === rowDepartment)
+  const unspec = placeholders.filter((p) => sub(p) && !lvl(p))
+  return { match, unspec }
+}
+
+/**
  * Teacher appears in dropdown for this cell: subject matches, and level matches row or is unspecified.
  * @param {{ level?: string, subject?: string }} teacher
  * @param {'primary' | 'secondary'} rowDepartment
@@ -206,14 +274,28 @@ export function teacherAllowedForCell(teacher, rowDepartment, columnKey) {
  * @property {number} adminHours
  */
 
+/**
+ * @param {{ kind: string, id?: string, name?: string }} parsed
+ */
 function teacherKeyFromParsed(parsed) {
-  return parsed.kind === 'user' ? `user:${parsed.id}` : `name:${parsed.name}`
+  if (parsed.kind === 'user') return `user:${parsed.id}`
+  if (parsed.kind === 'placeholder') return `ph:${parsed.id}`
+  return `name:${parsed.name}`
 }
 
-function displayNameFromParsed(parsed, teacherNames) {
+/**
+ * @param {{ kind: string, id?: string, name?: string }} parsed
+ * @param {Map<string, { full_name?: string }>} teacherNames
+ * @param {Map<string, { name?: string }>} [placeholderById]
+ */
+function displayNameFromParsed(parsed, teacherNames, placeholderById = new Map()) {
   if (parsed.kind === 'user') {
     const n = teacherNames.get(parsed.id)?.full_name
     return (n && String(n).trim()) || parsed.id
+  }
+  if (parsed.kind === 'placeholder') {
+    const n = placeholderById.get(parsed.id)?.name
+    return (n && String(n).trim()) || 'Placeholder (removed)'
   }
   return parsed.name
 }
@@ -238,9 +320,15 @@ export function prepDedupSegment(className, rowId) {
  * @param {object[]} rows
  * @param {Programme} programme
  * @param {Map<string, { full_name?: string }>} [teacherNames]
+ * @param {Map<string, { name?: string }>} [placeholderById]
  * @returns {TeacherSummaryRow[]}
  */
-export function computeTeacherSummaries(rows, programme, teacherNames = new Map()) {
+export function computeTeacherSummaries(
+  rows,
+  programme,
+  teacherNames = new Map(),
+  placeholderById = new Map(),
+) {
   const cols = subjectColumns(programme)
   const colPeriods = Object.fromEntries(cols.map((c) => [c.key, c.periodsPerWeek]))
   const colLabel = Object.fromEntries(cols.map((c) => [c.key, c.label]))
@@ -264,7 +352,7 @@ export function computeTeacherSummaries(rows, programme, teacherNames = new Map(
           primaryUnits: 0,
           secondaryUnits: 0,
           labels: new Set(),
-          displayName: displayNameFromParsed(parsed, teacherNames),
+          displayName: displayNameFromParsed(parsed, teacherNames, placeholderById),
         })
       }
       const entry = acc.get(tkey)
@@ -326,14 +414,24 @@ export function computeTeacherSummaries(rows, programme, teacherNames = new Map(
 
 /**
  * Combined summary: merge bilingual + integrated per teacher.
- * Periods and units sum; lesson preps sum (each programme already deduped internally).
- * @param {{ bilingual: { rows: object[] }, integrated: { rows: object[] } }} data
+ * @param {{ bilingual: { rows: object[] }, integrated: { rows: object[] }, placeholderTeachers?: object[] }} data
  * @param {Map<string, { full_name?: string }>} [teacherNames]
  * @returns {TeacherSummaryRow[]}
  */
 export function computeCombinedTeacherSummaries(data, teacherNames = new Map()) {
-  const b = computeTeacherSummaries(data.bilingual.rows, 'bilingual', teacherNames)
-  const i = computeTeacherSummaries(data.integrated.rows, 'integrated', teacherNames)
+  const placeholderById = placeholderTeacherMapFromList(data.placeholderTeachers)
+  const b = computeTeacherSummaries(
+    data.bilingual.rows,
+    'bilingual',
+    teacherNames,
+    placeholderById,
+  )
+  const i = computeTeacherSummaries(
+    data.integrated.rows,
+    'integrated',
+    teacherNames,
+    placeholderById,
+  )
   /** @type {Map<string, { teacherKey: string, displayName: string, periods: number, primaryPeriodUnits: number, secondaryPeriodUnits: number, lessonPreps: number, subjectParts: string[] }>} */
   const merged = new Map()
 
@@ -390,16 +488,6 @@ export function computeCombinedTeacherSummaries(data, teacherNames = new Map()) 
   )
   return out
 }
-
-/** Preset placeholder labels for quick assignment (stored as name:…) */
-export const PLACEHOLDER_PRESETS = [
-  'NEW ESL Teacher #1',
-  'NEW ESL Teacher #2',
-  'NEW ESL Teacher #3',
-  'NEW ESL Teacher #4',
-  'New Mathematics Teacher #1',
-  'NEW ESL Subject Head',
-]
 
 /**
  * Map CSV rows (objects) to { className, department } for building allocation rows.

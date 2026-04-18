@@ -6,19 +6,19 @@ import { supabase } from '../../lib/supabase'
 import {
   CONTRACT_HOURS_WEEK,
   PERIOD_ALLOCATION_STATE_ID,
-  PLACEHOLDER_PRESETS,
+  PLACEHOLDER_SUBJECT_OPTIONS,
   PRIMARY_MINUTES,
   SECONDARY_MINUTES,
   STORAGE_KEY_V2,
   computeCombinedTeacherSummaries,
   createEmptyRow,
   createInitialStateV2,
-  formatNameAssignment,
+  formatPlaceholderAssignment,
   formatUserAssignment,
   normalizePersistedStateV2,
   normalizeTeacherLevel,
-  normalizeUserSubject,
   parseAssignment,
+  placeholderOptionsForCell,
   rowsFromCsvRecords,
   subjectColumnMatchesTeacherSubject,
   subjectColumns,
@@ -44,9 +44,13 @@ export default function PeriodAllocation() {
   const csvImportRef = useRef(null)
 
   const [activeTab, setActiveTab] = useState(
-    /** @type {MainTab} */ ('bilingual'),
+    /** @type {MainTab} */ ('summary'),
   )
   const [data, setData] = useState(() => createInitialStateV2())
+  const [placeholderModalOpen, setPlaceholderModalOpen] = useState(false)
+  const [phFormName, setPhFormName] = useState('')
+  const [phFormLevel, setPhFormLevel] = useState('')
+  const [phFormSubject, setPhFormSubject] = useState(PLACEHOLDER_SUBJECT_OPTIONS[0])
   const [hydrated, setHydrated] = useState(false)
   const [teachers, setTeachers] = useState([])
   const [actionsOpen, setActionsOpen] = useState(false)
@@ -199,6 +203,59 @@ export default function PeriodAllocation() {
     () => computeCombinedTeacherSummaries(data, teacherMap),
     [data, teacherMap],
   )
+
+  const placeholders = data.placeholderTeachers ?? []
+
+  const openPlaceholderModal = useCallback(() => {
+    setPhFormName('')
+    setPhFormLevel('')
+    setPhFormSubject(PLACEHOLDER_SUBJECT_OPTIONS[0])
+    setPlaceholderModalOpen(true)
+  }, [])
+
+  const handleAddPlaceholderSubmit = useCallback(
+    (e) => {
+      e.preventDefault()
+      const name = phFormName.trim()
+      if (!name) {
+        window.alert('Enter a name.')
+        return
+      }
+      if (!PLACEHOLDER_SUBJECT_OPTIONS.includes(phFormSubject)) return
+      const id =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `ph-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+      setData((prev) => ({
+        ...prev,
+        placeholderTeachers: [
+          ...(prev.placeholderTeachers ?? []),
+          { id, name, level: phFormLevel, subject: phFormSubject },
+        ],
+      }))
+      setPlaceholderModalOpen(false)
+      setPhFormName('')
+      setPhFormLevel('')
+      setPhFormSubject(PLACEHOLDER_SUBJECT_OPTIONS[0])
+    },
+    [phFormName, phFormLevel, phFormSubject],
+  )
+
+  const removePlaceholder = useCallback((id) => {
+    const p = placeholders.find((x) => x.id === id)
+    if (!p) return
+    if (
+      !window.confirm(
+        `Remove placeholder “${p.name}”? Cells still reference this id until you change them; summaries will show “Placeholder (removed)” for those cells.`,
+      )
+    ) {
+      return
+    }
+    setData((prev) => ({
+      ...prev,
+      placeholderTeachers: (prev.placeholderTeachers ?? []).filter((x) => x.id !== id),
+    }))
+  }, [placeholders])
 
   const updateRowField = useCallback(
     (rowId, field, value) => {
@@ -369,6 +426,13 @@ export default function PeriodAllocation() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
+              onClick={openPlaceholderModal}
+              className="px-4 py-2 rounded-lg text-sm font-medium border border-violet-300 bg-violet-50 text-violet-900 hover:bg-violet-100 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-100 dark:hover:bg-violet-900/60"
+            >
+              Add placeholder teacher
+            </button>
+            <button
+              type="button"
               onClick={addRow}
               className="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
             >
@@ -462,14 +526,15 @@ export default function PeriodAllocation() {
         </div>
 
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-1">
-          Period allocation
+          Period &amp; Subject Allocations
         </h1>
         <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-          Staff dropdowns match Teacher Management <strong>Level</strong> and <strong>Subject</strong>{' '}
-          (ESL/GP, Mathematics, Science, VN ESL). Preps dedupe by <strong>grade</strong> (from class
-          code) per subject column so parallel classes in the same grade share prep; different grades do
-          not. Combined summary adds both programmes. Data syncs to the database; {STORAGE_KEY_V2} is a
-          local backup.
+          Plan and manage allocations.
+        </p>
+        <p className="text-xs text-slate-500 dark:text-slate-500 mb-2">
+          Staff and placeholder dropdowns follow Teacher Management <strong>Level</strong> and{' '}
+          <strong>Subject</strong>. Preps dedupe by grade (from class code) per subject column. Data
+          syncs to the server; <code className="text-[11px]">{STORAGE_KEY_V2}</code> is a local backup.
         </p>
         <p className="text-xs mb-4 min-h-[1.25rem]" aria-live="polite">
           {saveStatus === 'saving' && (
@@ -484,6 +549,17 @@ export default function PeriodAllocation() {
         </p>
 
         <div className="flex gap-2 mb-4 border-b border-slate-200 dark:border-slate-700">
+          <button
+            type="button"
+            onClick={() => setActiveTab('summary')}
+            className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
+              activeTab === 'summary'
+                ? 'border-indigo-600 text-indigo-700 dark:text-indigo-300'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
+          >
+            Summary
+          </button>
           <button
             type="button"
             onClick={() => setActiveTab('bilingual')}
@@ -505,17 +581,6 @@ export default function PeriodAllocation() {
             }`}
           >
             Integrated
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('summary')}
-            className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
-              activeTab === 'summary'
-                ? 'border-indigo-600 text-indigo-700 dark:text-indigo-300'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            Summary (combined)
           </button>
         </div>
 
@@ -612,21 +677,39 @@ export default function PeriodAllocation() {
                             row.department,
                             c.key,
                           )
+                          const { match: phMatch, unspec: phUnspec } =
+                            placeholderOptionsForCell(placeholders, row.department, c.key)
                           const raw = row[c.key] ?? ''
                           const parsed = parseAssignment(raw)
                           const assignedUserId =
                             parsed?.kind === 'user' ? parsed.id : null
+                          const assignedPhId =
+                            parsed?.kind === 'placeholder' ? parsed.id : null
                           const idsInGroups = new Set([
                             ...match.map((t) => t.id),
                             ...unspec.map((t) => t.id),
                           ])
-                          const orphanId =
+                          const userOrphan =
                             assignedUserId && !idsInGroups.has(assignedUserId)
                               ? assignedUserId
                               : null
-                          const orphanTeacher = orphanId
-                            ? teachers.find((t) => t.id === orphanId)
+                          const orphanTeacher = userOrphan
+                            ? teachers.find((t) => t.id === userOrphan)
                             : null
+                          const phIdsInGroups = new Set([
+                            ...phMatch.map((p) => p.id),
+                            ...phUnspec.map((p) => p.id),
+                          ])
+                          const phOrphan =
+                            assignedPhId && !phIdsInGroups.has(assignedPhId)
+                              ? assignedPhId
+                              : null
+                          const phOrphanMeta = phOrphan
+                            ? placeholders.find((p) => p.id === phOrphan)
+                            : null
+                          const nameLegacy = parsed?.kind === 'name'
+                          const showCurrentGroup =
+                            userOrphan || phOrphan || nameLegacy
                           return (
                             <td
                               key={c.key}
@@ -640,17 +723,23 @@ export default function PeriodAllocation() {
                                 className="w-[min(10rem,26vw)] max-w-[180px] text-[11px] leading-tight rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 py-1 px-0.5"
                               >
                                 <option value="">—</option>
-                                {orphanId && (
-                                  <optgroup label="Current assignment (adjust if needed)">
-                                    <option value={formatUserAssignment(orphanId)}>
-                                      {orphanTeacher
-                                        ? `${orphanTeacher.full_name || orphanId}${
-                                            orphanTeacher.subject
-                                              ? ` (${normalizeUserSubject(orphanTeacher.subject)})`
-                                              : ''
-                                          }`
-                                        : `Staff (${orphanId.slice(0, 8)}…)`}
-                                    </option>
+                                {showCurrentGroup && (
+                                  <optgroup label="Current assignment">
+                                    {userOrphan && (
+                                      <option value={formatUserAssignment(userOrphan)}>
+                                        {orphanTeacher
+                                          ? orphanTeacher.full_name || userOrphan
+                                          : `Staff (${userOrphan.slice(0, 8)}…)`}
+                                      </option>
+                                    )}
+                                    {phOrphan && (
+                                      <option value={formatPlaceholderAssignment(phOrphan)}>
+                                        {phOrphanMeta?.name || 'Placeholder (removed)'}
+                                      </option>
+                                    )}
+                                    {nameLegacy && parsed && (
+                                      <option value={raw}>{parsed.name}</option>
+                                    )}
                                   </optgroup>
                                 )}
                                 {match.length > 0 && (
@@ -665,9 +754,6 @@ export default function PeriodAllocation() {
                                         value={formatUserAssignment(t.id)}
                                       >
                                         {t.full_name || t.id}
-                                        {t.subject
-                                          ? ` (${normalizeUserSubject(t.subject)})`
-                                          : ''}
                                       </option>
                                     ))}
                                   </optgroup>
@@ -680,20 +766,38 @@ export default function PeriodAllocation() {
                                         value={formatUserAssignment(t.id)}
                                       >
                                         {t.full_name || t.id}
-                                        {t.subject
-                                          ? ` (${normalizeUserSubject(t.subject)})`
-                                          : ''}
                                       </option>
                                     ))}
                                   </optgroup>
                                 )}
-                                <optgroup label="Placeholders">
-                                  {PLACEHOLDER_PRESETS.map((name) => (
-                                    <option key={name} value={formatNameAssignment(name)}>
-                                      {name}
-                                    </option>
-                                  ))}
-                                </optgroup>
+                                {phMatch.length > 0 && (
+                                  <optgroup
+                                    label={`Placeholders — ${
+                                      row.department === 'primary' ? 'Primary' : 'Secondary'
+                                    }`}
+                                  >
+                                    {phMatch.map((p) => (
+                                      <option
+                                        key={p.id}
+                                        value={formatPlaceholderAssignment(p.id)}
+                                      >
+                                        {p.name}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                )}
+                                {phUnspec.length > 0 && (
+                                  <optgroup label="Placeholders — Unspecified level">
+                                    {phUnspec.map((p) => (
+                                      <option
+                                        key={p.id}
+                                        value={formatPlaceholderAssignment(p.id)}
+                                      >
+                                        {p.name}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                )}
                               </select>
                             </td>
                           )
@@ -728,6 +832,57 @@ export default function PeriodAllocation() {
               deduped prep counts (shared lessons per department/subject column). Admin ={' '}
               {CONTRACT_HOURS_WEEK} h − teaching − prep.
             </p>
+
+            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/40 p-3 mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                  Placeholder teachers
+                </h3>
+                <button
+                  type="button"
+                  onClick={openPlaceholderModal}
+                  className="text-xs font-medium text-violet-700 hover:underline dark:text-violet-300"
+                >
+                  Add…
+                </button>
+              </div>
+              {placeholders.length === 0 ? (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  None defined. Use &quot;Add placeholder teacher&quot; to create recruitment
+                  placeholders; they appear in grids by level and subject.
+                </p>
+              ) : (
+                <ul className="text-xs space-y-1.5">
+                  {placeholders.map((p) => (
+                    <li
+                      key={p.id}
+                      className="flex flex-wrap items-center justify-between gap-2 py-1 border-b border-slate-200/80 dark:border-slate-700/80 last:border-0"
+                    >
+                      <span>
+                        <span className="font-medium text-slate-800 dark:text-slate-200">
+                          {p.name}
+                        </span>
+                        <span className="text-slate-500 dark:text-slate-400">
+                          {' '}
+                          — {p.subject}
+                          {normalizeTeacherLevel(p.level)
+                            ? ` · ${normalizeTeacherLevel(p.level) === 'primary' ? 'Primary' : 'Secondary'}`
+                            : ' · Level unspecified'}
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removePlaceholder(p.id)}
+                        className="text-red-600 hover:underline dark:text-red-400 shrink-0"
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
             <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
               <table className="min-w-[640px] w-full text-sm">
                 <thead>
@@ -786,6 +941,87 @@ export default function PeriodAllocation() {
           </div>
         )}
       </div>
+
+      {placeholderModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ph-modal-title"
+        >
+          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-xl dark:border-slate-600 dark:bg-slate-900">
+            <h2
+              id="ph-modal-title"
+              className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3"
+            >
+              Add placeholder teacher
+            </h2>
+            <form onSubmit={handleAddPlaceholderSubmit} className="space-y-3">
+              <div>
+                <label htmlFor="ph-name" className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                  Name
+                </label>
+                <input
+                  id="ph-name"
+                  type="text"
+                  value={phFormName}
+                  onChange={(e) => setPhFormName(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 px-3 py-2 text-sm"
+                  placeholder="e.g. Vacancy — ESL"
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <label htmlFor="ph-level" className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                  Level
+                </label>
+                <select
+                  id="ph-level"
+                  value={phFormLevel}
+                  onChange={(e) => setPhFormLevel(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 px-3 py-2 text-sm"
+                >
+                  <option value="">Unspecified (appears in both Primary and Secondary rows)</option>
+                  <option value="primary">Primary</option>
+                  <option value="secondary">Secondary</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="ph-subject" className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                  Subject
+                </label>
+                <select
+                  id="ph-subject"
+                  value={phFormSubject}
+                  onChange={(e) => setPhFormSubject(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-950 px-3 py-2 text-sm"
+                >
+                  {PLACEHOLDER_SUBJECT_OPTIONS.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setPlaceholderModalOpen(false)}
+                  className="px-4 py-2 rounded-lg text-sm border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-lg text-sm font-medium bg-violet-600 text-white hover:bg-violet-700"
+                >
+                  Add
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </Layout>
   )
 }

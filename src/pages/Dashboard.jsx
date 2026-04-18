@@ -1099,8 +1099,8 @@ export default function Dashboard() {
                   className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block min-h-[120px]"
                   style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}
                 >
-                  <div className="font-semibold text-gray-900">Period Allocation</div>
-                  <div className="text-sm text-gray-500 mt-1">Recruitment planning: class rows, teacher assignments, and workload summary.</div>
+                  <div className="font-semibold text-gray-900">Period & Subject Allocations</div>
+                  <div className="text-sm text-gray-500 mt-1">Plan and manage allocations.</div>
                 </Link>
                 <Link
                   to="/admin/cover-management"
