@@ -24,9 +24,15 @@ entrypoint = "./functions/delete-user/index.ts"
 
 [functions.create-students]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 import_map = "./functions/create-students/deno.json"
 entrypoint = "./functions/create-students/index.ts"
+
+[functions.sync-student-enrollments]
+enabled = true
+verify_jwt = false
+import_map = "./functions/sync-student-enrollments/deno.json"
+entrypoint = "./functions/sync-student-enrollments/index.ts"
 
 [functions.delete-all-students]
 enabled = true
