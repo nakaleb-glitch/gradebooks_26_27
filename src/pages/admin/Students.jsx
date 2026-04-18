@@ -71,7 +71,7 @@ export default function Students() {
     const session = sessionData?.session
     const currentToken = session?.access_token
     const expiresAt = Number(session?.expires_at || 0)
-    const nowSeconds = Math.floor(Date.now() / 1000)
+    const nowSeconds = Math.floor(new Date().getTime() / 1000)
     const shouldRefresh =
       forceRefresh || !currentToken || !expiresAt || expiresAt - nowSeconds <= ACCESS_TOKEN_REFRESH_BUFFER_SECONDS
 
