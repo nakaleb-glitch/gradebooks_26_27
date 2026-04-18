@@ -20,7 +20,16 @@ const chunkArray = <T>(items: T[], chunkSize: number): T[][] => {
   return chunks;
 };
 
-const isStudentAuthUserByMarker = (authUser: any) => {
+const getErrorMessage = (err: unknown) =>
+  err instanceof Error ? err.message : String(err ?? "Unknown error");
+
+const isStudentAuthUserByMarker = (
+  authUser: {
+    user_metadata?: Record<string, unknown>;
+    app_metadata?: Record<string, unknown>;
+    email?: string;
+  } | null,
+) => {
   const metadata = authUser?.user_metadata || {};
   const appMetadata = authUser?.app_metadata || {};
   const email = String(authUser?.email || "").toLowerCase();
@@ -311,7 +320,7 @@ serve(async (req) => {
       },
     );
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: getErrorMessage(err) }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

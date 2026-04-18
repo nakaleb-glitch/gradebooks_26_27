@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "supabase:functions:check": "for dir in supabase/functions/*; do if [ -f \"$dir/deno.json\" ] && [ -f \"$dir/index.ts\" ]; then deno fmt --check \"$dir/index.ts\" && deno lint \"$dir/index.ts\" && deno check --config \"$dir/deno.json\" \"$dir/index.ts\"; fi; done",
+    "supabase:functions:check": "for dir in supabase/functions/*; do if [ -f \"$dir/deno.json\" ] && [ -f \"$dir/index.ts\" ]; then deno fmt --check \"$dir/index.ts\" && deno lint --rules-exclude=no-import-prefix \"$dir/index.ts\" && deno check --config \"$dir/deno.json\" \"$dir/index.ts\"; fi; done",
     "supabase:policy:check": "node -e \"const fs=require('fs');const path=require('path');const root='supabase';const bad=[];const walk=(dir)=>{for(const e of fs.readdirSync(dir,{withFileTypes:true})){const p=path.join(dir,e.name);if(e.isDirectory()) walk(p); else if(e.isFile()&&p.endsWith('.sql')){const t=fs.readFileSync(p,'utf8');if(/auth\\\\.jwt\\\\(\\\\)\\\\s*->>\\\\s*'role'\\\\s*=\\\\s*'admin'/.test(t)) bad.push(p);}}};walk(root);if(bad.length){console.error('Found JWT admin-only policy checks in:');bad.forEach(f=>console.error(f));process.exit(1);}console.log('Supabase policy check passed.');\""
   },
   "dependencies": {

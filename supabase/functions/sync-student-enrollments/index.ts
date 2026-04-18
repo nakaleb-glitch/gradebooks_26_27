@@ -10,6 +10,15 @@ const corsHeaders = {
 const getHomeroom = (classValue: unknown) =>
   String(classValue || "").trim().split(/\s+/)[0] || "";
 
+type SyncStudentInput = {
+  id?: string;
+  class?: string;
+  student_id?: string;
+};
+
+const getErrorMessage = (err: unknown) =>
+  err instanceof Error ? err.message : String(err ?? "Unknown error");
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -64,7 +73,9 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const students = Array.isArray(body?.students) ? body.students : [];
+    const students: SyncStudentInput[] = Array.isArray(body?.students)
+      ? body.students as SyncStudentInput[]
+      : [];
     const academicYear = String(body?.academic_year || "").trim() ||
       "2026-2027";
 
@@ -127,12 +138,13 @@ serve(async (req) => {
     students.forEach((student) => {
       const homeroom = getHomeroom(student?.class).toLowerCase();
       const targetClassIds = classesByHomeroom[homeroom] || [];
-      if (!student?.id || !homeroom || targetClassIds.length === 0) {
-        missingStudents.push(student?.student_id || student?.id || "unknown");
+      const studentId = student?.id;
+      if (!studentId || !homeroom || targetClassIds.length === 0) {
+        missingStudents.push(student?.student_id || studentId || "unknown");
         return;
       }
       targetClassIds.forEach((classId) => {
-        enrollRows.push({ class_id: classId, student_id: student.id });
+        enrollRows.push({ class_id: classId, student_id: studentId });
       });
     });
 
@@ -166,7 +178,7 @@ serve(async (req) => {
       },
     );
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: getErrorMessage(err) }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

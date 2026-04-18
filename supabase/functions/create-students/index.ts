@@ -15,8 +15,22 @@ const makeStudentEmail = (studentId: string) => {
   return `${base || "student"}@royal.edu.vn`;
 };
 
+type AuthUserLookupClient = {
+  auth: {
+    admin: {
+      listUsers: (params: { page: number; perPage: number }) => Promise<{
+        data?: { users?: Array<{ id?: string; email?: string | null }> };
+        error?: unknown;
+      }>;
+    };
+  };
+};
+
+const getErrorMessage = (err: unknown) =>
+  err instanceof Error ? err.message : String(err ?? "Unknown error");
+
 const findAuthUserIdByEmail = async (
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: AuthUserLookupClient,
   email: string,
 ) => {
   const target = String(email || "").trim().toLowerCase();
@@ -209,7 +223,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: getErrorMessage(err) }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
