@@ -132,6 +132,64 @@ export function formatNameAssignment(name) {
 }
 
 /**
+ * Normalize `users.subject` for comparison (aligned with Users.jsx).
+ * @param {string | null | undefined} value
+ */
+export function normalizeUserSubject(value) {
+  const v = String(value || '').trim().toLowerCase()
+  if (v === 'esl/gp' || v === 'esl / gp') return 'ESL/GP'
+  if (v === 'mathematics' || v === 'math') return 'Mathematics'
+  if (v === 'science') return 'Science'
+  if (v === 'vn esl') return 'VN ESL'
+  const t = String(value || '').trim()
+  return t ? t : ''
+}
+
+/**
+ * @param {string | null | undefined} value
+ * @returns {'primary' | 'secondary' | ''}
+ */
+export function normalizeTeacherLevel(value) {
+  const v = String(value || '').trim().toLowerCase()
+  if (v === 'primary') return 'primary'
+  if (v === 'secondary') return 'secondary'
+  return ''
+}
+
+/**
+ * Whether teacher profile subject matches the allocation column (ESL/GP, M/S, VN ESL).
+ * @param {string} columnKey — esl | gp | math | science | vnEsl
+ */
+export function subjectColumnMatchesTeacherSubject(columnKey, userSubjectRaw) {
+  const u = normalizeUserSubject(userSubjectRaw)
+  switch (columnKey) {
+    case 'esl':
+    case 'gp':
+      return u === 'ESL/GP'
+    case 'math':
+    case 'science':
+      return u === 'Mathematics' || u === 'Science'
+    case 'vnEsl':
+      return u === 'VN ESL'
+    default:
+      return false
+  }
+}
+
+/**
+ * Teacher appears in dropdown for this cell: subject matches, and level matches row or is unspecified.
+ * @param {{ level?: string, subject?: string }} teacher
+ * @param {'primary' | 'secondary'} rowDepartment
+ * @param {string} columnKey
+ */
+export function teacherAllowedForCell(teacher, rowDepartment, columnKey) {
+  if (!subjectColumnMatchesTeacherSubject(columnKey, teacher.subject)) return false
+  const tl = normalizeTeacherLevel(teacher.level)
+  if (!tl) return true
+  return tl === rowDepartment
+}
+
+/**
  * @typedef {object} TeacherSummaryRow
  * @property {string} teacherKey
  * @property {string} displayName
@@ -145,10 +203,22 @@ export function formatNameAssignment(name) {
  * @property {number} adminHours
  */
 
+function teacherKeyFromParsed(parsed) {
+  return parsed.kind === 'user' ? `user:${parsed.id}` : `name:${parsed.name}`
+}
+
+function displayNameFromParsed(parsed, teacherNames) {
+  if (parsed.kind === 'user') {
+    const n = teacherNames.get(parsed.id)?.full_name
+    return (n && String(n).trim()) || parsed.id
+  }
+  return parsed.name
+}
+
 /**
  * @param {object[]} rows
  * @param {Programme} programme
- * @param {Map<string, { full_name?: string }>} [teacherNames] user id -> profile
+ * @param {Map<string, { full_name?: string }>} [teacherNames]
  * @returns {TeacherSummaryRow[]}
  */
 export function computeTeacherSummaries(rows, programme, teacherNames = new Map()) {
@@ -159,17 +229,8 @@ export function computeTeacherSummaries(rows, programme, teacherNames = new Map(
   /** @type {Map<string, { primaryUnits: number, secondaryUnits: number, labels: Set<string> }>} */
   const acc = new Map()
 
-  function teacherKey(parsed) {
-    return parsed.kind === 'user' ? `user:${parsed.id}` : `name:${parsed.name}`
-  }
-
-  function displayName(parsed) {
-    if (parsed.kind === 'user') {
-      const n = teacherNames.get(parsed.id)?.full_name
-      return (n && String(n).trim()) || parsed.id
-    }
-    return parsed.name
-  }
+  /** @type {Map<string, Set<string>>} teacherKey -> prep bucket keys */
+  const prepBuckets = new Map()
 
   for (const row of rows) {
     const dept = row.department === 'secondary' ? 'secondary' : 'primary'
@@ -177,30 +238,45 @@ export function computeTeacherSummaries(rows, programme, teacherNames = new Map(
       const raw = row[c.key] ?? ''
       const parsed = parseAssignment(raw)
       if (!parsed) continue
-      const key = teacherKey(parsed)
+      const tkey = teacherKeyFromParsed(parsed)
       const units = colPeriods[c.key] ?? 0
-      if (!acc.has(key)) {
-        acc.set(key, {
+      if (!acc.has(tkey)) {
+        acc.set(tkey, {
           primaryUnits: 0,
           secondaryUnits: 0,
           labels: new Set(),
-          displayName: displayName(parsed),
+          displayName: displayNameFromParsed(parsed, teacherNames),
         })
       }
-      const entry = acc.get(key)
+      const entry = acc.get(tkey)
       if (dept === 'primary') entry.primaryUnits += units
       else entry.secondaryUnits += units
       entry.labels.add(colLabel[c.key])
+
+      const prepKey = `${programme}|${dept}|${c.key}`
+      if (!prepBuckets.has(tkey)) prepBuckets.set(tkey, new Set())
+      prepBuckets.get(tkey).add(prepKey)
     }
   }
 
   const out = []
-  for (const [teacherKey, entry] of acc) {
+  for (const [tkey, entry] of acc) {
     const periods = entry.primaryUnits + entry.secondaryUnits
     const teachingHours =
       (entry.primaryUnits * PRIMARY_MINUTES) / 60 +
       (entry.secondaryUnits * SECONDARY_MINUTES) / 60
-    const lessonPreps = periods / 2
+
+    let lessonPreps = 0
+    const buckets = prepBuckets.get(tkey)
+    if (buckets) {
+      for (const pk of buckets) {
+        const parts = pk.split('|')
+        const colKey = parts[2]
+        const w = colPeriods[colKey] ?? 0
+        lessonPreps += w / 2
+      }
+    }
+
     const prepTimeHours = lessonPreps * 1.5
     const adminHours = CONTRACT_HOURS_WEEK - teachingHours - prepTimeHours
     const subjectSummary =
@@ -209,7 +285,7 @@ export function computeTeacherSummaries(rows, programme, teacherNames = new Map(
         : 'Multiple'
 
     out.push({
-      teacherKey,
+      teacherKey: tkey,
       displayName: entry.displayName,
       subjectSummary,
       periods,
@@ -217,6 +293,73 @@ export function computeTeacherSummaries(rows, programme, teacherNames = new Map(
       secondaryPeriodUnits: entry.secondaryUnits,
       teachingHours,
       lessonPreps,
+      prepTimeHours,
+      adminHours,
+    })
+  }
+
+  out.sort((a, b) =>
+    a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }),
+  )
+  return out
+}
+
+/**
+ * Combined summary: merge bilingual + integrated per teacher.
+ * Periods and units sum; lesson preps sum (each programme already deduped internally).
+ * @param {{ bilingual: { rows: object[] }, integrated: { rows: object[] } }} data
+ * @param {Map<string, { full_name?: string }>} [teacherNames]
+ * @returns {TeacherSummaryRow[]}
+ */
+export function computeCombinedTeacherSummaries(data, teacherNames = new Map()) {
+  const b = computeTeacherSummaries(data.bilingual.rows, 'bilingual', teacherNames)
+  const i = computeTeacherSummaries(data.integrated.rows, 'integrated', teacherNames)
+  /** @type {Map<string, { teacherKey: string, displayName: string, periods: number, primaryPeriodUnits: number, secondaryPeriodUnits: number, lessonPreps: number, subjectParts: string[] }>} */
+  const merged = new Map()
+
+  function add(s) {
+    const cur = merged.get(s.teacherKey)
+    if (!cur) {
+      merged.set(s.teacherKey, {
+        teacherKey: s.teacherKey,
+        displayName: s.displayName,
+        periods: s.periods,
+        primaryPeriodUnits: s.primaryPeriodUnits,
+        secondaryPeriodUnits: s.secondaryPeriodUnits,
+        lessonPreps: s.lessonPreps,
+        subjectParts: [s.subjectSummary],
+      })
+      return
+    }
+    cur.periods += s.periods
+    cur.primaryPeriodUnits += s.primaryPeriodUnits
+    cur.secondaryPeriodUnits += s.secondaryPeriodUnits
+    cur.lessonPreps += s.lessonPreps
+    cur.subjectParts.push(s.subjectSummary)
+  }
+
+  for (const s of b) add(s)
+  for (const s of i) add(s)
+
+  const out = []
+  for (const cur of merged.values()) {
+    const uniq = new Set(cur.subjectParts.filter((x) => x && x !== '—'))
+    const subjectSummary =
+      uniq.size === 0 ? '—' : uniq.size === 1 ? [...uniq][0] : 'Multiple'
+    const teachingHours =
+      (cur.primaryPeriodUnits * PRIMARY_MINUTES) / 60 +
+      (cur.secondaryPeriodUnits * SECONDARY_MINUTES) / 60
+    const prepTimeHours = cur.lessonPreps * 1.5
+    const adminHours = CONTRACT_HOURS_WEEK - teachingHours - prepTimeHours
+    out.push({
+      teacherKey: cur.teacherKey,
+      displayName: cur.displayName,
+      subjectSummary,
+      periods: cur.periods,
+      primaryPeriodUnits: cur.primaryPeriodUnits,
+      secondaryPeriodUnits: cur.secondaryPeriodUnits,
+      teachingHours,
+      lessonPreps: cur.lessonPreps,
       prepTimeHours,
       adminHours,
     })
