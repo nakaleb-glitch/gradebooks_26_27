@@ -1095,6 +1095,14 @@ export default function Dashboard() {
                   <div className="text-sm text-gray-500 mt-1">Create and manage teacher schedules.</div>
                 </Link>
                 <Link
+                  to="/admin/period-allocation"
+                  className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block min-h-[120px]"
+                  style={{ borderTopColor: '#1f86c7', borderTopWidth: 3 }}
+                >
+                  <div className="font-semibold text-gray-900">Period Allocation</div>
+                  <div className="text-sm text-gray-500 mt-1">Recruitment planning: class rows, teacher assignments, and workload summary.</div>
+                </Link>
+                <Link
                   to="/admin/cover-management"
                   className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-sm transition-all block min-h-[120px]"
                   style={{ borderTopColor: '#16a34a', borderTopWidth: 3 }}
