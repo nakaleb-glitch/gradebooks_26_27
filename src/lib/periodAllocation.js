@@ -4,6 +4,9 @@
 export const STORAGE_KEY = 'period_allocation_v1'
 export const STORAGE_KEY_V2 = 'period_allocation_v2'
 
+/** Supabase singleton row id for `period_allocation_state` */
+export const PERIOD_ALLOCATION_STATE_ID = 'default'
+
 export const PRIMARY_MINUTES = 35
 export const SECONDARY_MINUTES = 40
 export const CONTRACT_HOURS_WEEK = 40
@@ -216,6 +219,22 @@ function displayNameFromParsed(parsed, teacherNames) {
 }
 
 /**
+ * Segment for prep dedup: same leading grade shares one prep series across homerooms;
+ * different grades (e.g. 1B5 vs 5B5) get separate buckets. Unparseable class names use
+ * normalized class string; empty uses row id.
+ * @param {string | undefined} className
+ * @param {string} rowId
+ */
+export function prepDedupSegment(className, rowId) {
+  const s = String(className || '').trim()
+  const m = s.match(/^(\d{1,2})(?=\D|$)/)
+  if (m) return `g:${m[1]}`
+  const lower = s.toLowerCase()
+  if (lower) return `c:${lower}`
+  return `row:${rowId}`
+}
+
+/**
  * @param {object[]} rows
  * @param {Programme} programme
  * @param {Map<string, { full_name?: string }>} [teacherNames]
@@ -253,7 +272,8 @@ export function computeTeacherSummaries(rows, programme, teacherNames = new Map(
       else entry.secondaryUnits += units
       entry.labels.add(colLabel[c.key])
 
-      const prepKey = `${programme}|${dept}|${c.key}`
+      const segment = prepDedupSegment(row.className, row.id)
+      const prepKey = `${programme}|${dept}|${c.key}|${segment}`
       if (!prepBuckets.has(tkey)) prepBuckets.set(tkey, new Set())
       prepBuckets.get(tkey).add(prepKey)
     }

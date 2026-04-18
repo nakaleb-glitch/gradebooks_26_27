@@ -5,6 +5,7 @@ import Layout from '../../components/Layout'
 import { supabase } from '../../lib/supabase'
 import {
   CONTRACT_HOURS_WEEK,
+  PERIOD_ALLOCATION_STATE_ID,
   PLACEHOLDER_PRESETS,
   PRIMARY_MINUTES,
   SECONDARY_MINUTES,
@@ -49,6 +50,10 @@ export default function PeriodAllocation() {
   const [hydrated, setHydrated] = useState(false)
   const [teachers, setTeachers] = useState([])
   const [actionsOpen, setActionsOpen] = useState(false)
+  const [saveStatus, setSaveStatus] = useState(
+    /** @type {'idle' | 'saving' | 'saved' | 'error'} */ ('idle'),
+  )
+  const [saveError, setSaveError] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -66,28 +71,103 @@ export default function PeriodAllocation() {
   }, [])
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY_V2)
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        const normalized = normalizePersistedStateV2(parsed)
-        if (normalized) setData(normalized)
+    let cancelled = false
+    ;(async () => {
+      const { data: row, error: fetchError } = await supabase
+        .from('period_allocation_state')
+        .select('payload')
+        .eq('id', PERIOD_ALLOCATION_STATE_ID)
+        .maybeSingle()
+
+      if (cancelled) return
+
+      if (!fetchError && row?.payload) {
+        const normalized = normalizePersistedStateV2(row.payload)
+        if (normalized) {
+          setData(normalized)
+          try {
+            localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(normalized))
+          } catch (e) {
+            console.warn('localStorage mirror failed', e)
+          }
+          setHydrated(true)
+          return
+        }
       }
-    } catch (e) {
-      console.warn('period allocation v2 load failed', e)
+
+      if (fetchError) {
+        console.warn('period_allocation_state fetch:', fetchError.message)
+        setSaveError(
+          'Could not load from server (table may need migration). Using browser backup if available.',
+        )
+      }
+
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY_V2)
+        if (raw) {
+          const parsed = JSON.parse(raw)
+          const normalized = normalizePersistedStateV2(parsed)
+          if (normalized) {
+            setData(normalized)
+            const { error: upErr } = await supabase.from('period_allocation_state').upsert(
+              {
+                id: PERIOD_ALLOCATION_STATE_ID,
+                payload: normalized,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: 'id' },
+            )
+            if (upErr) {
+              setSaveError(
+                (prev) =>
+                  prev ||
+                  'Could not sync browser backup to server. Edits still save in this browser.',
+              )
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('period allocation local load failed', e)
+      }
+      setHydrated(true)
+    })()
+    return () => {
+      cancelled = true
     }
-    setHydrated(true)
   }, [])
 
   useEffect(() => {
     if (!hydrated) return
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => {
-      try {
-        localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(data))
-      } catch (e) {
-        console.warn('period allocation save failed', e)
-      }
+      const payload = data
+      ;(async () => {
+        try {
+          localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(payload))
+        } catch (e) {
+          console.warn('localStorage save failed', e)
+        }
+        setSaveStatus('saving')
+        setSaveError(null)
+        const { error } = await supabase.from('period_allocation_state').upsert(
+          {
+            id: PERIOD_ALLOCATION_STATE_ID,
+            payload,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' },
+        )
+        if (error) {
+          console.warn('period_allocation_state upsert:', error.message)
+          setSaveStatus('error')
+          setSaveError(
+            `Not saved to server: ${error.message}. A copy remains in this browser.`,
+          )
+        } else {
+          setSaveStatus('saved')
+          setTimeout(() => setSaveStatus((s) => (s === 'saved' ? 'idle' : s)), 2500)
+        }
+      })()
     }, SAVE_DEBOUNCE_MS)
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
@@ -384,10 +464,23 @@ export default function PeriodAllocation() {
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-1">
           Period allocation
         </h1>
-        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+        <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
           Staff dropdowns match Teacher Management <strong>Level</strong> and <strong>Subject</strong>{' '}
-          (ESL/GP, Mathematics, Science, VN ESL). Preps dedupe per programme, department, and subject
-          column across classes. Combined summary adds both programmes. Drafts: {STORAGE_KEY_V2}.
+          (ESL/GP, Mathematics, Science, VN ESL). Preps dedupe by <strong>grade</strong> (from class
+          code) per subject column so parallel classes in the same grade share prep; different grades do
+          not. Combined summary adds both programmes. Data syncs to the database; {STORAGE_KEY_V2} is a
+          local backup.
+        </p>
+        <p className="text-xs mb-4 min-h-[1.25rem]" aria-live="polite">
+          {saveStatus === 'saving' && (
+            <span className="text-slate-500 dark:text-slate-400">Saving to server…</span>
+          )}
+          {saveStatus === 'saved' && (
+            <span className="text-emerald-700 dark:text-emerald-400">Saved to server.</span>
+          )}
+          {saveError && (
+            <span className="text-amber-800 dark:text-amber-300">{saveError}</span>
+          )}
         </p>
 
         <div className="flex gap-2 mb-4 border-b border-slate-200 dark:border-slate-700">
