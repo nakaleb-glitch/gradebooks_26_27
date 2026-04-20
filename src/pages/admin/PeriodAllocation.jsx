@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import Papa from 'papaparse'
 import Layout from '../../components/Layout'
@@ -34,6 +35,30 @@ import {
 
 const SAVE_DEBOUNCE_MS = 400
 
+function AssignmentHoverCard({ anchorRect, lines, visible }) {
+  if (!visible || !anchorRect || typeof document === 'undefined') return null
+  const top = Math.min(anchorRect.bottom + 8, window.innerHeight - 16)
+  const left = Math.min(anchorRect.left, window.innerWidth - 360)
+  return createPortal(
+    <div
+      className="pointer-events-none fixed z-[80] min-w-[15rem] max-w-[22rem] rounded-lg border border-gray-200 bg-white p-2 text-xs text-gray-700 shadow-xl dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+      style={{ top, left }}
+      role="tooltip"
+    >
+      {lines.length === 0 ? (
+        <p>No class assignments found.</p>
+      ) : (
+        <ul className="space-y-1">
+          {lines.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      )}
+    </div>,
+    document.body,
+  )
+}
+
 /** @typedef {'summary' | 'bilingualG1G8' | 'integratedG1G8' | 'bilingualG9G10' | 'integratedG9G11' | 'taCounselor'} MainTab */
 
 function staffOptionsForCell(teachers, rowDepartment, columnKey) {
@@ -50,6 +75,9 @@ export default function PeriodAllocation() {
   const actionsMenuRef = useRef(null)
   const jsonImportRef = useRef(null)
   const csvImportRef = useRef(null)
+  const gridSectionRef = useRef(null)
+  const summarySectionRef = useRef(null)
+  const taSectionRef = useRef(null)
 
   const [activeTab, setActiveTab] = useState(
     /** @type {MainTab} */ ('summary'),
@@ -72,6 +100,12 @@ export default function PeriodAllocation() {
     /** @type {'idle' | 'saving' | 'saved' | 'error'} */ ('idle'),
   )
   const [saveError, setSaveError] = useState(null)
+  const [denseMode, setDenseMode] = useState(true)
+  const [hoverCard, setHoverCard] = useState({
+    visible: false,
+    anchorRect: null,
+    lines: [],
+  })
 
   useEffect(() => {
     let cancelled = false
@@ -202,6 +236,17 @@ export default function PeriodAllocation() {
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
   }, [actionsOpen])
+
+  useEffect(() => {
+    if (!hoverCard.visible) return
+    const close = () => setHoverCard((prev) => ({ ...prev, visible: false }))
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('resize', close)
+    return () => {
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('resize', close)
+    }
+  }, [hoverCard.visible])
 
   const teacherMap = useMemo(() => {
     const m = new Map()
@@ -596,6 +641,21 @@ export default function PeriodAllocation() {
 
   const fmt2 = (n) => n.toFixed(2)
   const fmt1 = (n) => n.toFixed(1)
+  const denseCellClass = denseMode ? 'p-0.5' : 'p-1'
+  const denseInputClass = denseMode ? 'py-1 px-1 text-[11px]' : 'py-1.5 px-2 text-xs'
+
+  const scrollToRef = (ref) => {
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  const openHoverCard = (event, lines) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    setHoverCard({ visible: true, anchorRect: rect, lines })
+  }
+
+  const closeHoverCard = () => {
+    setHoverCard((prev) => ({ ...prev, visible: false }))
+  }
 
   const tabTitle =
     gridTab === 'bilingualG1G8'
@@ -613,7 +673,8 @@ export default function PeriodAllocation() {
   return (
     <Layout>
       <div className="mb-6">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div className="sticky top-0 z-40 bg-[var(--app-bg)]/95 backdrop-blur supports-[backdrop-filter]:bg-[var(--app-bg)]/80 py-2">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
           <button
             type="button"
             onClick={() => navigate('/dashboard')}
@@ -715,6 +776,105 @@ export default function PeriodAllocation() {
               />
             </div>
           </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <button
+              type="button"
+              onClick={() => scrollToRef(gridSectionRef)}
+              className="px-2.5 py-1 rounded-md text-xs font-medium border border-gray-300 bg-white text-gray-800 hover:bg-gray-50"
+            >
+              Grid
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToRef(summarySectionRef)}
+              className="px-2.5 py-1 rounded-md text-xs font-medium border border-gray-300 bg-white text-gray-800 hover:bg-gray-50"
+            >
+              Summary
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToRef(taSectionRef)}
+              className="px-2.5 py-1 rounded-md text-xs font-medium border border-gray-300 bg-white text-gray-800 hover:bg-gray-50"
+            >
+              TA
+            </button>
+            <button
+              type="button"
+              onClick={() => setDenseMode((v) => !v)}
+              className="ml-auto px-2.5 py-1 rounded-md text-xs font-medium border border-gray-300 bg-white text-gray-800 hover:bg-gray-50"
+            >
+              {denseMode ? 'Dense view: On' : 'Dense view: Off'}
+            </button>
+          </div>
+          <div className="flex gap-2 border-b border-gray-200 overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => setActiveTab('summary')}
+              className={`shrink-0 px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
+                activeTab === 'summary'
+                  ? 'border-indigo-600 text-indigo-700 dark:text-indigo-300'
+                  : 'border-transparent text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              Summary
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('bilingualG1G8')}
+              className={`shrink-0 px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
+                activeTab === 'bilingualG1G8'
+                  ? 'border-purple-600 text-purple-700 dark:text-purple-300'
+                  : 'border-transparent text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              Bilingual (G1-G8)
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('integratedG1G8')}
+              className={`shrink-0 px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
+                activeTab === 'integratedG1G8'
+                  ? 'border-teal-600 text-teal-700 dark:text-teal-300'
+                  : 'border-transparent text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              Integrated (G1-G8)
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('bilingualG9G10')}
+              className={`shrink-0 px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
+                activeTab === 'bilingualG9G10'
+                  ? 'border-fuchsia-600 text-fuchsia-700 dark:text-fuchsia-300'
+                  : 'border-transparent text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              Bilingual (G9-G10)
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('integratedG9G11')}
+              className={`shrink-0 px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
+                activeTab === 'integratedG9G11'
+                  ? 'border-cyan-600 text-cyan-700 dark:text-cyan-300'
+                  : 'border-transparent text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              Integrated (G9-G11)
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('taCounselor')}
+              className={`shrink-0 px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
+                activeTab === 'taCounselor'
+                  ? 'border-emerald-600 text-emerald-700 dark:text-emerald-300'
+                  : 'border-transparent text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              TA / Counselor
+            </button>
+          </div>
         </div>
 
         <h1 className="text-2xl font-semibold text-gray-900 mb-1">
@@ -744,77 +904,8 @@ export default function PeriodAllocation() {
           )}
         </p>
 
-        <div className="flex gap-2 mb-4 border-b border-gray-200">
-          <button
-            type="button"
-            onClick={() => setActiveTab('summary')}
-            className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
-              activeTab === 'summary'
-                ? 'border-indigo-600 text-indigo-700 dark:text-indigo-300'
-                : 'border-transparent text-gray-500 hover:text-gray-800'
-            }`}
-          >
-            Summary
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('bilingualG1G8')}
-            className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
-              activeTab === 'bilingualG1G8'
-                ? 'border-purple-600 text-purple-700 dark:text-purple-300'
-                : 'border-transparent text-gray-500 hover:text-gray-800'
-            }`}
-          >
-            Bilingual (G1-G8)
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('integratedG1G8')}
-            className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
-              activeTab === 'integratedG1G8'
-                ? 'border-teal-600 text-teal-700 dark:text-teal-300'
-                : 'border-transparent text-gray-500 hover:text-gray-800'
-            }`}
-          >
-            Integrated (G1-G8)
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('bilingualG9G10')}
-            className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
-              activeTab === 'bilingualG9G10'
-                ? 'border-fuchsia-600 text-fuchsia-700 dark:text-fuchsia-300'
-                : 'border-transparent text-gray-500 hover:text-gray-800'
-            }`}
-          >
-            Bilingual (G9-G10)
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('integratedG9G11')}
-            className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
-              activeTab === 'integratedG9G11'
-                ? 'border-cyan-600 text-cyan-700 dark:text-cyan-300'
-                : 'border-transparent text-gray-500 hover:text-gray-800'
-            }`}
-          >
-            Integrated (G9-G11)
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('taCounselor')}
-            className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
-              activeTab === 'taCounselor'
-                ? 'border-emerald-600 text-emerald-700 dark:text-emerald-300'
-                : 'border-transparent text-gray-500 hover:text-gray-800'
-            }`}
-          >
-            TA / Counselor
-          </button>
-        </div>
-
         {activeTab !== 'summary' && activeTab !== 'taCounselor' && (
-          <>
+          <div ref={gridSectionRef}>
             <h2 className="text-base font-semibold text-gray-900 mb-2">
               {tabTitle}
             </h2>
@@ -827,16 +918,16 @@ export default function PeriodAllocation() {
               <table className="min-w-max w-full text-xs border-collapse">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="sticky left-0 z-20 px-2 py-2 text-left text-gray-600 font-medium border-b border-r border-gray-200 bg-gray-50">
+                    <th className="sticky top-0 left-0 z-30 px-2 py-2 text-left text-gray-600 font-medium border-b border-r border-gray-200 bg-gray-50">
                       No.
                     </th>
-                    <th className="px-2 py-2 text-left text-gray-600 font-medium border-b border-gray-200">
+                    <th className="sticky top-0 left-[2.5rem] z-20 px-2 py-2 text-left text-gray-600 font-medium border-b border-r border-gray-200 bg-gray-50">
                       Department
                     </th>
-                    <th className="px-2 py-2 text-left text-gray-600 font-medium border-b border-gray-200 min-w-[5rem]">
+                    <th className="sticky top-0 left-[9.5rem] z-20 px-2 py-2 text-left text-gray-600 font-medium border-b border-r border-gray-200 bg-gray-50 min-w-[5rem]">
                       Class
                     </th>
-                    <th className="px-2 py-2 text-left text-gray-600 font-medium border-b border-gray-200">
+                    <th className="sticky top-0 z-10 px-2 py-2 text-left text-gray-600 font-medium border-b border-gray-200 bg-gray-50">
                       Programme
                     </th>
                     {subjectCols.map((c) => (
@@ -866,16 +957,16 @@ export default function PeriodAllocation() {
                         key={row.id}
                         className="odd:bg-white even:bg-gray-50 dark:odd:bg-gray-900 dark:even:bg-gray-800 border-t border-gray-200"
                       >
-                        <th className="sticky left-0 z-10 px-2 py-1 text-left font-medium text-gray-900 border-t border-r border-gray-200 bg-inherit">
+                        <th className="sticky left-0 z-20 px-2 py-1 text-left font-medium text-gray-900 border-t border-r border-gray-200 bg-inherit">
                           {idx + 1}
                         </th>
-                        <td className="border-t border-gray-200 p-1">
+                        <td className={`sticky left-[2.5rem] z-10 border-t border-r border-gray-200 ${denseCellClass} bg-inherit`}>
                           <select
                             value={row.department}
                             onChange={(e) =>
                               updateRowField(row.id, 'department', e.target.value)
                             }
-                            className={`w-full min-w-[6.5rem] text-[11px] rounded border py-1 px-1 ${
+                            className={`w-full min-w-[6.5rem] rounded border ${denseInputClass} ${
                               row.department === 'primary'
                                 ? 'border-amber-300 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-700'
                                 : 'border-sky-300 bg-sky-50 dark:bg-sky-950/40 dark:border-sky-700'
@@ -885,7 +976,7 @@ export default function PeriodAllocation() {
                             <option value="secondary">Secondary</option>
                           </select>
                         </td>
-                        <td className="border-t border-gray-200 p-1">
+                        <td className={`sticky left-[9.5rem] z-10 border-t border-r border-gray-200 ${denseCellClass} bg-inherit`}>
                           <input
                             type="text"
                             value={row.className}
@@ -893,10 +984,10 @@ export default function PeriodAllocation() {
                               updateRowField(row.id, 'className', e.target.value)
                             }
                             placeholder="e.g. 1B1"
-                            className="w-full min-w-[4.5rem] text-[11px] rounded border border-gray-300 bg-white py-1 px-1"
+                            className={`w-full min-w-[4.5rem] rounded border border-gray-300 bg-white ${denseInputClass}`}
                           />
                         </td>
-                        <td className="border-t border-gray-200 p-1 text-[11px] text-gray-600">
+                        <td className={`border-t border-gray-200 ${denseCellClass} text-[11px] text-gray-600`}>
                           {gridTab === 'bilingualG1G8'
                             ? 'Bilingual (G1-G8)'
                             : gridTab === 'integratedG1G8'
@@ -947,14 +1038,14 @@ export default function PeriodAllocation() {
                           return (
                             <td
                               key={c.key}
-                              className="border-t border-gray-200 p-0.5 align-middle"
+                              className={`border-t border-gray-200 ${denseCellClass} align-middle`}
                             >
                               <select
                                 value={raw}
                                 onChange={(e) =>
                                   updateRowField(row.id, c.key, e.target.value)
                                 }
-                                className="w-[min(10rem,26vw)] max-w-[180px] text-[11px] leading-tight rounded border border-gray-300 bg-white py-1 px-0.5"
+                              className={`w-[min(10rem,26vw)] max-w-[180px] leading-tight rounded border border-gray-300 bg-white ${denseInputClass}`}
                               >
                                 <option value="">—</option>
                                 {showCurrentGroup && (
@@ -1036,7 +1127,7 @@ export default function PeriodAllocation() {
                             </td>
                           )
                         })}
-                        <td className="border-t border-gray-200 p-1">
+                        <td className={`border-t border-gray-200 ${denseCellClass}`}>
                           <button
                             type="button"
                             onClick={() => {
@@ -1053,11 +1144,11 @@ export default function PeriodAllocation() {
                 </tbody>
               </table>
             </div>
-          </>
+          </div>
         )}
 
         {activeTab === 'taCounselor' && (
-          <div className="mb-4">
+          <div ref={taSectionRef} className="mb-4">
             <h2 className="text-base font-semibold text-gray-900 mb-2">{tabTitle}</h2>
             <p className="text-xs text-gray-500 mb-3">
               Support periods are auto-calculated from level and programme.
@@ -1123,13 +1214,13 @@ export default function PeriodAllocation() {
               <table className="min-w-max w-full text-xs border-collapse">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="sticky left-0 z-20 px-2 py-2 text-left text-gray-600 font-medium border-b border-r border-gray-200 bg-gray-50">
+                    <th className="sticky top-0 left-0 z-30 px-2 py-2 text-left text-gray-600 font-medium border-b border-r border-gray-200 bg-gray-50">
                       No.
                     </th>
-                    <th className="px-2 py-2 text-left text-gray-600 font-medium border-b border-gray-200">
+                    <th className="sticky top-0 left-[2.5rem] z-20 px-2 py-2 text-left text-gray-600 font-medium border-b border-r border-gray-200 bg-gray-50">
                       Level
                     </th>
-                    <th className="px-2 py-2 text-left text-gray-600 font-medium border-b border-gray-200 min-w-[5rem]">
+                    <th className="sticky top-0 left-[9.5rem] z-20 px-2 py-2 text-left text-gray-600 font-medium border-b border-r border-gray-200 min-w-[5rem] bg-gray-50">
                       Class
                     </th>
                     <th className="px-2 py-2 text-left text-gray-600 font-medium border-b border-gray-200">
@@ -1164,14 +1255,14 @@ export default function PeriodAllocation() {
                           key={row.id}
                           className="odd:bg-white even:bg-gray-50 dark:odd:bg-gray-900 dark:even:bg-gray-800 border-t border-gray-200"
                         >
-                          <th className="sticky left-0 z-10 px-2 py-1 text-left font-medium text-gray-900 border-t border-r border-gray-200 bg-inherit">
+                          <th className="sticky left-0 z-20 px-2 py-1 text-left font-medium text-gray-900 border-t border-r border-gray-200 bg-inherit">
                             {idx + 1}
                           </th>
-                          <td className="border-t border-gray-200 p-1">
+                          <td className={`sticky left-[2.5rem] z-10 border-t border-r border-gray-200 ${denseCellClass} bg-inherit`}>
                             <select
                               value={row.level}
                               onChange={(e) => updateTaRowField(row.id, 'level', e.target.value)}
-                              className={`w-full min-w-[6.5rem] text-[11px] rounded border py-1 px-1 ${
+                              className={`w-full min-w-[6.5rem] rounded border ${denseInputClass} ${
                                 row.level === 'primary'
                                   ? 'border-amber-300 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-700'
                                   : 'border-sky-300 bg-sky-50 dark:bg-sky-950/40 dark:border-sky-700'
@@ -1181,22 +1272,22 @@ export default function PeriodAllocation() {
                               <option value="secondary">Secondary</option>
                             </select>
                           </td>
-                          <td className="border-t border-gray-200 p-1">
+                          <td className={`sticky left-[9.5rem] z-10 border-t border-r border-gray-200 ${denseCellClass} bg-inherit`}>
                             <input
                               type="text"
                               value={row.className}
                               onChange={(e) => updateTaRowField(row.id, 'className', e.target.value)}
                               placeholder="e.g. 1B1"
-                              className="w-full min-w-[4.5rem] text-[11px] rounded border border-gray-300 bg-white py-1 px-1"
+                              className={`w-full min-w-[4.5rem] rounded border border-gray-300 bg-white ${denseInputClass}`}
                             />
                           </td>
-                          <td className="border-t border-gray-200 p-1">
+                          <td className={`border-t border-gray-200 ${denseCellClass}`}>
                             <select
                               value={row.programme}
                               onChange={(e) =>
                                 updateTaRowField(row.id, 'programme', e.target.value)
                               }
-                              className="w-full min-w-[7rem] text-[11px] rounded border border-gray-300 bg-white py-1 px-1"
+                              className={`w-full min-w-[7rem] rounded border border-gray-300 bg-white ${denseInputClass}`}
                             >
                               {TA_PROGRAMME_OPTIONS.map((p) => (
                                 <option key={p.key} value={p.key}>
@@ -1205,16 +1296,16 @@ export default function PeriodAllocation() {
                               ))}
                             </select>
                           </td>
-                          <td className="border-t border-gray-200 p-1 text-right tabular-nums text-gray-700">
+                          <td className={`border-t border-gray-200 ${denseCellClass} text-right tabular-nums text-gray-700`}>
                             {periods}
                           </td>
-                          <td className="border-t border-gray-200 p-1">
+                          <td className={`border-t border-gray-200 ${denseCellClass}`}>
                             <select
                               value={row.assignment ?? ''}
                               onChange={(e) =>
                                 updateTaRowField(row.id, 'assignment', e.target.value)
                               }
-                              className="w-[min(12rem,28vw)] max-w-[210px] text-[11px] leading-tight rounded border border-gray-300 bg-white py-1 px-1"
+                              className={`w-[min(12rem,28vw)] max-w-[210px] leading-tight rounded border border-gray-300 bg-white ${denseInputClass}`}
                             >
                               <option value="">—</option>
                               {orphan && (
@@ -1233,7 +1324,7 @@ export default function PeriodAllocation() {
                               )}
                             </select>
                           </td>
-                          <td className="border-t border-gray-200 p-1">
+                          <td className={`border-t border-gray-200 ${denseCellClass}`}>
                             <button
                               type="button"
                               onClick={() => {
@@ -1255,7 +1346,7 @@ export default function PeriodAllocation() {
         )}
 
         {activeTab === 'summary' && (
-          <div className="mb-4">
+          <div ref={summarySectionRef} className="mb-4">
             <h2 className="text-base font-semibold text-gray-900 mb-2">
               Teacher hour allocations (all programme tabs)
             </h2>
@@ -1410,26 +1501,17 @@ export default function PeriodAllocation() {
                         >
                           <td className="px-2 py-2 tabular-nums text-gray-900">{i + 1}</td>
                           <td className="px-2 py-2 text-gray-900">
-                            <div className="relative inline-block group">
-                              <button
-                                type="button"
-                                className="text-left hover:underline focus-visible:underline focus-visible:outline-none"
-                                aria-label={`Show allocated classes for ${s.displayName}`}
-                              >
-                                {s.displayName}
-                              </button>
-                              <div className="pointer-events-none absolute left-0 top-full z-30 mt-1 hidden min-w-[15rem] max-w-[24rem] rounded-lg border border-gray-200 bg-white p-2 text-xs text-gray-700 shadow-lg group-hover:block group-focus-within:block dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
-                                {assignmentLines.length === 0 ? (
-                                  <p>No class assignments found.</p>
-                                ) : (
-                                  <ul className="space-y-1">
-                                    {assignmentLines.map((line) => (
-                                      <li key={`${s.teacherKey}-${line}`}>{line}</li>
-                                    ))}
-                                  </ul>
-                                )}
-                              </div>
-                            </div>
+                            <button
+                              type="button"
+                              className="text-left hover:underline focus-visible:underline focus-visible:outline-none"
+                              aria-label={`Show allocated classes for ${s.displayName}`}
+                              onMouseEnter={(e) => openHoverCard(e, assignmentLines)}
+                              onMouseLeave={closeHoverCard}
+                              onFocus={(e) => openHoverCard(e, assignmentLines)}
+                              onBlur={closeHoverCard}
+                            >
+                              {s.displayName}
+                            </button>
                           </td>
                           <td className="px-2 py-2 text-gray-600">{s.levelLabel}</td>
                           <td className="px-2 py-2 text-gray-600">
@@ -1505,6 +1587,12 @@ export default function PeriodAllocation() {
           </div>
         )}
       </div>
+
+      <AssignmentHoverCard
+        visible={hoverCard.visible}
+        anchorRect={hoverCard.anchorRect}
+        lines={hoverCard.lines}
+      />
 
       {taStaffModalOpen && (
         <div
