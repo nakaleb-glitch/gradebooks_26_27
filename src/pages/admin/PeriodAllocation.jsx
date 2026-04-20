@@ -232,6 +232,16 @@ export default function PeriodAllocation() {
     () => computeTaCounselorSummaries(data.taCounselorAllocation, taStaff),
     [data.taCounselorAllocation, taStaff],
   )
+  const newTaCounselorNeeds = useMemo(
+    () =>
+      taStaff.filter((s) =>
+        String(s.name || '')
+          .trim()
+          .toUpperCase()
+          .startsWith('NEW'),
+      ),
+    [taStaff],
+  )
 
   const openPlaceholderModal = useCallback(() => {
     setEditingPlaceholderId(null)
@@ -1236,7 +1246,7 @@ export default function PeriodAllocation() {
             <div className="rounded-xl border border-gray-200 bg-white dark:bg-gray-900 p-3 mb-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                 <h3 className="text-sm font-semibold text-gray-900">
-                  Recruitment Needs
+                  Recruitment Needs (SY26/27)
                 </h3>
                 <div className="flex items-center gap-3">
                   <button
@@ -1257,7 +1267,7 @@ export default function PeriodAllocation() {
                 </div>
               </div>
               {recruitmentExpanded &&
-                (placeholders.length === 0 ? (
+                (placeholders.length === 0 && newTaCounselorNeeds.length === 0 ? (
                   <p className="text-xs text-gray-500">
                     None defined. Use <strong>Add…</strong> above to create recruitment placeholders;
                     they appear in all programme grids by level and subject.
@@ -1316,6 +1326,22 @@ export default function PeriodAllocation() {
                         </li>
                       )
                     })}
+                    {newTaCounselorNeeds.map((s) => (
+                      <li
+                        key={`ta-need-${s.id}`}
+                        className="py-1 border-b border-gray-200 last:border-0"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <span>
+                            <span className="font-medium text-gray-900">{s.name}</span>
+                            <span className="text-gray-500"> — TA/Counselor</span>
+                          </span>
+                        </div>
+                        <p className="mt-1 text-[11px] text-gray-500 leading-snug">
+                          Marked as new in TA/Counselor staff list.
+                        </p>
+                      </li>
+                    ))}
                   </ul>
                 ))}
             </div>
@@ -1343,47 +1369,62 @@ export default function PeriodAllocation() {
                       </td>
                     </tr>
                   ) : (
-                    combinedSummaries.map((s, i) => (
-                      <tr
-                        key={s.teacherKey}
-                        className="border-t border-gray-200 odd:bg-white even:bg-gray-50 dark:odd:bg-gray-900 dark:even:bg-gray-800"
-                      >
-                        <td className="px-2 py-2 tabular-nums text-gray-900">{i + 1}</td>
-                        <td
-                          className="px-2 py-2 text-gray-900"
-                          title={
-                            (teacherAssignmentLines.get(s.teacherKey) ?? []).length > 0
-                              ? (teacherAssignmentLines.get(s.teacherKey) ?? []).join('\n')
-                              : 'No class assignments found.'
-                          }
+                    combinedSummaries.map((s, i) => {
+                      const assignmentLines = teacherAssignmentLines.get(s.teacherKey) ?? []
+                      return (
+                        <tr
+                          key={s.teacherKey}
+                          className="border-t border-gray-200 odd:bg-white even:bg-gray-50 dark:odd:bg-gray-900 dark:even:bg-gray-800"
                         >
-                          {s.displayName}
-                        </td>
-                        <td className="px-2 py-2 text-gray-600">{s.levelLabel}</td>
-                        <td className="px-2 py-2 text-gray-600">
-                          {s.subjectSummary}
-                        </td>
-                        <td className="px-2 py-2 text-right tabular-nums text-gray-900">{s.periods}</td>
-                        <td className="px-2 py-2 text-right tabular-nums text-gray-900">
-                          {fmt2(s.teachingHours)}
-                        </td>
-                        <td className="px-2 py-2 text-right tabular-nums text-gray-900">
-                          {fmt1(s.lessonPreps)}
-                        </td>
-                        <td className="px-2 py-2 text-right tabular-nums text-gray-900">
-                          {fmt2(s.prepTimeHours)} h
-                        </td>
-                        <td
-                          className={`px-2 py-2 text-right tabular-nums ${
-                            s.adminHours < 0
-                              ? 'text-amber-700 dark:text-amber-400'
-                              : 'text-gray-900'
-                          }`}
-                        >
-                          {fmt2(s.adminHours)} h
-                        </td>
-                      </tr>
-                    ))
+                          <td className="px-2 py-2 tabular-nums text-gray-900">{i + 1}</td>
+                          <td className="px-2 py-2 text-gray-900">
+                            <div className="relative inline-block group">
+                              <button
+                                type="button"
+                                className="text-left hover:underline focus-visible:underline focus-visible:outline-none"
+                                aria-label={`Show allocated classes for ${s.displayName}`}
+                              >
+                                {s.displayName}
+                              </button>
+                              <div className="pointer-events-none absolute left-0 top-full z-30 mt-1 hidden min-w-[15rem] max-w-[24rem] rounded-lg border border-gray-200 bg-white p-2 text-xs text-gray-700 shadow-lg group-hover:block group-focus-within:block dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                                {assignmentLines.length === 0 ? (
+                                  <p>No class assignments found.</p>
+                                ) : (
+                                  <ul className="space-y-1">
+                                    {assignmentLines.map((line) => (
+                                      <li key={`${s.teacherKey}-${line}`}>{line}</li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-2 py-2 text-gray-600">{s.levelLabel}</td>
+                          <td className="px-2 py-2 text-gray-600">
+                            {s.subjectSummary}
+                          </td>
+                          <td className="px-2 py-2 text-right tabular-nums text-gray-900">{s.periods}</td>
+                          <td className="px-2 py-2 text-right tabular-nums text-gray-900">
+                            {fmt2(s.teachingHours)}
+                          </td>
+                          <td className="px-2 py-2 text-right tabular-nums text-gray-900">
+                            {fmt1(s.lessonPreps)}
+                          </td>
+                          <td className="px-2 py-2 text-right tabular-nums text-gray-900">
+                            {fmt2(s.prepTimeHours)} h
+                          </td>
+                          <td
+                            className={`px-2 py-2 text-right tabular-nums ${
+                              s.adminHours < 0
+                                ? 'text-amber-700 dark:text-amber-400'
+                                : 'text-gray-900'
+                            }`}
+                          >
+                            {fmt2(s.adminHours)} h
+                          </td>
+                        </tr>
+                      )
+                    })
                   )}
                 </tbody>
               </table>
