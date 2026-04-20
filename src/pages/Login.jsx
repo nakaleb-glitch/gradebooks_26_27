@@ -74,7 +74,15 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: '#1a1a1a' }}>
+    <div
+      className="min-h-screen flex items-center justify-center"
+      style={{
+        backgroundImage: "url('/phulam.jpg')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}
+    >
       <div className="w-full max-w-md">
         {/* Logos */}
         <div className="flex items-center justify-between mb-8 px-2">
