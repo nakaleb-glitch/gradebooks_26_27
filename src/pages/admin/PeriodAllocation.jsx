@@ -1126,7 +1126,7 @@ export default function PeriodAllocation() {
                       const staffIds = new Set(taStaff.map((s) => s.id))
                       const orphan = assignedId && !staffIds.has(assignedId) ? assignedId : null
                       const orphanName = orphan ? 'TA/Counselor (removed)' : null
-                      const periods = taSupportPeriods(row.level, row.programme)
+                      const periods = taSupportPeriods(row.level, row.programme, row.className)
                       return (
                         <tr
                           key={row.id}

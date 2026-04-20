@@ -301,11 +301,25 @@ export function parseTaAssignment(value) {
 /**
  * @param {TaLevel} level
  * @param {TaProgramme} programme
+ * @param {string | undefined} className
  */
-export function taSupportPeriods(level, programme) {
+export function taSupportPeriods(level, programme, className = '') {
+  const grade = taGradeFromClassName(className)
   if (level === 'primary' && programme === 'bilingual') return 20
   if (level === 'primary' && programme === 'integrated') return 14
+  if (programme === 'integrated' && grade >= 9) return 8
   return 12
+}
+
+/**
+ * Parse leading grade number from class name (e.g., 10B2 -> 10).
+ * @param {string | undefined} className
+ */
+function taGradeFromClassName(className) {
+  const s = String(className || '').trim()
+  const m = s.match(/^(\d{1,2})(?=\D|$)/)
+  if (!m) return 0
+  return Number.parseInt(m[1], 10) || 0
 }
 
 /**
@@ -321,7 +335,11 @@ export function computeTaCounselorSummaries(taAllocation, taStaff = []) {
   for (const row of rows) {
     const parsed = parseTaAssignment(row.assignment)
     if (!parsed) continue
-    const periods = taSupportPeriods(row.level === 'secondary' ? 'secondary' : 'primary', row.programme === 'integrated' ? 'integrated' : 'bilingual')
+    const periods = taSupportPeriods(
+      row.level === 'secondary' ? 'secondary' : 'primary',
+      row.programme === 'integrated' ? 'integrated' : 'bilingual',
+      row.className,
+    )
     const level = row.level === 'secondary' ? 'secondary' : 'primary'
     const key = parsed.id
     const displayName = staffById.get(parsed.id)?.name || 'TA/Counselor (removed)'
