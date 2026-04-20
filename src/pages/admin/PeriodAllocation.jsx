@@ -232,6 +232,28 @@ export default function PeriodAllocation() {
     () => computeTaCounselorSummaries(data.taCounselorAllocation, taStaff),
     [data.taCounselorAllocation, taStaff],
   )
+  const taRecruitmentAssignmentLines = useMemo(() => {
+    /** @type {Map<string, Set<string>>} */
+    const acc = new Map()
+    for (const row of taRows) {
+      const parsed = parseTaAssignment(row.assignment)
+      if (!parsed) continue
+      if (!acc.has(parsed.id)) acc.set(parsed.id, new Set())
+      const levelLabel = row.level === 'secondary' ? 'Secondary' : 'Primary'
+      const programmeLabel = row.programme === 'integrated' ? 'Integrated' : 'Bilingual'
+      const classLabel = String(row.className || '').trim() || '(No class)'
+      acc.get(parsed.id).add(`${classLabel} · ${levelLabel} · ${programmeLabel}`)
+    }
+    /** @type {Map<string, string[]>} */
+    const out = new Map()
+    for (const [id, set] of acc) {
+      out.set(
+        id,
+        [...set].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
+      )
+    }
+    return out
+  }, [taRows])
   const newTaCounselorNeeds = useMemo(
     () =>
       taStaff.filter((s) =>
@@ -1327,21 +1349,33 @@ export default function PeriodAllocation() {
                       )
                     })}
                     {newTaCounselorNeeds.map((s) => (
-                      <li
-                        key={`ta-need-${s.id}`}
-                        className="py-1 border-b border-gray-200 last:border-0"
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <span>
-                            <span className="font-medium text-gray-900">{s.name}</span>
-                            <span className="text-gray-500"> — TA/Counselor</span>
-                          </span>
-                        </div>
-                        <p className="mt-1 text-[11px] text-gray-500 leading-snug">
-                          Marked as new in TA/Counselor staff list.
-                        </p>
-                      </li>
-                    ))}
+                      (() => {
+                        const lines = taRecruitmentAssignmentLines.get(s.id) ?? []
+                        return (
+                          <li
+                            key={`ta-need-${s.id}`}
+                            className="py-1 border-b border-gray-200 last:border-0"
+                          >
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                              <span>
+                                <span className="font-medium text-gray-900">{s.name}</span>
+                                <span className="text-gray-500"> — TA/Counselor</span>
+                              </span>
+                            </div>
+                            <p className="mt-1 text-[11px] text-gray-500 leading-snug">
+                              {lines.length === 0 ? (
+                                <>Marked as new in TA/Counselor staff list. Not assigned yet.</>
+                              ) : (
+                                <>
+                                  <span className="font-medium text-gray-600">Assigned: </span>
+                                  {lines.join(' · ')}
+                                </>
+                              )}
+                            </p>
+                          </li>
+                        )
+                      })()
+                    )}
                   </ul>
                 ))}
             </div>
