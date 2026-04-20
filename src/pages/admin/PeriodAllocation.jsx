@@ -75,9 +75,6 @@ export default function PeriodAllocation() {
   const actionsMenuRef = useRef(null)
   const jsonImportRef = useRef(null)
   const csvImportRef = useRef(null)
-  const gridSectionRef = useRef(null)
-  const summarySectionRef = useRef(null)
-  const taSectionRef = useRef(null)
 
   const [activeTab, setActiveTab] = useState(
     /** @type {MainTab} */ ('summary'),
@@ -87,8 +84,10 @@ export default function PeriodAllocation() {
   const [editingPlaceholderId, setEditingPlaceholderId] = useState(null)
   const [taStaffModalOpen, setTaStaffModalOpen] = useState(false)
   const [editingTaStaffId, setEditingTaStaffId] = useState(null)
-  const [recruitmentExpanded, setRecruitmentExpanded] = useState(true)
-  const [taStaffExpanded, setTaStaffExpanded] = useState(true)
+  const [recruitmentExpanded, setRecruitmentExpanded] = useState(false)
+  const [teacherSummaryExpanded, setTeacherSummaryExpanded] = useState(false)
+  const [taSummaryExpanded, setTaSummaryExpanded] = useState(false)
+  const [taStaffExpanded, setTaStaffExpanded] = useState(false)
   const [phFormName, setPhFormName] = useState('')
   const [taStaffFormName, setTaStaffFormName] = useState('')
   const [phFormLevel, setPhFormLevel] = useState('')
@@ -644,10 +643,6 @@ export default function PeriodAllocation() {
   const denseCellClass = denseMode ? 'p-0.5' : 'p-1'
   const denseInputClass = denseMode ? 'py-1 px-1 text-[11px]' : 'py-1.5 px-2 text-xs'
 
-  const scrollToRef = (ref) => {
-    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-
   const openHoverCard = (event, lines) => {
     const rect = event.currentTarget.getBoundingClientRect()
     setHoverCard({ visible: true, anchorRect: rect, lines })
@@ -780,29 +775,8 @@ export default function PeriodAllocation() {
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <button
               type="button"
-              onClick={() => scrollToRef(gridSectionRef)}
-              className="px-2.5 py-1 rounded-md text-xs font-medium border border-gray-300 bg-white text-gray-800 hover:bg-gray-50"
-            >
-              Grid
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToRef(summarySectionRef)}
-              className="px-2.5 py-1 rounded-md text-xs font-medium border border-gray-300 bg-white text-gray-800 hover:bg-gray-50"
-            >
-              Summary
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToRef(taSectionRef)}
-              className="px-2.5 py-1 rounded-md text-xs font-medium border border-gray-300 bg-white text-gray-800 hover:bg-gray-50"
-            >
-              TA
-            </button>
-            <button
-              type="button"
               onClick={() => setDenseMode((v) => !v)}
-              className="ml-auto px-2.5 py-1 rounded-md text-xs font-medium border border-gray-300 bg-white text-gray-800 hover:bg-gray-50"
+              className="px-2.5 py-1 rounded-md text-xs font-medium border border-gray-300 bg-white text-gray-800 hover:bg-gray-50"
             >
               {denseMode ? 'Dense view: On' : 'Dense view: Off'}
             </button>
@@ -905,7 +879,7 @@ export default function PeriodAllocation() {
         </p>
 
         {activeTab !== 'summary' && activeTab !== 'taCounselor' && (
-          <div ref={gridSectionRef}>
+          <div>
             <h2 className="text-base font-semibold text-gray-900 mb-2">
               {tabTitle}
             </h2>
@@ -1148,7 +1122,7 @@ export default function PeriodAllocation() {
         )}
 
         {activeTab === 'taCounselor' && (
-          <div ref={taSectionRef} className="mb-4">
+          <div className="mb-4">
             <h2 className="text-base font-semibold text-gray-900 mb-2">{tabTitle}</h2>
             <p className="text-xs text-gray-500 mb-3">
               Support periods are auto-calculated from level and programme.
@@ -1346,7 +1320,7 @@ export default function PeriodAllocation() {
         )}
 
         {activeTab === 'summary' && (
-          <div ref={summarySectionRef} className="mb-4">
+          <div className="mb-4">
             <h2 className="text-base font-semibold text-gray-900 mb-2">
               Teacher hour allocations (all programme tabs)
             </h2>
@@ -1358,9 +1332,7 @@ export default function PeriodAllocation() {
 
             <div className="rounded-xl border border-gray-200 bg-white dark:bg-gray-900 p-3 mb-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                <h3 className="text-sm font-semibold text-gray-900">
-                  Recruitment Needs (SY26/27)
-                </h3>
+                <h3 className="text-sm font-semibold text-gray-900">Recruitment Needs (SY26/27)</h3>
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
@@ -1390,15 +1362,10 @@ export default function PeriodAllocation() {
                     {placeholders.map((p) => {
                       const lines = placeholderAssignmentLines.get(p.id) ?? []
                       return (
-                        <li
-                          key={p.id}
-                          className="py-1 border-b border-gray-200 last:border-0"
-                        >
+                        <li key={p.id} className="py-1 border-b border-gray-200 last:border-0">
                           <div className="flex flex-wrap items-start justify-between gap-2">
                             <span>
-                              <span className="font-medium text-gray-900">
-                                {p.name}
-                              </span>
+                              <span className="font-medium text-gray-900">{p.name}</span>
                               <span className="text-gray-500">
                                 {' '}
                                 — {p.subject}
@@ -1429,9 +1396,7 @@ export default function PeriodAllocation() {
                               <>Not assigned in any grid yet.</>
                             ) : (
                               <>
-                                <span className="font-medium text-gray-600">
-                                  Assigned:{' '}
-                                </span>
+                                <span className="font-medium text-gray-600">Assigned: </span>
                                 {lines.join(' · ')}
                               </>
                             )}
@@ -1442,10 +1407,7 @@ export default function PeriodAllocation() {
                     {newTaCounselorNeeds.map((s) => {
                       const lines = taRecruitmentAssignmentLines.get(s.id) ?? []
                       return (
-                        <li
-                          key={`ta-need-${s.id}`}
-                          className="py-1 border-b border-gray-200 last:border-0"
-                        >
+                        <li key={`ta-need-${s.id}`} className="py-1 border-b border-gray-200 last:border-0">
                           <div className="flex flex-wrap items-start justify-between gap-2">
                             <span>
                               <span className="font-medium text-gray-900">{s.name}</span>
@@ -1469,120 +1431,151 @@ export default function PeriodAllocation() {
                 ))}
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-              <table className="min-w-[640px] w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200 text-left">
-                    <th className="px-2 py-2 text-gray-600 font-medium">No.</th>
-                    <th className="px-2 py-2 text-gray-600 font-medium">Teacher</th>
-                    <th className="px-2 py-2 text-gray-600 font-medium">Level</th>
-                    <th className="px-2 py-2 text-gray-600 font-medium">Subject(s)</th>
-                    <th className="px-2 py-2 text-gray-600 font-medium text-right">Periods</th>
-                    <th className="px-2 py-2 text-gray-600 font-medium text-right">Teaching hours</th>
-                    <th className="px-2 py-2 text-gray-600 font-medium text-right"># of preps</th>
-                    <th className="px-2 py-2 text-gray-600 font-medium text-right">Prep time</th>
-                    <th className="px-2 py-2 text-gray-600 font-medium text-right">Admin hours</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {combinedSummaries.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} className="px-3 py-4 text-center text-gray-400">
-                        No teacher assignments in programme grids yet.
-                      </td>
-                    </tr>
-                  ) : (
-                    combinedSummaries.map((s, i) => {
-                      const assignmentLines = teacherAssignmentLines.get(s.teacherKey) ?? []
-                      return (
-                        <tr
-                          key={s.teacherKey}
-                          className="border-t border-gray-200 odd:bg-white even:bg-gray-50 dark:odd:bg-gray-900 dark:even:bg-gray-800"
-                        >
-                          <td className="px-2 py-2 tabular-nums text-gray-900">{i + 1}</td>
-                          <td className="px-2 py-2 text-gray-900">
-                            <button
-                              type="button"
-                              className="text-left hover:underline focus-visible:underline focus-visible:outline-none"
-                              aria-label={`Show allocated classes for ${s.displayName}`}
-                              onMouseEnter={(e) => openHoverCard(e, assignmentLines)}
-                              onMouseLeave={closeHoverCard}
-                              onFocus={(e) => openHoverCard(e, assignmentLines)}
-                              onBlur={closeHoverCard}
-                            >
-                              {s.displayName}
-                            </button>
-                          </td>
-                          <td className="px-2 py-2 text-gray-600">{s.levelLabel}</td>
-                          <td className="px-2 py-2 text-gray-600">
-                            {s.subjectSummary}
-                          </td>
-                          <td className="px-2 py-2 text-right tabular-nums text-gray-900">{s.periods}</td>
-                          <td className="px-2 py-2 text-right tabular-nums text-gray-900">
-                            {fmt2(s.teachingHours)}
-                          </td>
-                          <td className="px-2 py-2 text-right tabular-nums text-gray-900">
-                            {fmt1(s.lessonPreps)}
-                          </td>
-                          <td className="px-2 py-2 text-right tabular-nums text-gray-900">
-                            {fmt2(s.prepTimeHours)} h
-                          </td>
-                          <td
-                            className={`px-2 py-2 text-right tabular-nums ${
-                              s.adminHours < 0
-                                ? 'text-amber-700 dark:text-amber-400'
-                                : 'text-gray-900'
-                            }`}
-                          >
-                            {fmt2(s.adminHours)} h
+            <div className="rounded-xl border border-gray-200 bg-white p-3 mb-4 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <h3 className="text-sm font-semibold text-gray-900">Teacher Summary</h3>
+                <button
+                  type="button"
+                  onClick={() => setTeacherSummaryExpanded((v) => !v)}
+                  className="text-xs font-medium text-gray-700 hover:underline dark:text-gray-300"
+                  aria-expanded={teacherSummaryExpanded}
+                >
+                  {teacherSummaryExpanded ? 'Collapse' : 'Expand'}
+                </button>
+              </div>
+              {teacherSummaryExpanded && (
+                <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+                  <table className="min-w-[640px] w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200 text-left">
+                        <th className="px-2 py-2 text-gray-600 font-medium">No.</th>
+                        <th className="px-2 py-2 text-gray-600 font-medium">Teacher</th>
+                        <th className="px-2 py-2 text-gray-600 font-medium">Level</th>
+                        <th className="px-2 py-2 text-gray-600 font-medium">Subject(s)</th>
+                        <th className="px-2 py-2 text-gray-600 font-medium text-right">Periods</th>
+                        <th className="px-2 py-2 text-gray-600 font-medium text-right">
+                          Teaching hours
+                        </th>
+                        <th className="px-2 py-2 text-gray-600 font-medium text-right"># of preps</th>
+                        <th className="px-2 py-2 text-gray-600 font-medium text-right">Prep time</th>
+                        <th className="px-2 py-2 text-gray-600 font-medium text-right">Admin hours</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {combinedSummaries.length === 0 ? (
+                        <tr>
+                          <td colSpan={9} className="px-3 py-4 text-center text-gray-400">
+                            No teacher assignments in programme grids yet.
                           </td>
                         </tr>
-                      )
-                    })
-                  )}
-                </tbody>
-              </table>
+                      ) : (
+                        combinedSummaries.map((s, i) => {
+                          const assignmentLines = teacherAssignmentLines.get(s.teacherKey) ?? []
+                          return (
+                            <tr
+                              key={s.teacherKey}
+                              className="border-t border-gray-200 odd:bg-white even:bg-gray-50 dark:odd:bg-gray-900 dark:even:bg-gray-800"
+                            >
+                              <td className="px-2 py-2 tabular-nums text-gray-900">{i + 1}</td>
+                              <td className="px-2 py-2 text-gray-900">
+                                <button
+                                  type="button"
+                                  className="text-left hover:underline focus-visible:underline focus-visible:outline-none"
+                                  aria-label={`Show allocated classes for ${s.displayName}`}
+                                  onMouseEnter={(e) => openHoverCard(e, assignmentLines)}
+                                  onMouseLeave={closeHoverCard}
+                                  onFocus={(e) => openHoverCard(e, assignmentLines)}
+                                  onBlur={closeHoverCard}
+                                >
+                                  {s.displayName}
+                                </button>
+                              </td>
+                              <td className="px-2 py-2 text-gray-600">{s.levelLabel}</td>
+                              <td className="px-2 py-2 text-gray-600">{s.subjectSummary}</td>
+                              <td className="px-2 py-2 text-right tabular-nums text-gray-900">
+                                {s.periods}
+                              </td>
+                              <td className="px-2 py-2 text-right tabular-nums text-gray-900">
+                                {fmt2(s.teachingHours)}
+                              </td>
+                              <td className="px-2 py-2 text-right tabular-nums text-gray-900">
+                                {fmt1(s.lessonPreps)}
+                              </td>
+                              <td className="px-2 py-2 text-right tabular-nums text-gray-900">
+                                {fmt2(s.prepTimeHours)} h
+                              </td>
+                              <td
+                                className={`px-2 py-2 text-right tabular-nums ${
+                                  s.adminHours < 0
+                                    ? 'text-amber-700 dark:text-amber-400'
+                                    : 'text-gray-900'
+                                }`}
+                              >
+                                {fmt2(s.adminHours)} h
+                              </td>
+                            </tr>
+                          )
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
-            <h3 className="text-sm font-semibold text-gray-900 mt-4 mb-2">
-              TA / Counselor Periods &amp; Hours
-            </h3>
-            <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-              <table className="min-w-[520px] w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200 text-left">
-                    <th className="px-2 py-2 text-gray-600 font-medium">No.</th>
-                    <th className="px-2 py-2 text-gray-600 font-medium">TA/Counselor Name</th>
-                    <th className="px-2 py-2 text-gray-600 font-medium text-right">Total Periods</th>
-                    <th className="px-2 py-2 text-gray-600 font-medium text-right">Total Hours</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {taSummaries.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="px-3 py-4 text-center text-gray-400">
-                        No TA/Counselor assignments yet.
-                      </td>
-                    </tr>
-                  ) : (
-                    taSummaries.map((s, i) => (
-                      <tr
-                        key={s.staffId}
-                        className="border-t border-gray-200 odd:bg-white even:bg-gray-50 dark:odd:bg-gray-900 dark:even:bg-gray-800"
-                      >
-                        <td className="px-2 py-2 tabular-nums text-gray-900">{i + 1}</td>
-                        <td className="px-2 py-2 text-gray-900">{s.displayName}</td>
-                        <td className="px-2 py-2 text-right tabular-nums text-gray-900">
-                          {s.totalPeriods}
-                        </td>
-                        <td className="px-2 py-2 text-right tabular-nums text-gray-900">
-                          {fmt2(s.totalHours)}
-                        </td>
+            <div className="rounded-xl border border-gray-200 bg-white p-3 mb-4 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <h3 className="text-sm font-semibold text-gray-900">TA/Counselor Summary</h3>
+                <button
+                  type="button"
+                  onClick={() => setTaSummaryExpanded((v) => !v)}
+                  className="text-xs font-medium text-gray-700 hover:underline dark:text-gray-300"
+                  aria-expanded={taSummaryExpanded}
+                >
+                  {taSummaryExpanded ? 'Collapse' : 'Expand'}
+                </button>
+              </div>
+              {taSummaryExpanded && (
+                <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+                  <table className="w-auto text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200 text-left">
+                        <th className="px-1.5 py-2 text-gray-600 font-medium">No.</th>
+                        <th className="px-1.5 py-2 text-gray-600 font-medium">TA/Counselor Name</th>
+                        <th className="px-1.5 py-2 text-gray-600 font-medium text-right">
+                          Total Periods
+                        </th>
+                        <th className="px-1.5 py-2 text-gray-600 font-medium text-right">Total Hours</th>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody>
+                      {taSummaries.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-2 py-4 text-center text-gray-400">
+                            No TA/Counselor assignments yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        taSummaries.map((s, i) => (
+                          <tr
+                            key={s.staffId}
+                            className="border-t border-gray-200 odd:bg-white even:bg-gray-50 dark:odd:bg-gray-900 dark:even:bg-gray-800"
+                          >
+                            <td className="px-1.5 py-2 tabular-nums text-gray-900">{i + 1}</td>
+                            <td className="px-1.5 py-2 text-gray-900">{s.displayName}</td>
+                            <td className="px-1.5 py-2 text-right tabular-nums text-gray-900">
+                              {s.totalPeriods}
+                            </td>
+                            <td className="px-1.5 py-2 text-right tabular-nums text-gray-900">
+                              {fmt2(s.totalHours)}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}
