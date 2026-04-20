@@ -5,30 +5,36 @@ import Layout from '../../components/Layout'
 import { supabase } from '../../lib/supabase'
 import {
   buildCombinedTeacherAssignmentLines,
+  computeTaCounselorSummaries,
   CONTRACT_HOURS_WEEK,
   PERIOD_ALLOCATION_STATE_ID,
   PLACEHOLDER_SUBJECT_OPTIONS,
   PRIMARY_MINUTES,
   SECONDARY_MINUTES,
   STORAGE_KEY_V2,
+  TA_PROGRAMME_OPTIONS,
   computeCombinedTeacherSummaries,
+  createEmptyTaAllocationRow,
   createEmptyRow,
   createInitialStateV2,
+  formatTaAssignment,
   formatPlaceholderAssignment,
   formatUserAssignment,
   normalizePersistedStateV2,
   normalizeTeacherLevel,
+  parseTaAssignment,
   parseAssignment,
   placeholderOptionsForCell,
   rowsFromCsvRecords,
   subjectColumnMatchesTeacherSubject,
   subjectColumns,
   summarizePlaceholderAssignments,
+  taSupportPeriods,
 } from '../../lib/periodAllocation'
 
 const SAVE_DEBOUNCE_MS = 400
 
-/** @typedef {'summary' | 'bilingualG1G8' | 'integratedG1G8' | 'bilingualG9G10' | 'integratedG9G11'} MainTab */
+/** @typedef {'summary' | 'bilingualG1G8' | 'integratedG1G8' | 'bilingualG9G10' | 'integratedG9G11' | 'taCounselor'} MainTab */
 
 function staffOptionsForCell(teachers, rowDepartment, columnKey) {
   const sub = (t) => subjectColumnMatchesTeacherSubject(columnKey, t.subject)
@@ -51,8 +57,12 @@ export default function PeriodAllocation() {
   const [data, setData] = useState(() => createInitialStateV2())
   const [placeholderModalOpen, setPlaceholderModalOpen] = useState(false)
   const [editingPlaceholderId, setEditingPlaceholderId] = useState(null)
+  const [taStaffModalOpen, setTaStaffModalOpen] = useState(false)
+  const [editingTaStaffId, setEditingTaStaffId] = useState(null)
   const [recruitmentExpanded, setRecruitmentExpanded] = useState(true)
+  const [taStaffExpanded, setTaStaffExpanded] = useState(true)
   const [phFormName, setPhFormName] = useState('')
+  const [taStaffFormName, setTaStaffFormName] = useState('')
   const [phFormLevel, setPhFormLevel] = useState('')
   const [phFormSubject, setPhFormSubject] = useState(PLACEHOLDER_SUBJECT_OPTIONS[0])
   const [hydrated, setHydrated] = useState(false)
@@ -199,7 +209,8 @@ export default function PeriodAllocation() {
     return m
   }, [teachers])
 
-  const gridTab = activeTab === 'summary' ? 'bilingualG1G8' : activeTab
+  const gridTab =
+    activeTab === 'summary' || activeTab === 'taCounselor' ? 'bilingualG1G8' : activeTab
   const subjectCols = useMemo(() => subjectColumns(gridTab), [gridTab])
   const rows = data[gridTab].rows
 
@@ -215,6 +226,12 @@ export default function PeriodAllocation() {
   )
 
   const placeholders = data.placeholderTeachers ?? []
+  const taStaff = data.taStaff ?? []
+  const taRows = data.taCounselorAllocation?.rows ?? []
+  const taSummaries = useMemo(
+    () => computeTaCounselorSummaries(data.taCounselorAllocation, taStaff),
+    [data.taCounselorAllocation, taStaff],
+  )
 
   const openPlaceholderModal = useCallback(() => {
     setEditingPlaceholderId(null)
@@ -222,6 +239,12 @@ export default function PeriodAllocation() {
     setPhFormLevel('')
     setPhFormSubject(PLACEHOLDER_SUBJECT_OPTIONS[0])
     setPlaceholderModalOpen(true)
+  }, [])
+
+  const openTaStaffModal = useCallback(() => {
+    setEditingTaStaffId(null)
+    setTaStaffFormName('')
+    setTaStaffModalOpen(true)
   }, [])
 
   const openPlaceholderEditModal = useCallback((placeholder) => {
@@ -234,6 +257,12 @@ export default function PeriodAllocation() {
         : PLACEHOLDER_SUBJECT_OPTIONS[0],
     )
     setPlaceholderModalOpen(true)
+  }, [])
+
+  const openTaStaffEditModal = useCallback((staff) => {
+    setEditingTaStaffId(staff.id)
+    setTaStaffFormName(staff.name || '')
+    setTaStaffModalOpen(true)
   }, [])
 
   const handleAddPlaceholderSubmit = useCallback(
@@ -292,6 +321,57 @@ export default function PeriodAllocation() {
     }))
   }, [placeholders])
 
+  const handleTaStaffSubmit = useCallback(
+    (e) => {
+      e.preventDefault()
+      const name = taStaffFormName.trim()
+      if (!name) {
+        window.alert('Enter a name.')
+        return
+      }
+      if (editingTaStaffId) {
+        setData((prev) => ({
+          ...prev,
+          taStaff: (prev.taStaff ?? []).map((s) =>
+            s.id === editingTaStaffId ? { ...s, name } : s,
+          ),
+        }))
+      } else {
+        const id =
+          typeof crypto !== 'undefined' && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `ta-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+        setData((prev) => ({
+          ...prev,
+          taStaff: [...(prev.taStaff ?? []), { id, name }],
+        }))
+      }
+      setEditingTaStaffId(null)
+      setTaStaffFormName('')
+      setTaStaffModalOpen(false)
+    },
+    [editingTaStaffId, taStaffFormName],
+  )
+
+  const removeTaStaff = useCallback(
+    (id) => {
+      const staff = taStaff.find((s) => s.id === id)
+      if (!staff) return
+      if (
+        !window.confirm(
+          `Remove TA/Counselor “${staff.name}”? Existing rows keep a reference until reassigned.`,
+        )
+      ) {
+        return
+      }
+      setData((prev) => ({
+        ...prev,
+        taStaff: (prev.taStaff ?? []).filter((s) => s.id !== id),
+      }))
+    },
+    [taStaff],
+  )
+
   const updateRowField = useCallback(
     (rowId, field, value) => {
       setData((prev) => ({
@@ -307,6 +387,15 @@ export default function PeriodAllocation() {
   )
 
   const addRow = useCallback(() => {
+    if (activeTab === 'taCounselor') {
+      setData((prev) => ({
+        ...prev,
+        taCounselorAllocation: {
+          rows: [...(prev.taCounselorAllocation?.rows ?? []), createEmptyTaAllocationRow()],
+        },
+      }))
+      return
+    }
     const prog = activeTab === 'summary' ? 'bilingualG1G8' : activeTab
     if (activeTab === 'summary') setActiveTab('bilingualG1G8')
     setData((prev) => ({
@@ -316,6 +405,26 @@ export default function PeriodAllocation() {
       },
     }))
   }, [activeTab])
+
+  const updateTaRowField = useCallback((rowId, field, value) => {
+    setData((prev) => ({
+      ...prev,
+      taCounselorAllocation: {
+        rows: (prev.taCounselorAllocation?.rows ?? []).map((r) =>
+          r.id === rowId ? { ...r, [field]: value } : r,
+        ),
+      },
+    }))
+  }, [])
+
+  const removeTaRow = useCallback((rowId) => {
+    setData((prev) => ({
+      ...prev,
+      taCounselorAllocation: {
+        rows: (prev.taCounselorAllocation?.rows ?? []).filter((r) => r.id !== rowId),
+      },
+    }))
+  }, [])
 
   const removeRow = useCallback(
     (rowId) => {
@@ -463,9 +572,11 @@ export default function PeriodAllocation() {
         ? 'Integrated (G1-G8)'
         : gridTab === 'bilingualG9G10'
           ? 'Bilingual (G9-G10)'
-          : 'Integrated (G9-G11)'
+          : activeTab === 'taCounselor'
+            ? 'TA / Counselor Allocation'
+            : 'Integrated (G9-G11)'
 
-  const gridDisabled = activeTab === 'summary'
+  const gridDisabled = activeTab === 'summary' || activeTab === 'taCounselor'
 
   return (
     <Layout>
@@ -485,7 +596,7 @@ export default function PeriodAllocation() {
               onClick={addRow}
               className="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
             >
-              Add class
+              {activeTab === 'taCounselor' ? 'Add row' : 'Add class'}
             </button>
             <div className="relative" ref={actionsMenuRef}>
               <button
@@ -657,9 +768,20 @@ export default function PeriodAllocation() {
           >
             Integrated (G9-G11)
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('taCounselor')}
+            className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
+              activeTab === 'taCounselor'
+                ? 'border-emerald-600 text-emerald-700 dark:text-emerald-300'
+                : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            TA / Counselor
+          </button>
         </div>
 
-        {activeTab !== 'summary' && (
+        {activeTab !== 'summary' && activeTab !== 'taCounselor' && (
           <>
             <h2 className="text-base font-semibold text-gray-900 mb-2">
               {tabTitle}
@@ -902,6 +1024,204 @@ export default function PeriodAllocation() {
           </>
         )}
 
+        {activeTab === 'taCounselor' && (
+          <div className="mb-4">
+            <h2 className="text-base font-semibold text-gray-900 mb-2">{tabTitle}</h2>
+            <p className="text-xs text-gray-500 mb-3">
+              Support periods are auto-calculated from level and programme.
+            </p>
+
+            <div className="rounded-xl border border-gray-200 bg-white dark:bg-gray-900 p-3 mb-4 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <h3 className="text-sm font-semibold text-gray-900">TA/Counselor Staff List</h3>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setTaStaffExpanded((v) => !v)}
+                    className="text-xs font-medium text-gray-700 hover:underline dark:text-gray-300"
+                    aria-expanded={taStaffExpanded}
+                  >
+                    {taStaffExpanded ? 'Collapse' : 'Expand'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openTaStaffModal}
+                    className="text-xs font-medium text-violet-700 hover:underline dark:text-violet-300"
+                  >
+                    Add…
+                  </button>
+                </div>
+              </div>
+              {taStaffExpanded &&
+                (taStaff.length === 0 ? (
+                  <p className="text-xs text-gray-500">
+                    No TA/Counselor names yet. Add names to use in allocation rows.
+                  </p>
+                ) : (
+                  <ul className="text-xs space-y-2">
+                    {taStaff.map((s) => (
+                      <li
+                        key={s.id}
+                        className="py-1 border-b border-gray-200 last:border-0 flex items-center justify-between gap-2"
+                      >
+                        <span className="font-medium text-gray-900">{s.name}</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openTaStaffEditModal(s)}
+                            className="rounded px-2 py-0.5 text-[11px] font-medium text-blue-700 border border-blue-200 bg-blue-50 hover:bg-blue-100 dark:text-blue-300 dark:border-blue-700 dark:bg-blue-900/30"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeTaStaff(s.id)}
+                            className="text-red-600 hover:underline dark:text-red-400"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ))}
+            </div>
+
+            <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm mb-8 bg-white">
+              <table className="min-w-max w-full text-xs border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="sticky left-0 z-20 px-2 py-2 text-left text-gray-600 font-medium border-b border-r border-gray-200 bg-gray-50">
+                      No.
+                    </th>
+                    <th className="px-2 py-2 text-left text-gray-600 font-medium border-b border-gray-200">
+                      Level
+                    </th>
+                    <th className="px-2 py-2 text-left text-gray-600 font-medium border-b border-gray-200 min-w-[5rem]">
+                      Class
+                    </th>
+                    <th className="px-2 py-2 text-left text-gray-600 font-medium border-b border-gray-200">
+                      Programme
+                    </th>
+                    <th className="px-2 py-2 text-right text-gray-600 font-medium border-b border-gray-200">
+                      No. of Support Periods
+                    </th>
+                    <th className="px-2 py-2 text-left text-gray-600 font-medium border-b border-gray-200">
+                      TA/Counselor in Charge
+                    </th>
+                    <th className="px-1 py-2 border-b border-gray-200 w-16" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {taRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-3 py-6 text-center text-gray-500">
+                        No TA/Counselor rows yet. Click &quot;Add row&quot;.
+                      </td>
+                    </tr>
+                  ) : (
+                    taRows.map((row, idx) => {
+                      const parsed = parseTaAssignment(row.assignment)
+                      const assignedId = parsed?.id || null
+                      const staffIds = new Set(taStaff.map((s) => s.id))
+                      const orphan = assignedId && !staffIds.has(assignedId) ? assignedId : null
+                      const orphanName = orphan ? 'TA/Counselor (removed)' : null
+                      const periods = taSupportPeriods(row.level, row.programme)
+                      return (
+                        <tr
+                          key={row.id}
+                          className="odd:bg-white even:bg-gray-50 dark:odd:bg-gray-900 dark:even:bg-gray-800 border-t border-gray-200"
+                        >
+                          <th className="sticky left-0 z-10 px-2 py-1 text-left font-medium text-gray-900 border-t border-r border-gray-200 bg-inherit">
+                            {idx + 1}
+                          </th>
+                          <td className="border-t border-gray-200 p-1">
+                            <select
+                              value={row.level}
+                              onChange={(e) => updateTaRowField(row.id, 'level', e.target.value)}
+                              className={`w-full min-w-[6.5rem] text-[11px] rounded border py-1 px-1 ${
+                                row.level === 'primary'
+                                  ? 'border-amber-300 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-700'
+                                  : 'border-sky-300 bg-sky-50 dark:bg-sky-950/40 dark:border-sky-700'
+                              }`}
+                            >
+                              <option value="primary">Primary</option>
+                              <option value="secondary">Secondary</option>
+                            </select>
+                          </td>
+                          <td className="border-t border-gray-200 p-1">
+                            <input
+                              type="text"
+                              value={row.className}
+                              onChange={(e) => updateTaRowField(row.id, 'className', e.target.value)}
+                              placeholder="e.g. 1B1"
+                              className="w-full min-w-[4.5rem] text-[11px] rounded border border-gray-300 bg-white py-1 px-1"
+                            />
+                          </td>
+                          <td className="border-t border-gray-200 p-1">
+                            <select
+                              value={row.programme}
+                              onChange={(e) =>
+                                updateTaRowField(row.id, 'programme', e.target.value)
+                              }
+                              className="w-full min-w-[7rem] text-[11px] rounded border border-gray-300 bg-white py-1 px-1"
+                            >
+                              {TA_PROGRAMME_OPTIONS.map((p) => (
+                                <option key={p.key} value={p.key}>
+                                  {p.label}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="border-t border-gray-200 p-1 text-right tabular-nums text-gray-700">
+                            {periods}
+                          </td>
+                          <td className="border-t border-gray-200 p-1">
+                            <select
+                              value={row.assignment ?? ''}
+                              onChange={(e) =>
+                                updateTaRowField(row.id, 'assignment', e.target.value)
+                              }
+                              className="w-[min(12rem,28vw)] max-w-[210px] text-[11px] leading-tight rounded border border-gray-300 bg-white py-1 px-1"
+                            >
+                              <option value="">—</option>
+                              {orphan && (
+                                <optgroup label="Current assignment">
+                                  <option value={formatTaAssignment(orphan)}>{orphanName}</option>
+                                </optgroup>
+                              )}
+                              {taStaff.length > 0 && (
+                                <optgroup label="TA/Counselor list">
+                                  {taStaff.map((s) => (
+                                    <option key={s.id} value={formatTaAssignment(s.id)}>
+                                      {s.name}
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              )}
+                            </select>
+                          </td>
+                          <td className="border-t border-gray-200 p-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (window.confirm('Remove this row?')) removeTaRow(row.id)
+                              }}
+                              className="text-red-600 hover:underline dark:text-red-400 text-[11px]"
+                            >
+                              Remove
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'summary' && (
           <div className="mb-4">
             <h2 className="text-base font-semibold text-gray-900 mb-2">
@@ -1068,9 +1388,102 @@ export default function PeriodAllocation() {
                 </tbody>
               </table>
             </div>
+
+            <h3 className="text-sm font-semibold text-gray-900 mt-4 mb-2">
+              TA / Counselor Periods &amp; Hours
+            </h3>
+            <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+              <table className="min-w-[520px] w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200 text-left">
+                    <th className="px-2 py-2 text-gray-600 font-medium">No.</th>
+                    <th className="px-2 py-2 text-gray-600 font-medium">TA/Counselor Name</th>
+                    <th className="px-2 py-2 text-gray-600 font-medium text-right">Total Periods</th>
+                    <th className="px-2 py-2 text-gray-600 font-medium text-right">Total Hours</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {taSummaries.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-4 text-center text-gray-400">
+                        No TA/Counselor assignments yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    taSummaries.map((s, i) => (
+                      <tr
+                        key={s.staffId}
+                        className="border-t border-gray-200 odd:bg-white even:bg-gray-50 dark:odd:bg-gray-900 dark:even:bg-gray-800"
+                      >
+                        <td className="px-2 py-2 tabular-nums text-gray-900">{i + 1}</td>
+                        <td className="px-2 py-2 text-gray-900">{s.displayName}</td>
+                        <td className="px-2 py-2 text-right tabular-nums text-gray-900">
+                          {s.totalPeriods}
+                        </td>
+                        <td className="px-2 py-2 text-right tabular-nums text-gray-900">
+                          {fmt2(s.totalHours)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
+
+      {taStaffModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ta-staff-modal-title"
+        >
+          <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-5 shadow-xl">
+            <h2 id="ta-staff-modal-title" className="text-lg font-semibold text-gray-900 mb-3">
+              {editingTaStaffId ? 'Edit TA/Counselor name' : 'Add TA/Counselor name'}
+            </h2>
+            <form onSubmit={handleTaStaffSubmit} className="space-y-3">
+              <div>
+                <label
+                  htmlFor="ta-staff-name"
+                  className="block text-xs font-medium text-gray-600 mb-1"
+                >
+                  Name
+                </label>
+                <input
+                  id="ta-staff-name"
+                  type="text"
+                  value={taStaffFormName}
+                  onChange={(e) => setTaStaffFormName(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                  placeholder="e.g. NEW TA #1"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTaStaffModalOpen(false)
+                    setEditingTaStaffId(null)
+                  }}
+                  className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-lg text-sm font-medium bg-violet-600 text-white hover:bg-violet-700"
+                >
+                  {editingTaStaffId ? 'Save' : 'Add'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {placeholderModalOpen && (
         <div

@@ -1,4 +1,6 @@
 /** @typedef {'bilingualG1G8' | 'integratedG1G8' | 'bilingualG9G10' | 'integratedG9G11'} Programme */
+/** @typedef {'primary' | 'secondary'} TaLevel */
+/** @typedef {'bilingual' | 'integrated'} TaProgramme */
 
 /** v1 key kept for reference; v2 uses STORAGE_KEY_V2 */
 export const STORAGE_KEY = 'period_allocation_v1'
@@ -13,6 +15,10 @@ export const CONTRACT_HOURS_WEEK = 40
 
 /** Recruitment placeholder subject options (aligned with Users.jsx) */
 export const PLACEHOLDER_SUBJECT_OPTIONS = ['ESL/GP', 'Mathematics', 'Science', 'VN ESL']
+export const TA_PROGRAMME_OPTIONS = [
+  { key: 'bilingual', label: 'Bilingual' },
+  { key: 'integrated', label: 'Integrated' },
+]
 
 const ALLOWED_PLACEHOLDER_SUBJECTS = new Set(PLACEHOLDER_SUBJECT_OPTIONS)
 
@@ -94,6 +100,18 @@ export function createInitialStateV2() {
     bilingualG9G10: { rows: [] },
     integratedG9G11: { rows: [] },
     placeholderTeachers: [],
+    taStaff: [],
+    taCounselorAllocation: { rows: [] },
+  }
+}
+
+export function createEmptyTaAllocationRow() {
+  return {
+    id: newRowId(),
+    level: /** @type {TaLevel} */ ('primary'),
+    className: '',
+    programme: /** @type {TaProgramme} */ ('bilingual'),
+    assignment: '',
   }
 }
 
@@ -140,6 +158,33 @@ function normalizePlaceholderTeacher(raw) {
 }
 
 /**
+ * @param {unknown} raw
+ * @returns {{ id: string, name: string } | null}
+ */
+function normalizeTaStaff(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  const id = typeof raw.id === 'string' && raw.id.trim() ? raw.id.trim() : ''
+  const name = typeof raw.name === 'string' ? raw.name.trim() : ''
+  if (!id || !name) return null
+  return { id, name }
+}
+
+/**
+ * @param {unknown} raw
+ */
+function normalizeTaAllocationRow(raw) {
+  const id =
+    raw && typeof raw === 'object' && typeof raw.id === 'string' && raw.id.trim()
+      ? raw.id.trim()
+      : newRowId()
+  const level = raw && raw.level === 'secondary' ? 'secondary' : 'primary'
+  const className = raw && typeof raw.className === 'string' ? raw.className : ''
+  const programme = raw && raw.programme === 'integrated' ? 'integrated' : 'bilingual'
+  const assignment = raw && typeof raw.assignment === 'string' ? raw.assignment : ''
+  return { id, level, className, programme, assignment }
+}
+
+/**
  * @param {unknown} data
  */
 export function normalizePersistedStateV2(data) {
@@ -164,6 +209,12 @@ export function normalizePersistedStateV2(data) {
         .map((p) => normalizePlaceholderTeacher(p))
         .filter(Boolean)
     : []
+  const taStaff = Array.isArray(data.taStaff)
+    ? data.taStaff.map((s) => normalizeTaStaff(s)).filter(Boolean)
+    : []
+  const taRows = Array.isArray(data.taCounselorAllocation?.rows)
+    ? data.taCounselorAllocation.rows.map((r) => normalizeTaAllocationRow(r))
+    : []
   return {
     version: 2,
     bilingualG1G8: { rows: bilingualG1G8Rows },
@@ -171,6 +222,8 @@ export function normalizePersistedStateV2(data) {
     bilingualG9G10: { rows: bilingualG9G10Rows },
     integratedG9G11: { rows: integratedG9G11Rows },
     placeholderTeachers,
+    taStaff,
+    taCounselorAllocation: { rows: taRows },
   }
 }
 
@@ -227,6 +280,72 @@ export function formatNameAssignment(name) {
 export function formatPlaceholderAssignment(id) {
   const t = String(id || '').trim()
   return t ? `ph:${t}` : ''
+}
+
+export function formatTaAssignment(staffId) {
+  const t = String(staffId || '').trim()
+  return t ? `ta:${t}` : ''
+}
+
+/**
+ * @param {string | null | undefined} value
+ * @returns {{ id: string } | null}
+ */
+export function parseTaAssignment(value) {
+  if (!value || typeof value !== 'string') return null
+  if (!value.startsWith('ta:')) return null
+  const id = value.slice(3).trim()
+  return id ? { id } : null
+}
+
+/**
+ * @param {TaLevel} level
+ * @param {TaProgramme} programme
+ */
+export function taSupportPeriods(level, programme) {
+  if (level === 'primary' && programme === 'bilingual') return 20
+  if (level === 'primary' && programme === 'integrated') return 14
+  return 12
+}
+
+/**
+ * @param {{ rows?: Array<{ id?: string, level?: TaLevel, className?: string, programme?: TaProgramme, assignment?: string }> }} taAllocation
+ * @param {Array<{ id: string, name: string }>} taStaff
+ */
+export function computeTaCounselorSummaries(taAllocation, taStaff = []) {
+  const rows = Array.isArray(taAllocation?.rows) ? taAllocation.rows : []
+  const staffById = new Map(taStaff.map((s) => [s.id, s]))
+  /** @type {Map<string, { displayName: string, periods: number, primaryUnits: number, secondaryUnits: number }>} */
+  const acc = new Map()
+
+  for (const row of rows) {
+    const parsed = parseTaAssignment(row.assignment)
+    if (!parsed) continue
+    const periods = taSupportPeriods(row.level === 'secondary' ? 'secondary' : 'primary', row.programme === 'integrated' ? 'integrated' : 'bilingual')
+    const level = row.level === 'secondary' ? 'secondary' : 'primary'
+    const key = parsed.id
+    const displayName = staffById.get(parsed.id)?.name || 'TA/Counselor (removed)'
+    if (!acc.has(key)) {
+      acc.set(key, { displayName, periods: 0, primaryUnits: 0, secondaryUnits: 0 })
+    }
+    const entry = acc.get(key)
+    entry.periods += periods
+    if (level === 'primary') entry.primaryUnits += periods
+    else entry.secondaryUnits += periods
+  }
+
+  const out = []
+  for (const [staffId, s] of acc.entries()) {
+    const hours = (s.primaryUnits * PRIMARY_MINUTES + s.secondaryUnits * SECONDARY_MINUTES) / 60
+    out.push({
+      staffId,
+      displayName: s.displayName,
+      totalPeriods: s.periods,
+      totalHours: hours,
+    })
+  }
+  out.sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }))
+  return out
 }
 
 /**
