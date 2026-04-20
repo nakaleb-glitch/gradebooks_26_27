@@ -4,6 +4,7 @@ import Papa from 'papaparse'
 import Layout from '../../components/Layout'
 import { supabase } from '../../lib/supabase'
 import {
+  buildCombinedTeacherAssignmentLines,
   CONTRACT_HOURS_WEEK,
   PERIOD_ALLOCATION_STATE_ID,
   PLACEHOLDER_SUBJECT_OPTIONS,
@@ -206,6 +207,7 @@ export default function PeriodAllocation() {
     () => computeCombinedTeacherSummaries(data, teacherMap),
     [data, teacherMap],
   )
+  const teacherAssignmentLines = useMemo(() => buildCombinedTeacherAssignmentLines(data), [data])
 
   const placeholderAssignmentLines = useMemo(
     () => summarizePlaceholderAssignments(data),
@@ -1027,7 +1029,16 @@ export default function PeriodAllocation() {
                         className="border-t border-gray-200 odd:bg-white even:bg-gray-50 dark:odd:bg-gray-900 dark:even:bg-gray-800"
                       >
                         <td className="px-2 py-2 tabular-nums text-gray-900">{i + 1}</td>
-                        <td className="px-2 py-2 text-gray-900">{s.displayName}</td>
+                        <td
+                          className="px-2 py-2 text-gray-900"
+                          title={
+                            (teacherAssignmentLines.get(s.teacherKey) ?? []).length > 0
+                              ? (teacherAssignmentLines.get(s.teacherKey) ?? []).join('\n')
+                              : 'No class assignments found.'
+                          }
+                        >
+                          {s.displayName}
+                        </td>
                         <td className="px-2 py-2 text-gray-600">{s.levelLabel}</td>
                         <td className="px-2 py-2 text-gray-600">
                           {s.subjectSummary}

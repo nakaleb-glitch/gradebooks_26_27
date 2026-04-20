@@ -45,7 +45,7 @@ export const INTEGRATED_G9_G11_SUBJECTS = [
   { key: 'ieltsReading', label: 'IELTS Reading', periodsPerWeek: 5 },
   { key: 'ieltsWriting', label: 'IELTS Writing', periodsPerWeek: 5 },
   { key: 'ieltsListening', label: 'IELTS Listening', periodsPerWeek: 5 },
-  { key: 'ieltsSpeaking', label: 'IELTS Speaking', periodsPerWeek: 4 },
+  { key: 'ieltsSpeaking', label: 'IELTS Speaking', periodsPerWeek: 5 },
 ]
 
 /**
@@ -685,6 +685,53 @@ export function computeCombinedTeacherSummaries(data, teacherNames = new Map()) 
     if (la !== lb) return la - lb
     return a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' })
   })
+  return out
+}
+
+/**
+ * Build teacher -> assignment lines for summary hover popups.
+ * @param {{ bilingualG1G8: { rows: object[] }, integratedG1G8: { rows: object[] }, bilingualG9G10: { rows: object[] }, integratedG9G11: { rows: object[] } }} data
+ * @returns {Map<string, string[]>}
+ */
+export function buildCombinedTeacherAssignmentLines(data) {
+  /** @type {Map<string, Set<string>>} */
+  const acc = new Map()
+  const programmes = /** @type {const} */ ([
+    'bilingualG1G8',
+    'integratedG1G8',
+    'bilingualG9G10',
+    'integratedG9G11',
+  ])
+
+  function addLine(teacherKey, line) {
+    if (!acc.has(teacherKey)) acc.set(teacherKey, new Set())
+    acc.get(teacherKey).add(line)
+  }
+
+  for (const prog of programmes) {
+    const rows = data[prog]?.rows
+    if (!Array.isArray(rows)) continue
+    const cols = subjectColumns(prog)
+    for (const row of rows) {
+      const className = String(row.className || '').trim() || '(No class)'
+      for (const c of cols) {
+        const raw = row[c.key] ?? ''
+        const parsed = parseAssignment(raw)
+        if (!parsed) continue
+        const tkey = teacherKeyFromParsed(parsed)
+        addLine(tkey, `${className} ${c.label}`)
+      }
+    }
+  }
+
+  /** @type {Map<string, string[]>} */
+  const out = new Map()
+  for (const [teacherKey, set] of acc) {
+    out.set(
+      teacherKey,
+      [...set].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
+    )
+  }
   return out
 }
 
