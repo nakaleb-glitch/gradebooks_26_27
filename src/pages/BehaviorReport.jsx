@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Layout from '../components/Layout'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -27,13 +27,49 @@ export default function BehaviorReport() {
     action_taken: '',
   })
 
-  useEffect(() => {
-    fetchTeacherClasses()
+  const fetchTeacherClasses = useCallback(async () => {
+    if (!profile?.id) return
+    const { data } = await supabase
+      .from('classes')
+      .select('id, name, subject')
+      .eq('teacher_id', profile.id)
+      .order('name')
+    setClasses(data || [])
+  }, [profile?.id])
+
+  const fetchSubmittedReports = useCallback(async () => {
+    if (!profile?.id) return
+    setLoadingReports(true)
+    const { data } = await supabase
+      .from('behavior_reports')
+      .select(`
+        id,
+        incident_date,
+        incident_type,
+        severity,
+        description,
+        action_taken,
+        status,
+        admin_notes,
+        created_at,
+        classes(name, subject),
+        students(student_id, name_eng, name_vn)
+      `)
+      .eq('reporter_id', profile.id)
+      .order('incident_date', { ascending: false })
+      .order('created_at', { ascending: false })
+
+    setSubmittedReports(data || [])
+    setLoadingReports(false)
   }, [profile?.id])
 
   useEffect(() => {
+    fetchTeacherClasses()
+  }, [fetchTeacherClasses])
+
+  useEffect(() => {
     fetchSubmittedReports()
-  }, [profile?.id])
+  }, [fetchSubmittedReports])
 
   useEffect(() => {
     if (form.class_id) fetchClassStudents(form.class_id)
@@ -43,16 +79,6 @@ export default function BehaviorReport() {
     () => classes.find(c => c.id === form.class_id),
     [classes, form.class_id]
   )
-
-  const fetchTeacherClasses = async () => {
-    if (!profile?.id) return
-    const { data } = await supabase
-      .from('classes')
-      .select('id, name, subject')
-      .eq('teacher_id', profile.id)
-      .order('name')
-    setClasses(data || [])
-  }
 
   const fetchClassStudents = async (classId) => {
     const { data } = await supabase
@@ -109,32 +135,6 @@ export default function BehaviorReport() {
     setShowForm(false)
     fetchSubmittedReports()
     setSaving(false)
-  }
-
-  const fetchSubmittedReports = async () => {
-    if (!profile?.id) return
-    setLoadingReports(true)
-    const { data } = await supabase
-      .from('behavior_reports')
-      .select(`
-        id,
-        incident_date,
-        incident_type,
-        severity,
-        description,
-        action_taken,
-        status,
-        admin_notes,
-        created_at,
-        classes(name, subject),
-        students(student_id, name_eng, name_vn)
-      `)
-      .eq('reporter_id', profile.id)
-      .order('incident_date', { ascending: false })
-      .order('created_at', { ascending: false })
-
-    setSubmittedReports(data || [])
-    setLoadingReports(false)
   }
 
   return (

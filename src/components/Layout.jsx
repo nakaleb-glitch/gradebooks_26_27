@@ -177,7 +177,15 @@ export default function Layout({ children }) {
     }
 
     resolveNavbarName()
-  }, [profile?.id, profile?.role, profile?.student_id_ref, profile?.staff_id, profile?.full_name, user?.email])
+  }, [
+    profile?.id,
+    profile?.role,
+    profile?.student_id_ref,
+    profile?.staff_id,
+    profile?.uid,
+    profile?.full_name,
+    user?.email,
+  ])
 
   const requiresPasswordChange = !!profile?.must_change_password
   const displayRole = (() => {

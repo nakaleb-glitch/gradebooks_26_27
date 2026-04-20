@@ -1348,34 +1348,32 @@ export default function PeriodAllocation() {
                         </li>
                       )
                     })}
-                    {newTaCounselorNeeds.map((s) => (
-                      (() => {
-                        const lines = taRecruitmentAssignmentLines.get(s.id) ?? []
-                        return (
-                          <li
-                            key={`ta-need-${s.id}`}
-                            className="py-1 border-b border-gray-200 last:border-0"
-                          >
-                            <div className="flex flex-wrap items-start justify-between gap-2">
-                              <span>
-                                <span className="font-medium text-gray-900">{s.name}</span>
-                                <span className="text-gray-500"> — TA/Counselor</span>
-                              </span>
-                            </div>
-                            <p className="mt-1 text-[11px] text-gray-500 leading-snug">
-                              {lines.length === 0 ? (
-                                <>Marked as new in TA/Counselor staff list. Not assigned yet.</>
-                              ) : (
-                                <>
-                                  <span className="font-medium text-gray-600">Assigned: </span>
-                                  {lines.join(' · ')}
-                                </>
-                              )}
-                            </p>
-                          </li>
-                        )
-                      })()
-                    )}
+                    {newTaCounselorNeeds.map((s) => {
+                      const lines = taRecruitmentAssignmentLines.get(s.id) ?? []
+                      return (
+                        <li
+                          key={`ta-need-${s.id}`}
+                          className="py-1 border-b border-gray-200 last:border-0"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <span>
+                              <span className="font-medium text-gray-900">{s.name}</span>
+                              <span className="text-gray-500"> — TA/Counselor</span>
+                            </span>
+                          </div>
+                          <p className="mt-1 text-[11px] text-gray-500 leading-snug">
+                            {lines.length === 0 ? (
+                              <>Marked as new in TA/Counselor staff list. Not assigned yet.</>
+                            ) : (
+                              <>
+                                <span className="font-medium text-gray-600">Assigned: </span>
+                                {lines.join(' · ')}
+                              </>
+                            )}
+                          </p>
+                        </li>
+                      )
+                    })}
                   </ul>
                 ))}
             </div>

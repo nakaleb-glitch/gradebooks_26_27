@@ -13,7 +13,7 @@ export default function AuthCallback() {
         navigate('/login')
       }
     })
-  }, [])
+  }, [navigate])
 
   const upsertUser = async (user) => {
     const { data: existing } = await supabase

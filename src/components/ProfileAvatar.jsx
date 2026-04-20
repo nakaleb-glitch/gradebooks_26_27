@@ -1,5 +1,10 @@
 import { useMemo } from 'react'
 
+const BG_COLORS = [
+  '#1f86c7', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6',
+  '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
+]
+
 export default function ProfileAvatar({ avatarUrl, name, size = 32, className = '' }) {
   const initials = useMemo(() => {
     if (!name) return '?'
@@ -11,13 +16,9 @@ export default function ProfileAvatar({ avatarUrl, name, size = 32, className = 
       .join('')
   }, [name])
 
-  const bgColors = [
-    '#1f86c7', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6',
-    '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'
-  ]
   const bgColor = useMemo(() => {
-    const index = name ? name.split('').reduce((sum, c) => sum + c.charCodeAt(0), 0) % bgColors.length : 0
-    return bgColors[index]
+    const index = name ? name.split('').reduce((sum, c) => sum + c.charCodeAt(0), 0) % BG_COLORS.length : 0
+    return BG_COLORS[index]
   }, [name])
 
   if (avatarUrl) {

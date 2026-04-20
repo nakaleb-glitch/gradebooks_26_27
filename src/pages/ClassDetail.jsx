@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { normalizeLinkUrl, uploadTeacherAnnouncementPdf } from '../lib/announcementAttachments'
@@ -103,6 +103,7 @@ export default function ClassDetail() {
   const [showSentAnnouncements, setShowSentAnnouncements] = useState(false)
   const [activeWeek, setActiveWeek] = useState(0)
   const [activeTab, setActiveTab] = useState('students')
+  const [, setForceUpdate] = useState(0)
 
   // Listen for changes to current week from navigation bar
   useEffect(() => {
@@ -130,45 +131,29 @@ export default function ClassDetail() {
   useEffect(() => {
     const onPageVisible = () => {
       // Trigger re-render to update current term badge
-      forceUpdate(x => x + 1)
+      setForceUpdate((x) => x + 1)
     }
 
     window.addEventListener('visibilitychange', onPageVisible)
     return () => window.removeEventListener('visibilitychange', onPageVisible)
   }, [])
 
-  const [forceUpdate, setForceUpdate] = useState(0)
-
-  useEffect(() => { fetchClass() }, [classId])
-  useEffect(() => { fetchStudentRoster() }, [classId])
-  useEffect(() => { fetchClassAnnouncements() }, [classId])
-  useEffect(() => {
-    if (!selectedTerm) setHasUnsavedGradebook(false)
-  }, [selectedTerm])
-  useEffect(() => {
-    if (selectedTerm) setSelectedAnnouncement(null)
-  }, [selectedTerm])
-  useEffect(() => {
-    // Refresh current term detection when activeWeek updates
-    setForceUpdate(x => x + 1)
-  }, [activeWeek])
-
-  const fetchClass = async () => {
+  const fetchClass = useCallback(async () => {
     const { data, error } = await supabase
       .from('classes')
       .select('*, users!classes_teacher_id_fkey(full_name, email)')
       .eq('id', classId)
       .single()
-    
+
     if (error) {
       console.error('Failed to load class:', error)
     }
-    
+
     setCls(data)
     setLoading(false)
-  }
+  }, [classId])
 
-   const fetchStudentRoster = async () => {
+  const fetchStudentRoster = useCallback(async () => {
     const { data } = await supabase
       .from('class_students')
       .select(`
@@ -182,9 +167,9 @@ export default function ClassDetail() {
       .sort((a, b) => (a.name_eng || '').localeCompare(b.name_eng || '', undefined, { numeric: true }))
 
     setStudentRoster(list)
-  }
+  }, [classId])
 
-  const fetchClassAnnouncements = async () => {
+  const fetchClassAnnouncements = useCallback(async () => {
     const { data } = await supabase
       .from('teacher_announcement_targets')
       .select('announcement_id, teacher_announcements(id, title, message, created_at, link_url, attachment_url, attachment_name)')
@@ -196,7 +181,27 @@ export default function ClassDetail() {
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
     setClassAnnouncements(rows)
-  }
+  }, [classId])
+
+  useEffect(() => {
+    fetchClass()
+  }, [fetchClass])
+  useEffect(() => {
+    fetchStudentRoster()
+  }, [fetchStudentRoster])
+  useEffect(() => {
+    fetchClassAnnouncements()
+  }, [fetchClassAnnouncements])
+  useEffect(() => {
+    if (!selectedTerm) setHasUnsavedGradebook(false)
+  }, [selectedTerm])
+  useEffect(() => {
+    if (selectedTerm) setSelectedAnnouncement(null)
+  }, [selectedTerm])
+  useEffect(() => {
+    // Refresh current term detection when activeWeek updates
+    setForceUpdate((x) => x + 1)
+  }, [activeWeek])
 
   const handlePostClassAnnouncement = async () => {
     setAnnouncementFeedback(null)
@@ -742,9 +747,7 @@ function ResourceCards({ level, grade, programme, subject }) {
   const [resources, setResources] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { fetchResources() }, [level, grade, programme, subject])
-
-  const fetchResources = async () => {
+  const fetchResources = useCallback(async () => {
     let query = supabase
       .from('resource_links')
       .select('*')
@@ -760,7 +763,11 @@ function ResourceCards({ level, grade, programme, subject }) {
     const { data } = await query
     setResources(data || [])
     setLoading(false)
-  }
+  }, [level, grade, programme, subject])
+
+  useEffect(() => {
+    fetchResources()
+  }, [fetchResources])
 
   const TYPE_LABEL = { portal: 'Online Portal', drive: 'Google Drive', pdf: 'PDF', other: 'Link' }
 
