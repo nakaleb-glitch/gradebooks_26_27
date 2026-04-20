@@ -27,7 +27,7 @@ import {
 
 const SAVE_DEBOUNCE_MS = 400
 
-/** @typedef {'bilingual' | 'integrated' | 'summary'} MainTab */
+/** @typedef {'summary' | 'bilingualG1G8' | 'integratedG1G8' | 'bilingualG9G10' | 'integratedG9G11'} MainTab */
 
 function staffOptionsForCell(teachers, rowDepartment, columnKey) {
   const sub = (t) => subjectColumnMatchesTeacherSubject(columnKey, t.subject)
@@ -198,7 +198,7 @@ export default function PeriodAllocation() {
     return m
   }, [teachers])
 
-  const gridTab = activeTab === 'summary' ? 'bilingual' : activeTab
+  const gridTab = activeTab === 'summary' ? 'bilingualG1G8' : activeTab
   const subjectCols = useMemo(() => subjectColumns(gridTab), [gridTab])
   const rows = data[gridTab].rows
 
@@ -305,8 +305,8 @@ export default function PeriodAllocation() {
   )
 
   const addRow = useCallback(() => {
-    const prog = activeTab === 'summary' ? 'bilingual' : activeTab
-    if (activeTab === 'summary') setActiveTab('bilingual')
+    const prog = activeTab === 'summary' ? 'bilingualG1G8' : activeTab
+    if (activeTab === 'summary') setActiveTab('bilingualG1G8')
     setData((prev) => ({
       ...prev,
       [prog]: {
@@ -331,7 +331,15 @@ export default function PeriodAllocation() {
     if (activeTab === 'summary') return
     if (
       !window.confirm(
-        `Clear all class rows and assignments for ${activeTab === 'bilingual' ? 'Bilingual' : 'Integrated'}?`,
+        `Clear all class rows and assignments for ${
+          activeTab === 'bilingualG1G8'
+            ? 'Bilingual (G1-G8)'
+            : activeTab === 'integratedG1G8'
+              ? 'Integrated (G1-G8)'
+              : activeTab === 'bilingualG9G10'
+                ? 'Bilingual (G9-G10)'
+                : 'Integrated (G9-G11)'
+        }?`,
       )
     ) {
       return
@@ -373,7 +381,14 @@ export default function PeriodAllocation() {
 
   const handleExportClassesCsv = () => {
     if (activeTab === 'summary') return
-    const programme = activeTab === 'bilingual' ? 'Bilingual' : 'Integrated'
+    const programme =
+      activeTab === 'bilingualG1G8'
+        ? 'Bilingual (G1-G8)'
+        : activeTab === 'integratedG1G8'
+          ? 'Integrated (G1-G8)'
+          : activeTab === 'bilingualG9G10'
+            ? 'Bilingual (G9-G10)'
+            : 'Integrated (G9-G11)'
     const r = data[activeTab].rows
     const csvRows = r.map((row, i) => ({
       No: i + 1,
@@ -440,7 +455,13 @@ export default function PeriodAllocation() {
   const fmt1 = (n) => n.toFixed(1)
 
   const tabTitle =
-    gridTab === 'bilingual' ? 'Bilingual (G1 – G8)' : 'Integrated (G1 – G8) *Standard'
+    gridTab === 'bilingualG1G8'
+      ? 'Bilingual (G1-G8)'
+      : gridTab === 'integratedG1G8'
+        ? 'Integrated (G1-G8)'
+        : gridTab === 'bilingualG9G10'
+          ? 'Bilingual (G9-G10)'
+          : 'Integrated (G9-G11)'
 
   const gridDisabled = activeTab === 'summary'
 
@@ -505,7 +526,7 @@ export default function PeriodAllocation() {
                     type="button"
                     role="menuitem"
                     disabled={gridDisabled}
-                    title={gridDisabled ? 'Switch to Bilingual or Integrated' : undefined}
+                    title={gridDisabled ? 'Switch to a programme tab' : undefined}
                     className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed"
                     onClick={() => !gridDisabled && handleExportClassesCsv()}
                   >
@@ -515,7 +536,7 @@ export default function PeriodAllocation() {
                     type="button"
                     role="menuitem"
                     disabled={gridDisabled}
-                    title={gridDisabled ? 'Switch to Bilingual or Integrated' : undefined}
+                    title={gridDisabled ? 'Switch to a programme tab' : undefined}
                     className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed"
                     onClick={() => !gridDisabled && csvImportRef.current?.click()}
                   >
@@ -592,25 +613,47 @@ export default function PeriodAllocation() {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('bilingual')}
+            onClick={() => setActiveTab('bilingualG1G8')}
             className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
-              activeTab === 'bilingual'
+              activeTab === 'bilingualG1G8'
                 ? 'border-purple-600 text-purple-700 dark:text-purple-300'
                 : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
           >
-            Bilingual
+            Bilingual (G1-G8)
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('integrated')}
+            onClick={() => setActiveTab('integratedG1G8')}
             className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
-              activeTab === 'integrated'
+              activeTab === 'integratedG1G8'
                 ? 'border-teal-600 text-teal-700 dark:text-teal-300'
                 : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
           >
-            Integrated
+            Integrated (G1-G8)
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('bilingualG9G10')}
+            className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
+              activeTab === 'bilingualG9G10'
+                ? 'border-fuchsia-600 text-fuchsia-700 dark:text-fuchsia-300'
+                : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            Bilingual (G9-G10)
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('integratedG9G11')}
+            className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
+              activeTab === 'integratedG9G11'
+                ? 'border-cyan-600 text-cyan-700 dark:text-cyan-300'
+                : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            Integrated (G9-G11)
           </button>
         </div>
 
@@ -658,8 +701,7 @@ export default function PeriodAllocation() {
                         colSpan={6 + subjectCols.length}
                         className="px-3 py-6 text-center text-gray-500"
                       >
-                        No classes yet. Click &quot;Add class&quot; or use Actions → Import classes
-                        CSV.
+                        No classes yet. Click &quot;Add class&quot; or use Actions → Import classes CSV.
                       </td>
                     </tr>
                   ) : (
@@ -699,7 +741,13 @@ export default function PeriodAllocation() {
                           />
                         </td>
                         <td className="border-t border-gray-200 p-1 text-[11px] text-gray-600">
-                          {gridTab === 'bilingual' ? 'Bilingual' : 'Integrated'}
+                          {gridTab === 'bilingualG1G8'
+                            ? 'Bilingual (G1-G8)'
+                            : gridTab === 'integratedG1G8'
+                              ? 'Integrated (G1-G8)'
+                              : gridTab === 'bilingualG9G10'
+                                ? 'Bilingual (G9-G10)'
+                                : 'Integrated (G9-G11)'}
                         </td>
                         {subjectCols.map((c) => {
                           const { match, unspec } = staffOptionsForCell(
@@ -855,10 +903,10 @@ export default function PeriodAllocation() {
         {activeTab === 'summary' && (
           <div className="mb-4">
             <h2 className="text-base font-semibold text-gray-900 mb-2">
-              Teacher hour allocations (Bilingual + Integrated)
+              Teacher hour allocations (all programme tabs)
             </h2>
             <p className="text-xs text-gray-500 mb-3">
-              Periods and teaching hours sum both programmes. # of preps sums each programme’s
+              Periods and teaching hours sum all programme tabs. # of preps sums each programme’s
               deduped prep counts (shared lessons per department/subject column). Admin ={' '}
               {CONTRACT_HOURS_WEEK} h − teaching − prep.
             </p>
@@ -890,7 +938,7 @@ export default function PeriodAllocation() {
                 (placeholders.length === 0 ? (
                   <p className="text-xs text-gray-500">
                     None defined. Use <strong>Add…</strong> above to create recruitment placeholders;
-                    they appear in Bilingual and Integrated grids by level and subject.
+                    they appear in all programme grids by level and subject.
                   </p>
                 ) : (
                   <ul className="text-xs space-y-2">
@@ -969,7 +1017,7 @@ export default function PeriodAllocation() {
                   {combinedSummaries.length === 0 ? (
                     <tr>
                       <td colSpan={9} className="px-3 py-4 text-center text-gray-400">
-                        No teacher assignments in Bilingual or Integrated grids yet.
+                        No teacher assignments in programme grids yet.
                       </td>
                     </tr>
                   ) : (
