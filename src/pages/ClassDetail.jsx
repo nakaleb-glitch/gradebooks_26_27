@@ -139,6 +139,11 @@ export default function ClassDetail() {
     profile?.role === 'admin_teacher' ||
     (profile?.role === 'teacher' && profile?.id === cls?.teacher_id)
   )
+  const validTargetClasses = useMemo(
+    () => (targetClasses || []).filter((target) => isUuid(target.id)),
+    [targetClasses]
+  )
+  const invalidTargetClassCount = (targetClasses?.length || 0) - validTargetClasses.length
 
   // Listen for changes to current week from navigation bar
   useEffect(() => {
@@ -294,6 +299,9 @@ export default function ClassDetail() {
     if (!classId || !isUuid(classId)) return
     setTargetClassIds((prev) => (prev.length > 0 ? prev : [classId]))
   }, [classId])
+  useEffect(() => {
+    setTargetClassIds((prev) => prev.filter((id) => isUuid(id)))
+  }, [targetClasses])
 
   const handlePostClassAnnouncement = async () => {
     setAnnouncementFeedback(null)
@@ -1081,9 +1089,9 @@ export default function ClassDetail() {
                   <div className="md:col-span-2">
                     <span className="block text-xs font-medium text-gray-500 mb-1">Post to classes</span>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 border border-gray-200 rounded-lg p-2 max-h-36 overflow-y-auto">
-                      {targetClasses.length === 0 ? (
+                      {validTargetClasses.length === 0 ? (
                         <div className="text-xs text-gray-400">No target classes available.</div>
-                      ) : targetClasses.map((target) => (
+                      ) : validTargetClasses.map((target) => (
                         <label key={target.id} className="text-xs text-gray-700 flex items-center gap-2">
                           <input
                             type="checkbox"
@@ -1094,6 +1102,11 @@ export default function ClassDetail() {
                         </label>
                       ))}
                     </div>
+                    {invalidTargetClassCount > 0 && (
+                      <div className="mt-1 text-xs text-amber-700">
+                        {invalidTargetClassCount} class target(s) were skipped because they do not have a valid UUID id.
+                      </div>
+                    )}
                   </div>
                   <div className="md:col-span-2 flex justify-end">
                     <button
