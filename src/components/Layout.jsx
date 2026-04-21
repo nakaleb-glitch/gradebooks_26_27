@@ -106,7 +106,6 @@ export default function Layout({ children }) {
        { label: 'Library, ICT & Science Lab Booking Management', path: '/admin/resource-bookings' },
        { label: 'Teacher Schedule Management', path: '/admin/teacher-schedules' },
        { label: 'Period & Subject Allocations', path: '/admin/period-allocation' },
-      { label: 'Student Gradebook Lookup', path: '/admin/student-gradebook-lookup' },
     ]
   const navLabelClass = 'text-sm font-medium inline-flex items-center h-6 leading-6 transition-colors'
   const navLabelBaseStyle = {
@@ -252,15 +251,6 @@ export default function Layout({ children }) {
         <div className="w-full px-3 sm:px-6 py-3 flex justify-between items-center">
           {/* Left — Royal School Logo */}
           <div className="flex items-center gap-8">
-            <img
-              src="/LOGO_ROYAL_SCHOOL_3.png"
-              alt="Royal School International"
-              className="h-12 w-auto"
-            />
-            <div className="flex flex-col">
-              <div className="text-xl font-bold text-white tracking-tight">Cambridge Programme Portal</div>
-              <div className="text-xs text-gray-400">Royal School • Phu Lam Campus</div>
-            </div>
             {/* Nav menu */}
             <div className="flex gap-6 items-center">
               {effectiveRole === 'admin' && location.pathname !== '/dashboard' && (
@@ -329,6 +319,15 @@ export default function Layout({ children }) {
                   </div>
                 </div>
               )}
+            </div>
+            <img
+              src="/LOGO_ROYAL_SCHOOL_3.png"
+              alt="Royal School International"
+              className="h-12 w-auto"
+            />
+            <div className="flex flex-col">
+              <div className="text-xl font-bold text-white tracking-tight">Cambridge Programme Portal</div>
+              <div className="text-xs text-gray-400">Royal School • Phu Lam Campus</div>
             </div>
 
             {/* Global Academic Status Indicator */}

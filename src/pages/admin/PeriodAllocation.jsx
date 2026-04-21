@@ -857,15 +857,6 @@ export default function PeriodAllocation() {
         <p className="text-sm text-gray-600 mb-2">
           Plan and manage allocations.
         </p>
-        <p className="text-xs text-gray-500 mb-2">
-          Staff and placeholder dropdowns follow Teacher Management <strong>Level</strong> and{' '}
-          <strong>Subject</strong>. Preps dedupe by grade (from class code) per subject column. Data
-          syncs to the server;{' '}
-          <code className="text-[11px] font-mono rounded px-1.5 py-0.5 bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">
-            {STORAGE_KEY_V2}
-          </code>{' '}
-          is a local backup.
-        </p>
         <p className="text-xs mb-4 min-h-[1.25rem]" aria-live="polite">
           {saveStatus === 'saving' && (
             <span className="text-gray-500">Saving to server…</span>
@@ -1322,12 +1313,10 @@ export default function PeriodAllocation() {
         {activeTab === 'summary' && (
           <div className="mb-4">
             <h2 className="text-base font-semibold text-gray-900 mb-2">
-              Teacher hour allocations (all programme tabs)
+              Teacher Hour Allocation Summary
             </h2>
             <p className="text-xs text-gray-500 mb-3">
-              Periods and teaching hours sum all programme tabs. # of preps sums each programme’s
-              deduped prep counts (shared lessons per department/subject column). Admin ={' '}
-              {CONTRACT_HOURS_WEEK} h − teaching − prep.
+              Periods and teaching hours across all programmes and levels.
             </p>
 
             <div className="rounded-xl border border-gray-200 bg-white dark:bg-gray-900 p-3 mb-4 shadow-sm">
