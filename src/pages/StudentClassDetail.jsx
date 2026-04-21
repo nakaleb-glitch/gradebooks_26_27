@@ -402,10 +402,13 @@ export default function StudentClassDetail() {
               {weeklyMaterials.map((item) => (
                 <div key={item.id} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
                   <div className="text-sm font-medium text-gray-800">{item.title}</div>
+                  {item.description && (
+                    <div className="text-xs text-gray-700 mt-1 whitespace-pre-wrap">{item.description}</div>
+                  )}
                   <div className="text-xs text-gray-500 mt-0.5">
                     {item.lesson_number ? `Lesson ${item.lesson_number}` : 'Week-level material'}
                   </div>
-                  {item.material_type === 'link' && item.external_url ? (
+                  {item.external_url ? (
                     <a
                       href={item.external_url}
                       target="_blank"
@@ -414,7 +417,8 @@ export default function StudentClassDetail() {
                     >
                       {item.external_url}
                     </a>
-                  ) : (
+                  ) : null}
+                  {item.storage_path ? (
                     <div className="mt-1">
                       <WeeklyMaterialFileButton
                         storagePath={item.storage_path}
@@ -422,7 +426,7 @@ export default function StudentClassDetail() {
                         className="text-xs text-blue-600 hover:underline disabled:opacity-60"
                       />
                     </div>
-                  )}
+                  ) : null}
                 </div>
               ))}
             </div>

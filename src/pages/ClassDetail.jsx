@@ -116,11 +116,11 @@ export default function ClassDetail() {
   const [weeklyMaterials, setWeeklyMaterials] = useState([])
   const [loadingWeeklyMaterials, setLoadingWeeklyMaterials] = useState(false)
   const [weeklyMaterialTitle, setWeeklyMaterialTitle] = useState('')
+  const [weeklyMaterialDescription, setWeeklyMaterialDescription] = useState('')
   const [weeklyMaterialLinkUrl, setWeeklyMaterialLinkUrl] = useState('')
   const [weeklyMaterialLessonNumber, setWeeklyMaterialLessonNumber] = useState('')
   const [weeklyMaterialFile, setWeeklyMaterialFile] = useState(null)
   const weeklyMaterialFileInputRef = useRef(null)
-  const [weeklyMaterialMode, setWeeklyMaterialMode] = useState('link')
   const [targetClassIds, setTargetClassIds] = useState([])
   const [targetClasses, setTargetClasses] = useState([])
   const [savingWeeklyMaterial, setSavingWeeklyMaterial] = useState(false)
@@ -128,6 +128,7 @@ export default function ClassDetail() {
   const [editingMaterialId, setEditingMaterialId] = useState(null)
   const [editingMaterialDraft, setEditingMaterialDraft] = useState({
     title: '',
+    description: '',
     week: 0,
     lesson_number: '',
     external_url: '',
@@ -436,6 +437,11 @@ export default function ClassDetail() {
       setWeeklyMaterialFeedback({ type: 'error', text: 'Please enter a material title.' })
       return
     }
+    const normalizedLinkUrl = normalizeLinkUrl(weeklyMaterialLinkUrl)
+    if (!normalizedLinkUrl && !weeklyMaterialFile) {
+      setWeeklyMaterialFeedback({ type: 'error', text: 'Please provide a link or a file (or both).' })
+      return
+    }
     if (!Number.isInteger(Number(selectedUploadWeek))) {
       setWeeklyMaterialFeedback({ type: 'error', text: 'Please select a valid week.' })
       return
@@ -455,12 +461,7 @@ export default function ClassDetail() {
       return
     }
 
-    if (weeklyMaterialMode === 'link') {
-      const linkUrl = normalizeLinkUrl(weeklyMaterialLinkUrl)
-      if (!linkUrl) {
-        setWeeklyMaterialFeedback({ type: 'error', text: 'Please enter a valid link URL.' })
-        return
-      }
+    if (!weeklyMaterialFile) {
       setSavingWeeklyMaterial(true)
       const { error } = await supabase
         .from('weekly_lesson_materials')
@@ -469,29 +470,26 @@ export default function ClassDetail() {
           week: selectedUploadWeek,
           lesson_number: parsedLessonNumber,
           title: weeklyMaterialTitle.trim(),
+          description: weeklyMaterialDescription.trim() || null,
           material_type: 'link',
-          external_url: linkUrl,
+          external_url: normalizedLinkUrl,
           created_by: profile.id,
           updated_by: profile.id,
         })))
       setSavingWeeklyMaterial(false)
       if (error) {
-        setWeeklyMaterialFeedback({ type: 'error', text: `Unable to save link: ${error.message}` })
+        setWeeklyMaterialFeedback({ type: 'error', text: `Unable to save material: ${error.message}` })
         return
       }
       setWeeklyMaterialTitle('')
+      setWeeklyMaterialDescription('')
       setWeeklyMaterialLinkUrl('')
       setWeeklyMaterialLessonNumber('')
       setWeeklyMaterialFeedback({
         type: 'success',
-        text: `Weekly link uploaded to ${validTargetClassIds.length} class${validTargetClassIds.length > 1 ? 'es' : ''}.`,
+        text: `Material uploaded to ${validTargetClassIds.length} class${validTargetClassIds.length > 1 ? 'es' : ''}.`,
       })
       await fetchWeeklyMaterials()
-      return
-    }
-
-    if (!weeklyMaterialFile) {
-      setWeeklyMaterialFeedback({ type: 'error', text: 'Please choose a file before uploading.' })
       return
     }
 
@@ -517,7 +515,9 @@ export default function ClassDetail() {
         week: selectedUploadWeek,
         lesson_number: parsedLessonNumber,
         title: weeklyMaterialTitle.trim(),
+        description: weeklyMaterialDescription.trim() || null,
         material_type: 'file',
+        external_url: normalizedLinkUrl,
         storage_path: path,
         file_name: displayName,
         mime_type: weeklyMaterialFile?.type || null,
@@ -552,6 +552,8 @@ export default function ClassDetail() {
 
     setSavingWeeklyMaterial(false)
     setWeeklyMaterialTitle('')
+    setWeeklyMaterialDescription('')
+    setWeeklyMaterialLinkUrl('')
     setWeeklyMaterialLessonNumber('')
     setWeeklyMaterialFile(null)
     if (weeklyMaterialFileInputRef.current) weeklyMaterialFileInputRef.current.value = ''
@@ -586,6 +588,7 @@ export default function ClassDetail() {
     setEditingMaterialId(item.id)
     setEditingMaterialDraft({
       title: item.title || '',
+      description: item.description || '',
       week: item.week,
       lesson_number: item.lesson_number || '',
       external_url: item.external_url || '',
@@ -594,7 +597,7 @@ export default function ClassDetail() {
 
   const cancelEditWeeklyMaterial = () => {
     setEditingMaterialId(null)
-    setEditingMaterialDraft({ title: '', week: selectedUploadWeek, lesson_number: '', external_url: '' })
+    setEditingMaterialDraft({ title: '', description: '', week: selectedUploadWeek, lesson_number: '', external_url: '' })
   }
 
   const saveEditWeeklyMaterial = async (item) => {
@@ -617,17 +620,23 @@ export default function ClassDetail() {
 
     const payload = {
       title: editingMaterialDraft.title.trim(),
+      description: editingMaterialDraft.description?.trim() || null,
       week: parsedWeek,
       lesson_number: parsedLesson,
       updated_by: profile.id,
     }
-    if (item.material_type === 'link') {
+    if (editingMaterialDraft.external_url && editingMaterialDraft.external_url.trim()) {
       const normalized = normalizeLinkUrl(editingMaterialDraft.external_url)
       if (!normalized) {
         window.alert('Please enter a valid link URL.')
         return
       }
       payload.external_url = normalized
+    } else if (item.storage_path) {
+      payload.external_url = null
+    } else {
+      window.alert('Please keep a valid link when no file is attached.')
+      return
     }
 
     const { error } = await supabase
@@ -1047,6 +1056,16 @@ export default function ClassDetail() {
                       className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                     />
                   </div>
+                  <div className="md:col-span-2">
+                    <label htmlFor="weekly-material-description" className="block text-xs font-medium text-gray-500 mb-1">Description</label>
+                    <textarea
+                      id="weekly-material-description"
+                      value={weeklyMaterialDescription}
+                      onChange={(e) => setWeeklyMaterialDescription(e.target.value)}
+                      placeholder="Short context for students..."
+                      className="w-full min-h-[80px] rounded-lg border border-gray-300 px-3 py-2 text-sm resize-y"
+                    />
+                  </div>
                   <div>
                     <label htmlFor="weekly-material-lesson" className="block text-xs font-medium text-gray-500 mb-1">Lesson # (optional)</label>
                     <input
@@ -1060,30 +1079,6 @@ export default function ClassDetail() {
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <span className="block text-xs font-medium text-gray-500 mb-1">Material type</span>
-                    <div className="flex items-center gap-4">
-                      <label className="text-sm text-gray-700 flex items-center gap-1.5">
-                        <input
-                          type="radio"
-                          name="weekly-material-mode"
-                          checked={weeklyMaterialMode === 'link'}
-                          onChange={() => setWeeklyMaterialMode('link')}
-                        />
-                        Link
-                      </label>
-                      <label className="text-sm text-gray-700 flex items-center gap-1.5">
-                        <input
-                          type="radio"
-                          name="weekly-material-mode"
-                          checked={weeklyMaterialMode === 'file'}
-                          onChange={() => setWeeklyMaterialMode('file')}
-                        />
-                        File
-                      </label>
-                    </div>
-                  </div>
-                  {weeklyMaterialMode === 'link' && (
-                    <div className="md:col-span-2">
                     <label htmlFor="weekly-material-link" className="block text-xs font-medium text-gray-500 mb-1">Link (Google Slides/Canva/etc.)</label>
                     <input
                       id="weekly-material-link"
@@ -1096,9 +1091,7 @@ export default function ClassDetail() {
                       className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                     />
                   </div>
-                  )}
-                  {weeklyMaterialMode === 'file' && (
-                    <div className="md:col-span-2">
+                  <div className="md:col-span-2">
                     <label htmlFor="weekly-material-file" className="block text-xs font-medium text-gray-500 mb-1">File (PDF/PPT/PPTX/DOC/DOCX)</label>
                     <input
                       id="weekly-material-file"
@@ -1114,7 +1107,6 @@ export default function ClassDetail() {
                       </div>
                     )}
                   </div>
-                  )}
                   <div className="md:col-span-2">
                     <span className="block text-xs font-medium text-gray-500 mb-1">Post to classes</span>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 border border-gray-200 rounded-lg p-2 max-h-36 overflow-y-auto">
@@ -1182,6 +1174,12 @@ export default function ClassDetail() {
                               className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
                               placeholder="Material title"
                             />
+                            <textarea
+                              value={editingMaterialDraft.description}
+                              onChange={(e) => setEditingMaterialDraft((prev) => ({ ...prev, description: e.target.value }))}
+                              className="w-full min-h-[70px] rounded-lg border border-gray-300 px-2 py-1.5 text-sm resize-y"
+                              placeholder="Description"
+                            />
                             <div className="grid grid-cols-2 gap-2">
                               <select
                                 value={editingMaterialDraft.week}
@@ -1204,15 +1202,13 @@ export default function ClassDetail() {
                                 placeholder="Lesson #"
                               />
                             </div>
-                            {item.material_type === 'link' && (
-                              <input
-                                type="text"
-                                value={editingMaterialDraft.external_url}
-                                onChange={(e) => setEditingMaterialDraft((prev) => ({ ...prev, external_url: e.target.value }))}
-                                className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
-                                placeholder="Link URL"
-                              />
-                            )}
+                            <input
+                              type="text"
+                              value={editingMaterialDraft.external_url}
+                              onChange={(e) => setEditingMaterialDraft((prev) => ({ ...prev, external_url: e.target.value }))}
+                              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+                              placeholder="Link URL (optional if file exists)"
+                            />
                             <div className="flex justify-end gap-2">
                               <button
                                 type="button"
@@ -1234,10 +1230,13 @@ export default function ClassDetail() {
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <div className="text-sm font-medium text-gray-800">{item.title}</div>
+                              {item.description && (
+                                <div className="text-xs text-gray-700 mt-1 whitespace-pre-wrap">{item.description}</div>
+                              )}
                               <div className="text-xs text-gray-500 mt-0.5">
                                 {item.lesson_number ? `Lesson ${item.lesson_number}` : 'Week-level material'} · {new Date(item.created_at).toLocaleDateString('en-GB')}
                               </div>
-                              {item.material_type === 'link' && item.external_url ? (
+                              {item.external_url ? (
                                 <a
                                   href={item.external_url}
                                   target="_blank"
@@ -1246,7 +1245,8 @@ export default function ClassDetail() {
                                 >
                                   {item.external_url}
                                 </a>
-                              ) : (
+                              ) : null}
+                              {item.storage_path ? (
                                 <div className="mt-1">
                                   <WeeklyMaterialFileButton
                                     storagePath={item.storage_path}
@@ -1254,7 +1254,7 @@ export default function ClassDetail() {
                                     className="text-xs text-blue-600 hover:underline disabled:opacity-60"
                                   />
                                 </div>
-                              )}
+                              ) : null}
                             </div>
                             {canManageWeeklyUploads && (
                               <div className="flex items-center gap-1.5">
