@@ -2,7 +2,9 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { normalizeLinkUrl, uploadTeacherAnnouncementPdf } from '../lib/announcementAttachments'
+import { uploadWeeklyMaterialFile, WEEKLY_MATERIALS_BUCKET, isUuid } from '../lib/weeklyMaterials'
 import AnnouncementPdfButton from '../components/AnnouncementPdfButton'
+import WeeklyMaterialFileButton from '../components/WeeklyMaterialFileButton'
 import Layout from '../components/Layout'
 import ProfileAvatar from '../components/ProfileAvatar'
 import { useAuth } from '../contexts/AuthContext'
@@ -66,6 +68,13 @@ const PARTICIPATION_WEEK_SCHEDULE = {
   ],
 }
 
+const ALL_WEEKS = [
+  ...PARTICIPATION_WEEK_SCHEDULE.midterm_1,
+  ...PARTICIPATION_WEEK_SCHEDULE.final_1,
+  ...PARTICIPATION_WEEK_SCHEDULE.midterm_2,
+  ...PARTICIPATION_WEEK_SCHEDULE.final_2,
+]
+
 const getTermDateSummary = (termKey) => {
   const weeks = PARTICIPATION_WEEK_SCHEDULE[termKey] || []
   if (weeks.length === 0) return null
@@ -126,6 +135,21 @@ export default function ClassDetail() {
   })
   const [activeTab, setActiveTab] = useState('students')
   const [, setForceUpdate] = useState(0)
+
+  const canManageWeeklyUploads = (
+    profile?.role === 'admin' ||
+    profile?.role === 'admin_teacher' ||
+    (profile?.role === 'teacher' && profile?.id === cls?.teacher_id)
+  )
+  const validTargetClasses = useMemo(
+    () => (targetClasses || []).filter((target) => isUuid(target.id)),
+    [targetClasses]
+  )
+  const allowedTargetClassIds = useMemo(
+    () => new Set(validTargetClasses.map((target) => target.id)),
+    [validTargetClasses]
+  )
+  const invalidTargetClassCount = (targetClasses?.length || 0) - validTargetClasses.length
 
   // Listen for changes to current week from navigation bar
   useEffect(() => {
@@ -205,6 +229,48 @@ export default function ClassDetail() {
     setClassAnnouncements(rows)
   }, [classId])
 
+  const fetchTargetClasses = useCallback(async () => {
+    if (!profile?.id) return
+    let query = supabase
+      .from('classes')
+      .select('id, name, subject, programme')
+      .order('name')
+
+    if (profile.role === 'teacher' || profile.role === 'admin_teacher') {
+      query = query.eq('teacher_id', profile.id)
+    }
+
+    const { data, error } = await query
+    if (error) {
+      console.error('Failed to load target classes:', error)
+      setTargetClasses([])
+      return
+    }
+    setTargetClasses(data || [])
+  }, [profile?.id, profile?.role])
+
+  const fetchWeeklyMaterials = useCallback(async () => {
+    if (!classId) return
+    setLoadingWeeklyMaterials(true)
+    const { data, error } = await supabase
+      .from('weekly_lesson_materials')
+      .select('*')
+      .eq('class_id', classId)
+      .eq('week', selectedUploadWeek)
+      .order('lesson_number', { ascending: true, nullsFirst: true })
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Failed to load weekly materials:', error)
+      setWeeklyMaterials([])
+      setLoadingWeeklyMaterials(false)
+      return
+    }
+
+    setWeeklyMaterials(data || [])
+    setLoadingWeeklyMaterials(false)
+  }, [classId, selectedUploadWeek])
+
   useEffect(() => {
     fetchClass()
   }, [fetchClass])
@@ -215,6 +281,14 @@ export default function ClassDetail() {
     fetchClassAnnouncements()
   }, [fetchClassAnnouncements])
   useEffect(() => {
+    if (canManageWeeklyUploads) fetchTargetClasses()
+  }, [canManageWeeklyUploads, fetchTargetClasses])
+  useEffect(() => {
+    if (activeTab === 'uploads') {
+      fetchWeeklyMaterials()
+    }
+  }, [activeTab, fetchWeeklyMaterials])
+  useEffect(() => {
     if (!selectedTerm) setHasUnsavedGradebook(false)
   }, [selectedTerm])
   useEffect(() => {
@@ -224,6 +298,16 @@ export default function ClassDetail() {
     // Refresh current term detection when activeWeek updates
     setForceUpdate((x) => x + 1)
   }, [activeWeek])
+  useEffect(() => {
+    setSelectedUploadWeek(activeWeek)
+  }, [activeWeek])
+  useEffect(() => {
+    if (!classId || !isUuid(classId)) return
+    setTargetClassIds((prev) => (prev.length > 0 ? prev : [classId]))
+  }, [classId])
+  useEffect(() => {
+    setTargetClassIds((prev) => prev.filter((id) => isUuid(id)))
+  }, [targetClasses])
 
   const handlePostClassAnnouncement = async () => {
     setAnnouncementFeedback(null)
