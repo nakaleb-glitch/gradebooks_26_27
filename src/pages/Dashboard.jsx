@@ -19,6 +19,33 @@ const isValidHttpUrl = (value) => {
   }
 }
 
+const getStudentMaterialSeenStorageKey = (profile) => {
+  const studentRef = String(profile?.student_id_ref || '').trim()
+  const userId = String(profile?.id || '').trim()
+  return `student_materials_seen_v1:${studentRef || userId || 'unknown'}`
+}
+
+const readStudentMaterialSeenMap = (storageKey) => {
+  if (!storageKey) return {}
+  try {
+    const raw = localStorage.getItem(storageKey)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+const writeStudentMaterialSeenMap = (storageKey, mapValue) => {
+  if (!storageKey) return
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(mapValue))
+  } catch {
+    // Ignore storage errors to avoid blocking navigation.
+  }
+}
+
 const PRIMARY_TIMETABLE = [
   { period: 1, time: '08:00 - 08:35', label: 'Period 1', type: 'class' },
   { period: 2, time: '08:35 - 09:10', label: 'Period 2', type: 'class' },
@@ -204,6 +231,10 @@ export default function Dashboard() {
   const [teacherSchedule, setTeacherSchedule] = useState({})
   const [teacherLevel, setTeacherLevel] = useState('primary')
   const [updatingCoverMaterials, setUpdatingCoverMaterials] = useState(false)
+  const studentMaterialSeenStorageKey = useMemo(
+    () => getStudentMaterialSeenStorageKey(profile),
+    [profile]
+  )
 
   useEffect(() => {
     if (!sessionStorage.getItem('debug_date_override')) return
@@ -312,10 +343,9 @@ export default function Dashboard() {
         }
       }
 
-      setClasses(studentClasses)
       const classIds = studentClasses.map((c) => c.id)
       if (classIds.length > 0) {
-        const [{ data: assignmentRows }, { data: assignmentGradeRows }, { data: participationRows }, { data: teacherTargetRows }] = await Promise.all([
+        const [{ data: assignmentRows }, { data: assignmentGradeRows }, { data: participationRows }, { data: teacherTargetRows }, { data: weeklyMaterialRows }] = await Promise.all([
           supabase
             .from('assignments')
             .select('*')
@@ -336,7 +366,29 @@ export default function Dashboard() {
             .from('teacher_announcement_targets')
             .select('class_id, teacher_announcements(id, title, message, created_at, link_url, attachment_url, attachment_name)')
             .in('class_id', classIds),
+          supabase
+            .from('weekly_lesson_materials')
+            .select('class_id, created_at')
+            .in('class_id', classIds)
+            .order('created_at', { ascending: false }),
         ])
+
+        const latestMaterialByClassId = {}
+        ;(weeklyMaterialRows || []).forEach((row) => {
+          if (!row?.class_id || latestMaterialByClassId[row.class_id]) return
+          latestMaterialByClassId[row.class_id] = row.created_at || null
+        })
+        const seenMap = readStudentMaterialSeenMap(studentMaterialSeenStorageKey)
+        const classesWithMaterialState = studentClasses.map((cls) => {
+          const latestCreatedAt = latestMaterialByClassId[cls.id]
+          const seenAt = seenMap[cls.id]
+          const hasNewMaterials = Boolean(
+            latestCreatedAt &&
+            (!seenAt || new Date(latestCreatedAt).getTime() > new Date(seenAt).getTime())
+          )
+          return { ...cls, hasNewMaterials }
+        })
+        setClasses(classesWithMaterialState)
 
         const classNameById = Object.fromEntries(studentClasses.map((c) => [c.id, c.name]))
         const assignmentById = Object.fromEntries((assignmentRows || []).map((a) => [a.id, a]))
@@ -419,6 +471,7 @@ export default function Dashboard() {
         setStudentAnnouncements(mergedAnnouncements)
         setStudentGradedAssignments(gradedRows)
       } else {
+        setClasses(studentClasses.map((cls) => ({ ...cls, hasNewMaterials: false })))
         setStudentAnnouncements([])
         setStudentGradedAssignments([])
       }
@@ -724,6 +777,19 @@ export default function Dashboard() {
 
   const classTotals = sumSnapshot(classSnapshot)
   const studentTotals = sumSnapshot(studentSnapshot)
+
+  const markStudentClassMaterialsSeen = (classId) => {
+    if (!classId) return
+    const seenMap = readStudentMaterialSeenMap(studentMaterialSeenStorageKey)
+    const nextMap = {
+      ...seenMap,
+      [classId]: new Date().toISOString(),
+    }
+    writeStudentMaterialSeenMap(studentMaterialSeenStorageKey, nextMap)
+    setClasses((prev) => prev.map((cls) => (
+      cls.id === classId ? { ...cls, hasNewMaterials: false } : cls
+    )))
+  }
 
   useEffect(() => {
     if (gradeFilter === 'all') return
@@ -1267,10 +1333,18 @@ export default function Dashboard() {
                    <Link
                      key={cls.id}
                      to={`/student/class/${cls.id}`}
+                    onClick={() => markStudentClassMaterialsSeen(cls.id)}
                      className="block bg-white rounded-xl border border-gray-200 p-4 hover:shadow-sm transition-all"
                      style={{ borderTopColor: '#9ca3af', borderTopWidth: 3 }}
                    >
-                     <div className="font-semibold text-gray-900">{cls.name}</div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-semibold text-gray-900">{cls.name}</div>
+                      {cls.hasNewMaterials && (
+                        <span className="inline-flex items-center rounded-full bg-indigo-100 text-indigo-700 px-2 py-0.5 text-[11px] font-semibold">
+                          New Materials
+                        </span>
+                      )}
+                    </div>
                      <div className="text-sm text-gray-500 mt-1">
                        {levelLabel(cls.level)} - {programmeLabel(cls.programme)}
                      </div>

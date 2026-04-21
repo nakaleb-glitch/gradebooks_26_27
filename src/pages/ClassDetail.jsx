@@ -125,6 +125,7 @@ export default function ClassDetail() {
   const [targetClasses, setTargetClasses] = useState([])
   const [savingWeeklyMaterial, setSavingWeeklyMaterial] = useState(false)
   const [weeklyMaterialFeedback, setWeeklyMaterialFeedback] = useState(null)
+  const [showWeeklyMaterialForm, setShowWeeklyMaterialForm] = useState(false)
   const [editingMaterialId, setEditingMaterialId] = useState(null)
   const [editingMaterialDraft, setEditingMaterialDraft] = useState({
     title: '',
@@ -489,6 +490,7 @@ export default function ClassDetail() {
         type: 'success',
         text: `Material uploaded to ${validTargetClassIds.length} class${validTargetClassIds.length > 1 ? 'es' : ''}.`,
       })
+      setShowWeeklyMaterialForm(false)
       await fetchWeeklyMaterials()
       return
     }
@@ -561,6 +563,7 @@ export default function ClassDetail() {
       type: 'success',
       text: `Weekly file uploaded to ${validTargetClassIds.length} class${validTargetClassIds.length > 1 ? 'es' : ''}.`,
     })
+    setShowWeeklyMaterialForm(false)
     await fetchWeeklyMaterials()
   }
 
@@ -1044,7 +1047,35 @@ export default function ClassDetail() {
               </div>
 
               {canManageWeeklyUploads && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 rounded-lg border border-gray-200 p-3">
+                <div className="space-y-3">
+                  {!showWeeklyMaterialForm && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setWeeklyMaterialFeedback(null)
+                        setShowWeeklyMaterialForm(true)
+                      }}
+                      className="rounded-lg bg-indigo-600 text-white px-4 py-2 text-sm font-medium hover:bg-indigo-700"
+                    >
+                      Add new material
+                    </button>
+                  )}
+                  {showWeeklyMaterialForm && (
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowWeeklyMaterialForm(false)
+                          setWeeklyMaterialFeedback(null)
+                        }}
+                        className="text-xs px-2 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-100"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                  {showWeeklyMaterialForm && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 rounded-lg border border-gray-200 p-3">
                   <div className="md:col-span-2">
                     <label htmlFor="weekly-material-title" className="block text-xs font-medium text-gray-500 mb-1">Material title</label>
                     <input
@@ -1149,6 +1180,8 @@ export default function ClassDetail() {
                     >
                       {weeklyMaterialFeedback.text}
                     </div>
+                  )}
+                </div>
                   )}
                 </div>
               )}
