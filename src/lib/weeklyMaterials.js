@@ -13,6 +13,11 @@ const ALLOWED_MIME_TYPES = new Set([
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ])
 
+export function isUuid(value) {
+  const text = String(value || '').trim()
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(text)
+}
+
 export function isWeeklyMaterialFileAllowed(file) {
   if (!file) return false
   const name = String(file.name || '')
@@ -33,6 +38,9 @@ export function validateWeeklyMaterialFile(file) {
 }
 
 export async function uploadWeeklyMaterialFile({ classId, week, lessonNumber, file }) {
+  if (!isUuid(classId)) {
+    return { path: null, displayName: null, error: new Error('Invalid class ID for upload path.') }
+  }
   const validationError = validateWeeklyMaterialFile(file)
   if (validationError) return { path: null, displayName: null, error: validationError }
 

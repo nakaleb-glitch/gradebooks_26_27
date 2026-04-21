@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { normalizeLinkUrl, uploadTeacherAnnouncementPdf } from '../lib/announcementAttachments'
-import { uploadWeeklyMaterialFile, WEEKLY_MATERIALS_BUCKET } from '../lib/weeklyMaterials'
+import { uploadWeeklyMaterialFile, WEEKLY_MATERIALS_BUCKET, isUuid } from '../lib/weeklyMaterials'
 import AnnouncementPdfButton from '../components/AnnouncementPdfButton'
 import WeeklyMaterialFileButton from '../components/WeeklyMaterialFileButton'
 import Layout from '../components/Layout'
@@ -119,8 +119,18 @@ export default function ClassDetail() {
   const [weeklyMaterialLessonNumber, setWeeklyMaterialLessonNumber] = useState('')
   const [weeklyMaterialFile, setWeeklyMaterialFile] = useState(null)
   const weeklyMaterialFileInputRef = useRef(null)
+  const [weeklyMaterialMode, setWeeklyMaterialMode] = useState('link')
+  const [targetClassIds, setTargetClassIds] = useState([])
+  const [targetClasses, setTargetClasses] = useState([])
   const [savingWeeklyMaterial, setSavingWeeklyMaterial] = useState(false)
   const [weeklyMaterialFeedback, setWeeklyMaterialFeedback] = useState(null)
+  const [editingMaterialId, setEditingMaterialId] = useState(null)
+  const [editingMaterialDraft, setEditingMaterialDraft] = useState({
+    title: '',
+    week: 0,
+    lesson_number: '',
+    external_url: '',
+  })
   const [activeTab, setActiveTab] = useState('students')
   const [, setForceUpdate] = useState(0)
 
@@ -208,6 +218,26 @@ export default function ClassDetail() {
     setClassAnnouncements(rows)
   }, [classId])
 
+  const fetchTargetClasses = useCallback(async () => {
+    if (!profile?.id) return
+    let query = supabase
+      .from('classes')
+      .select('id, name, subject, programme')
+      .order('name')
+
+    if (profile.role === 'teacher' || profile.role === 'admin_teacher') {
+      query = query.eq('teacher_id', profile.id)
+    }
+
+    const { data, error } = await query
+    if (error) {
+      console.error('Failed to load target classes:', error)
+      setTargetClasses([])
+      return
+    }
+    setTargetClasses(data || [])
+  }, [profile?.id, profile?.role])
+
   const fetchWeeklyMaterials = useCallback(async () => {
     if (!classId) return
     setLoadingWeeklyMaterials(true)
@@ -240,6 +270,9 @@ export default function ClassDetail() {
     fetchClassAnnouncements()
   }, [fetchClassAnnouncements])
   useEffect(() => {
+    if (canManageWeeklyUploads) fetchTargetClasses()
+  }, [canManageWeeklyUploads, fetchTargetClasses])
+  useEffect(() => {
     if (activeTab === 'uploads') {
       fetchWeeklyMaterials()
     }
@@ -257,6 +290,10 @@ export default function ClassDetail() {
   useEffect(() => {
     setSelectedUploadWeek(activeWeek)
   }, [activeWeek])
+  useEffect(() => {
+    if (!classId || !isUuid(classId)) return
+    setTargetClassIds((prev) => (prev.length > 0 ? prev : [classId]))
+  }, [classId])
 
   const handlePostClassAnnouncement = async () => {
     setAnnouncementFeedback(null)
@@ -355,7 +392,15 @@ export default function ClassDetail() {
     }
   }
 
-  const handleSaveWeeklyMaterial = async ({ mode }) => {
+  const toggleTargetClass = (targetId) => {
+    setTargetClassIds((prev) => (
+      prev.includes(targetId)
+        ? prev.filter((id) => id !== targetId)
+        : [...prev, targetId]
+    ))
+  }
+
+  const handleSaveWeeklyMaterial = async () => {
     if (!canManageWeeklyUploads) return
     setWeeklyMaterialFeedback(null)
 
@@ -369,8 +414,18 @@ export default function ClassDetail() {
       setWeeklyMaterialFeedback({ type: 'error', text: 'Please enter a material title.' })
       return
     }
+    if (!Number.isInteger(Number(selectedUploadWeek))) {
+      setWeeklyMaterialFeedback({ type: 'error', text: 'Please select a valid week.' })
+      return
+    }
 
-    if (mode === 'link') {
+    const validTargetClassIds = Array.from(new Set(targetClassIds.filter((id) => isUuid(id))))
+    if (validTargetClassIds.length === 0) {
+      setWeeklyMaterialFeedback({ type: 'error', text: 'Select at least one valid class target.' })
+      return
+    }
+
+    if (weeklyMaterialMode === 'link') {
       const linkUrl = normalizeLinkUrl(weeklyMaterialLinkUrl)
       if (!linkUrl) {
         setWeeklyMaterialFeedback({ type: 'error', text: 'Please enter a valid link URL.' })
@@ -379,15 +434,16 @@ export default function ClassDetail() {
       setSavingWeeklyMaterial(true)
       const { error } = await supabase
         .from('weekly_lesson_materials')
-        .insert({
-          class_id: classId,
+        .insert(validTargetClassIds.map((targetClassId) => ({
+          class_id: targetClassId,
           week: selectedUploadWeek,
           lesson_number: parsedLessonNumber,
           title: weeklyMaterialTitle.trim(),
           material_type: 'link',
           external_url: linkUrl,
           created_by: profile.id,
-        })
+          updated_by: profile.id,
+        })))
       setSavingWeeklyMaterial(false)
       if (error) {
         setWeeklyMaterialFeedback({ type: 'error', text: `Unable to save link: ${error.message}` })
@@ -396,31 +452,38 @@ export default function ClassDetail() {
       setWeeklyMaterialTitle('')
       setWeeklyMaterialLinkUrl('')
       setWeeklyMaterialLessonNumber('')
-      setWeeklyMaterialFeedback({ type: 'success', text: 'Weekly link added.' })
+      setWeeklyMaterialFeedback({
+        type: 'success',
+        text: `Weekly link uploaded to ${validTargetClassIds.length} class${validTargetClassIds.length > 1 ? 'es' : ''}.`,
+      })
       await fetchWeeklyMaterials()
       return
     }
 
-    setSavingWeeklyMaterial(true)
-    const { path, displayName, error: uploadError } = await uploadWeeklyMaterialFile({
-      classId,
-      week: selectedUploadWeek,
-      lessonNumber: parsedLessonNumber,
-      file: weeklyMaterialFile,
-    })
-    if (uploadError || !path) {
-      setSavingWeeklyMaterial(false)
-      setWeeklyMaterialFeedback({
-        type: 'error',
-        text: `Unable to upload file: ${uploadError?.message || 'Unknown error'}`,
-      })
+    if (!weeklyMaterialFile) {
+      setWeeklyMaterialFeedback({ type: 'error', text: 'Please choose a file before uploading.' })
       return
     }
 
-    const { error: insertError } = await supabase
-      .from('weekly_lesson_materials')
-      .insert({
-        class_id: classId,
+    setSavingWeeklyMaterial(true)
+    const uploadedPaths = []
+    const rowsToInsert = []
+    let uploadFailure = null
+
+    for (const targetClassId of validTargetClassIds) {
+      const { path, displayName, error: uploadError } = await uploadWeeklyMaterialFile({
+        classId: targetClassId,
+        week: selectedUploadWeek,
+        lessonNumber: parsedLessonNumber,
+        file: weeklyMaterialFile,
+      })
+      if (uploadError || !path) {
+        uploadFailure = uploadError || new Error('Unknown upload error')
+        break
+      }
+      uploadedPaths.push(path)
+      rowsToInsert.push({
+        class_id: targetClassId,
         week: selectedUploadWeek,
         lesson_number: parsedLessonNumber,
         title: weeklyMaterialTitle.trim(),
@@ -430,10 +493,28 @@ export default function ClassDetail() {
         mime_type: weeklyMaterialFile?.type || null,
         file_size_bytes: weeklyMaterialFile?.size || null,
         created_by: profile.id,
+        updated_by: profile.id,
       })
+    }
+
+    if (uploadFailure) {
+      if (uploadedPaths.length > 0) {
+        await supabase.storage.from(WEEKLY_MATERIALS_BUCKET).remove(uploadedPaths)
+      }
+      setSavingWeeklyMaterial(false)
+      setWeeklyMaterialFeedback({
+        type: 'error',
+        text: `Unable to upload file: ${uploadFailure.message || 'Unknown error'}`,
+      })
+      return
+    }
+
+    const { error: insertError } = await supabase
+      .from('weekly_lesson_materials')
+      .insert(rowsToInsert)
 
     if (insertError) {
-      await supabase.storage.from(WEEKLY_MATERIALS_BUCKET).remove([path])
+      await supabase.storage.from(WEEKLY_MATERIALS_BUCKET).remove(uploadedPaths)
       setSavingWeeklyMaterial(false)
       setWeeklyMaterialFeedback({ type: 'error', text: `File uploaded, but saving failed: ${insertError.message}` })
       return
@@ -444,7 +525,10 @@ export default function ClassDetail() {
     setWeeklyMaterialLessonNumber('')
     setWeeklyMaterialFile(null)
     if (weeklyMaterialFileInputRef.current) weeklyMaterialFileInputRef.current.value = ''
-    setWeeklyMaterialFeedback({ type: 'success', text: 'Weekly file uploaded.' })
+    setWeeklyMaterialFeedback({
+      type: 'success',
+      text: `Weekly file uploaded to ${validTargetClassIds.length} class${validTargetClassIds.length > 1 ? 'es' : ''}.`,
+    })
     await fetchWeeklyMaterials()
   }
 
@@ -465,6 +549,67 @@ export default function ClassDetail() {
       window.alert(`Unable to delete material: ${error.message}`)
       return
     }
+    await fetchWeeklyMaterials()
+  }
+
+  const startEditWeeklyMaterial = (item) => {
+    setEditingMaterialId(item.id)
+    setEditingMaterialDraft({
+      title: item.title || '',
+      week: item.week,
+      lesson_number: item.lesson_number || '',
+      external_url: item.external_url || '',
+    })
+  }
+
+  const cancelEditWeeklyMaterial = () => {
+    setEditingMaterialId(null)
+    setEditingMaterialDraft({ title: '', week: selectedUploadWeek, lesson_number: '', external_url: '' })
+  }
+
+  const saveEditWeeklyMaterial = async (item) => {
+    if (!canManageWeeklyUploads) return
+    const parsedWeek = Number(editingMaterialDraft.week)
+    const lessonText = String(editingMaterialDraft.lesson_number || '').trim()
+    const parsedLesson = lessonText ? Number(lessonText) : null
+    if (!Number.isInteger(parsedWeek) || parsedWeek < 0 || parsedWeek > 39) {
+      window.alert('Please choose a valid week.')
+      return
+    }
+    if (lessonText && (!Number.isInteger(parsedLesson) || parsedLesson <= 0)) {
+      window.alert('Lesson number must be a positive whole number.')
+      return
+    }
+    if (!editingMaterialDraft.title.trim()) {
+      window.alert('Material title is required.')
+      return
+    }
+
+    const payload = {
+      title: editingMaterialDraft.title.trim(),
+      week: parsedWeek,
+      lesson_number: parsedLesson,
+      updated_by: profile.id,
+    }
+    if (item.material_type === 'link') {
+      const normalized = normalizeLinkUrl(editingMaterialDraft.external_url)
+      if (!normalized) {
+        window.alert('Please enter a valid link URL.')
+        return
+      }
+      payload.external_url = normalized
+    }
+
+    const { error } = await supabase
+      .from('weekly_lesson_materials')
+      .update(payload)
+      .eq('id', item.id)
+
+    if (error) {
+      window.alert(`Unable to save changes: ${error.message}`)
+      return
+    }
+    cancelEditWeeklyMaterial()
     await fetchWeeklyMaterials()
   }
 
@@ -877,7 +1022,31 @@ export default function ClassDetail() {
                       className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                     />
                   </div>
-                  <div>
+                  <div className="md:col-span-2">
+                    <span className="block text-xs font-medium text-gray-500 mb-1">Material type</span>
+                    <div className="flex items-center gap-4">
+                      <label className="text-sm text-gray-700 flex items-center gap-1.5">
+                        <input
+                          type="radio"
+                          name="weekly-material-mode"
+                          checked={weeklyMaterialMode === 'link'}
+                          onChange={() => setWeeklyMaterialMode('link')}
+                        />
+                        Link
+                      </label>
+                      <label className="text-sm text-gray-700 flex items-center gap-1.5">
+                        <input
+                          type="radio"
+                          name="weekly-material-mode"
+                          checked={weeklyMaterialMode === 'file'}
+                          onChange={() => setWeeklyMaterialMode('file')}
+                        />
+                        File
+                      </label>
+                    </div>
+                  </div>
+                  {weeklyMaterialMode === 'link' && (
+                    <div className="md:col-span-2">
                     <label htmlFor="weekly-material-link" className="block text-xs font-medium text-gray-500 mb-1">Link (Google Slides/Canva/etc.)</label>
                     <input
                       id="weekly-material-link"
@@ -889,18 +1058,10 @@ export default function ClassDetail() {
                       placeholder="Paste link to material"
                       className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                     />
-                    <div className="mt-2 flex justify-end">
-                      <button
-                        type="button"
-                        disabled={savingWeeklyMaterial}
-                        onClick={() => handleSaveWeeklyMaterial({ mode: 'link' })}
-                        className="rounded-lg bg-blue-600 text-white px-3 py-1.5 text-xs font-medium hover:bg-blue-700 disabled:opacity-60"
-                      >
-                        Add Link
-                      </button>
-                    </div>
                   </div>
-                  <div>
+                  )}
+                  {weeklyMaterialMode === 'file' && (
+                    <div className="md:col-span-2">
                     <label htmlFor="weekly-material-file" className="block text-xs font-medium text-gray-500 mb-1">File (PDF/PPT/PPTX/DOC/DOCX)</label>
                     <input
                       id="weekly-material-file"
@@ -915,16 +1076,34 @@ export default function ClassDetail() {
                         {weeklyMaterialFile.name}
                       </div>
                     )}
-                    <div className="mt-2 flex justify-end">
-                      <button
-                        type="button"
-                        disabled={savingWeeklyMaterial || !weeklyMaterialFile}
-                        onClick={() => handleSaveWeeklyMaterial({ mode: 'file' })}
-                        className="rounded-lg bg-indigo-600 text-white px-3 py-1.5 text-xs font-medium hover:bg-indigo-700 disabled:opacity-60"
-                      >
-                        Upload File
-                      </button>
+                  </div>
+                  )}
+                  <div className="md:col-span-2">
+                    <span className="block text-xs font-medium text-gray-500 mb-1">Post to classes</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 border border-gray-200 rounded-lg p-2 max-h-36 overflow-y-auto">
+                      {targetClasses.length === 0 ? (
+                        <div className="text-xs text-gray-400">No target classes available.</div>
+                      ) : targetClasses.map((target) => (
+                        <label key={target.id} className="text-xs text-gray-700 flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={targetClassIds.includes(target.id)}
+                            onChange={() => toggleTargetClass(target.id)}
+                          />
+                          <span>{target.name}</span>
+                        </label>
+                      ))}
                     </div>
+                  </div>
+                  <div className="md:col-span-2 flex justify-end">
+                    <button
+                      type="button"
+                      disabled={savingWeeklyMaterial}
+                      onClick={handleSaveWeeklyMaterial}
+                      className="rounded-lg bg-indigo-600 text-white px-4 py-2 text-sm font-medium hover:bg-indigo-700 disabled:opacity-60"
+                    >
+                      {savingWeeklyMaterial ? 'Uploading...' : 'Upload Materials'}
+                    </button>
                   </div>
                   {weeklyMaterialFeedback && (
                     <div
@@ -952,41 +1131,109 @@ export default function ClassDetail() {
                   <div className="space-y-2">
                     {weeklyMaterials.map((item) => (
                       <div key={item.id} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="text-sm font-medium text-gray-800">{item.title}</div>
-                            <div className="text-xs text-gray-500 mt-0.5">
-                              {item.lesson_number ? `Lesson ${item.lesson_number}` : 'Week-level material'} · {new Date(item.created_at).toLocaleDateString('en-GB')}
-                            </div>
-                            {item.material_type === 'link' && item.external_url ? (
-                              <a
-                                href={item.external_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-blue-600 hover:underline break-all mt-1 inline-block"
+                        {editingMaterialId === item.id ? (
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              value={editingMaterialDraft.title}
+                              onChange={(e) => setEditingMaterialDraft((prev) => ({ ...prev, title: e.target.value }))}
+                              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+                              placeholder="Material title"
+                            />
+                            <div className="grid grid-cols-2 gap-2">
+                              <select
+                                value={editingMaterialDraft.week}
+                                onChange={(e) => setEditingMaterialDraft((prev) => ({ ...prev, week: Number(e.target.value) }))}
+                                className="rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
                               >
-                                {item.external_url}
-                              </a>
-                            ) : (
-                              <div className="mt-1">
-                                <WeeklyMaterialFileButton
-                                  storagePath={item.storage_path}
-                                  fileName={item.file_name}
-                                  className="text-xs text-blue-600 hover:underline disabled:opacity-60"
-                                />
+                                {ALL_WEEKS.map((weekItem) => (
+                                  <option key={weekItem.week} value={weekItem.week}>
+                                    {weekItem.label}
+                                  </option>
+                                ))}
+                              </select>
+                              <input
+                                type="number"
+                                min="1"
+                                step="1"
+                                value={editingMaterialDraft.lesson_number}
+                                onChange={(e) => setEditingMaterialDraft((prev) => ({ ...prev, lesson_number: e.target.value }))}
+                                className="rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+                                placeholder="Lesson #"
+                              />
+                            </div>
+                            {item.material_type === 'link' && (
+                              <input
+                                type="text"
+                                value={editingMaterialDraft.external_url}
+                                onChange={(e) => setEditingMaterialDraft((prev) => ({ ...prev, external_url: e.target.value }))}
+                                className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+                                placeholder="Link URL"
+                              />
+                            )}
+                            <div className="flex justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={cancelEditWeeklyMaterial}
+                                className="text-xs px-2 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-100"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => saveEditWeeklyMaterial(item)}
+                                className="text-xs px-2 py-1 rounded border border-blue-200 text-blue-700 hover:bg-blue-50"
+                              >
+                                Save
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="text-sm font-medium text-gray-800">{item.title}</div>
+                              <div className="text-xs text-gray-500 mt-0.5">
+                                {item.lesson_number ? `Lesson ${item.lesson_number}` : 'Week-level material'} · {new Date(item.created_at).toLocaleDateString('en-GB')}
+                              </div>
+                              {item.material_type === 'link' && item.external_url ? (
+                                <a
+                                  href={item.external_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-blue-600 hover:underline break-all mt-1 inline-block"
+                                >
+                                  {item.external_url}
+                                </a>
+                              ) : (
+                                <div className="mt-1">
+                                  <WeeklyMaterialFileButton
+                                    storagePath={item.storage_path}
+                                    fileName={item.file_name}
+                                    className="text-xs text-blue-600 hover:underline disabled:opacity-60"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                            {canManageWeeklyUploads && (
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => startEditWeeklyMaterial(item)}
+                                  className="text-xs px-2 py-1 rounded border border-blue-200 text-blue-700 hover:bg-blue-50"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteWeeklyMaterial(item)}
+                                  className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50"
+                                >
+                                  Delete
+                                </button>
                               </div>
                             )}
                           </div>
-                          {canManageWeeklyUploads && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteWeeklyMaterial(item)}
-                              className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50"
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </div>
+                        )}
                       </div>
                     ))}
                   </div>
