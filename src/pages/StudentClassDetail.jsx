@@ -4,6 +4,7 @@ import Layout from '../components/Layout'
 import { supabase } from '../lib/supabase'
 import { getCurrentWeekIndexWithOverride } from '../lib/academicCalendar'
 import { useAuth } from '../contexts/AuthContext'
+import WeeklyMaterialFileButton from '../components/WeeklyMaterialFileButton'
 
 const TERMS = [
   { key: 'midterm_1', label: 'Midterm 1' },
@@ -117,6 +118,9 @@ export default function StudentClassDetail() {
   const [classAnnouncements, setClassAnnouncements] = useState([])
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null)
   const [selectedComment, setSelectedComment] = useState(null)
+  const [selectedMaterialsWeek, setSelectedMaterialsWeek] = useState(getCurrentWeekIndex())
+  const [weeklyMaterials, setWeeklyMaterials] = useState([])
+  const [loadingWeeklyMaterials, setLoadingWeeklyMaterials] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -128,6 +132,31 @@ export default function StudentClassDetail() {
       setActiveTerm(termFromQuery)
     }
   }, [searchParams])
+
+  useEffect(() => {
+    if (activeTab !== 'materials') return
+
+    const run = async () => {
+      setLoadingWeeklyMaterials(true)
+      const { data, error } = await supabase
+        .from('weekly_lesson_materials')
+        .select('*')
+        .eq('class_id', classId)
+        .eq('week', selectedMaterialsWeek)
+        .order('lesson_number', { ascending: true, nullsFirst: true })
+        .order('created_at', { ascending: false })
+      if (error) {
+        console.error('Failed to load student weekly materials:', error)
+        setWeeklyMaterials([])
+        setLoadingWeeklyMaterials(false)
+        return
+      }
+      setWeeklyMaterials(data || [])
+      setLoadingWeeklyMaterials(false)
+    }
+
+    run()
+  }, [activeTab, classId, selectedMaterialsWeek])
 
   const fetchData = async () => {
     setLoading(true)
@@ -343,6 +372,63 @@ export default function StudentClassDetail() {
           Announcements
         </button>
       </div>
+
+      {activeTab === 'materials' && (
+        <div className="mt-6 bg-white rounded-xl border border-gray-200 p-5" style={{ borderTopColor: '#6366f1', borderTopWidth: 3 }}>
+          <div className="flex items-center gap-3 mb-4">
+            <label htmlFor="student-materials-week" className="text-sm font-medium text-gray-700">Week</label>
+            <select
+              id="student-materials-week"
+              value={selectedMaterialsWeek}
+              onChange={(e) => setSelectedMaterialsWeek(Number(e.target.value))}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            >
+              {ALL_WEEKS.map((weekItem) => (
+                <option key={weekItem.week} value={weekItem.week}>
+                  {weekItem.label} - {weekItem.range}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {loadingWeeklyMaterials ? (
+            <div className="text-sm text-gray-400">Loading materials...</div>
+          ) : weeklyMaterials.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-gray-300 px-4 py-5 text-sm text-gray-500">
+              No learning materials uploaded for this week yet.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {weeklyMaterials.map((item) => (
+                <div key={item.id} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                  <div className="text-sm font-medium text-gray-800">{item.title}</div>
+                  <div className="text-xs text-gray-500 mt-0.5">
+                    {item.lesson_number ? `Lesson ${item.lesson_number}` : 'Week-level material'}
+                  </div>
+                  {item.material_type === 'link' && item.external_url ? (
+                    <a
+                      href={item.external_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 hover:underline break-all mt-1 inline-block"
+                    >
+                      {item.external_url}
+                    </a>
+                  ) : (
+                    <div className="mt-1">
+                      <WeeklyMaterialFileButton
+                        storagePath={item.storage_path}
+                        fileName={item.file_name}
+                        className="text-xs text-blue-600 hover:underline disabled:opacity-60"
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {activeTab === 'gradebooks' && (
         <>
