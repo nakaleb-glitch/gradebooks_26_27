@@ -871,14 +871,6 @@ export default function PeriodAllocation() {
 
         {activeTab !== 'summary' && activeTab !== 'taCounselor' && (
           <div>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">
-              {tabTitle}
-            </h2>
-            <p className="text-xs text-gray-500 mb-2">
-              Teaching hours: Primary {PRIMARY_MINUTES} min/period, Secondary {SECONDARY_MINUTES}{' '}
-              min/period. Preps count once per subject column within the same department and
-              programme (shared lessons across classes).
-            </p>
             <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm mb-8 bg-white">
               <table className="min-w-max w-full text-xs border-collapse">
                 <thead>
@@ -1114,11 +1106,6 @@ export default function PeriodAllocation() {
 
         {activeTab === 'taCounselor' && (
           <div className="mb-4">
-            <h2 className="text-base font-semibold text-gray-900 mb-2">{tabTitle}</h2>
-            <p className="text-xs text-gray-500 mb-3">
-              Support periods are auto-calculated from level and programme.
-            </p>
-
             <div className="rounded-xl border border-gray-200 bg-white dark:bg-gray-900 p-3 mb-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                 <h3 className="text-sm font-semibold text-gray-900">TA/Counselor Staff List</h3>

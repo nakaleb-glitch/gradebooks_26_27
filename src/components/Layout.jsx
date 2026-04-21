@@ -247,7 +247,7 @@ export default function Layout({ children }) {
   return (
     <div className="min-h-screen" style={{ background: 'var(--app-bg)', color: 'var(--text-primary)' }}>
       {/* Navbar */}
-      <nav style={{ background: 'var(--nav-bg)', borderBottom: '3px solid #d1232a' }}>
+      <nav className="relative z-50" style={{ background: 'var(--nav-bg)', borderBottom: '3px solid #d1232a' }}>
         <div className="w-full px-3 sm:px-6 py-3 flex justify-between items-center">
           {/* Left — Royal School Logo */}
           <div className="flex items-center gap-8">
@@ -281,7 +281,7 @@ export default function Layout({ children }) {
                     </span>
                   </button>
                   <div
-                    className={`absolute left-0 top-full pt-2 z-40 ${showAdminMenu ? 'block' : 'hidden'}`}
+                    className={`absolute left-0 top-full pt-2 z-[70] ${showAdminMenu ? 'block' : 'hidden'}`}
                     onMouseLeave={() => setShowAdminMenu(false)}
                   >
                     <div className="w-60 rounded-lg border shadow-lg overflow-hidden" style={{ backgroundColor: 'var(--nav-bg)', borderColor: 'var(--menu-border)' }}>
