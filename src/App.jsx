@@ -16,6 +16,7 @@ import UserSettings from './pages/UserSettings'
 import BehaviorReport from './pages/BehaviorReport'
 import StudentClassDetail from './pages/StudentClassDetail'
 import StudentGradebookLookup from './pages/admin/StudentGradebookLookup'
+import StudentPerformanceAnalysis from './pages/admin/StudentPerformanceAnalysis'
 import ResourceBookings from './pages/admin/ResourceBookings'
 import TeacherSchedules from './pages/admin/TeacherSchedules'
 import CoverManagement from './pages/admin/CoverManagement'
@@ -51,6 +52,7 @@ function AppRoutes() {
       <Route path="/admin/behavior-management" element={<ProtectedRoute adminOnly><BehaviorManagement /></ProtectedRoute>} />
       <Route path="/admin/gradebooks" element={<ProtectedRoute adminOnly><GradebookViewer /></ProtectedRoute>} />
       <Route path="/admin/student-gradebook-lookup" element={<ProtectedRoute adminOnly><StudentGradebookLookup /></ProtectedRoute>} />
+      <Route path="/admin/student-performance-analysis" element={<ProtectedRoute adminOnly><StudentPerformanceAnalysis /></ProtectedRoute>} />
       <Route path="/admin/resource-bookings" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><ResourceBookings /></ProtectedRoute>} />
       <Route path="/admin/teacher-schedules" element={<ProtectedRoute adminOnly><TeacherSchedules /></ProtectedRoute>} />
       <Route path="/admin/period-allocation" element={<ProtectedRoute adminOnly><PeriodAllocation /></ProtectedRoute>} />

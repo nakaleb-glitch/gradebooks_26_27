@@ -1139,6 +1139,14 @@ export default function Dashboard() {
                 <div className="font-semibold text-gray-900">Gradebook Management</div>
                 <div className="text-sm text-gray-500 mt-1">Review termly gradebooks for each class.</div>
               </Link>
+              <Link
+                to="/admin/student-performance-analysis"
+                className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-sm transition-all block min-h-[96px]"
+                style={{ borderTopColor: '#16a34a', borderTopWidth: 3 }}
+              >
+                <div className="font-semibold text-gray-900">Student Performance Analysis</div>
+                <div className="text-sm text-gray-500 mt-1">Compare progress-test averages by subject and cohort ranking.</div>
+              </Link>
                {/* Card 8 - BLUE */}
                 <Link
                   to="/weekly-plans"

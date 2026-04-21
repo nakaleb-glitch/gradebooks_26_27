@@ -98,6 +98,7 @@ export default function Layout({ children }) {
       { label: 'Student Management', path: '/admin/students' },
       { label: 'Class Management', path: '/admin/classes' },
       { label: 'Gradebook Management', path: '/admin/gradebooks' },
+      { label: 'Student Performance Analysis', path: '/admin/student-performance-analysis' },
       { label: 'Weekly Plan Management', path: '/weekly-plans' },
       { label: 'Teacher Management', path: '/admin/users' },
       { label: 'Resource Management', path: '/admin/resources' },
