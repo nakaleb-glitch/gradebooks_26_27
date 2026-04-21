@@ -95,6 +95,7 @@ export default function ClassDetail() {
   const navigate = useNavigate()
   const { profile } = useAuth()
   const [cls, setCls] = useState(null)
+  const [accessDenied, setAccessDenied] = useState(false)
   const [selectedTerm, setSelectedTerm] = useState(null)
   const [loading, setLoading] = useState(true)
   const [hasUnsavedGradebook, setHasUnsavedGradebook] = useState(false)
@@ -143,6 +144,10 @@ export default function ClassDetail() {
     () => (targetClasses || []).filter((target) => isUuid(target.id)),
     [targetClasses]
   )
+  const allowedTargetClassIds = useMemo(
+    () => new Set(validTargetClasses.map((target) => target.id)),
+    [validTargetClasses]
+  )
   const invalidTargetClassCount = (targetClasses?.length || 0) - validTargetClasses.length
 
   // Listen for changes to current week from navigation bar
@@ -189,9 +194,18 @@ export default function ClassDetail() {
       console.error('Failed to load class:', error)
     }
 
+    // Teachers can only manage classes assigned to them.
+    if (profile?.role === 'teacher' && data && data.teacher_id !== profile.id) {
+      setAccessDenied(true)
+      setCls(null)
+      setLoading(false)
+      return
+    }
+
+    setAccessDenied(false)
     setCls(data)
     setLoading(false)
-  }, [classId])
+  }, [classId, profile?.id, profile?.role])
 
   const fetchStudentRoster = useCallback(async () => {
     const { data } = await supabase
@@ -432,6 +446,14 @@ export default function ClassDetail() {
       setWeeklyMaterialFeedback({ type: 'error', text: 'Select at least one valid class target.' })
       return
     }
+    const unauthorizedTarget = validTargetClassIds.find((id) => !allowedTargetClassIds.has(id))
+    if (unauthorizedTarget) {
+      setWeeklyMaterialFeedback({
+        type: 'error',
+        text: 'One or more selected classes are not assigned to your account.',
+      })
+      return
+    }
 
     if (weeklyMaterialMode === 'link') {
       const linkUrl = normalizeLinkUrl(weeklyMaterialLinkUrl)
@@ -636,6 +658,13 @@ export default function ClassDetail() {
   }
 
   if (loading) return <Layout><div className="text-center text-gray-400 py-20">Loading...</div></Layout>
+  if (accessDenied) {
+    return (
+      <Layout>
+        <div className="text-center text-gray-500 py-20">You do not have access to manage this class.</div>
+      </Layout>
+    )
+  }
   if (!cls) return <Layout><div className="text-center text-gray-400 py-20">Class not found.</div></Layout>
   const selectedTermLabel = TERMS.find(t => t.key === selectedTerm)?.label
 
